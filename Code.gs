@@ -25,12 +25,7 @@ var COL_USUARIOS_START = 16;
 /* ========================= doGet ========================= */
 function doGet(e) {
   try {
-    var data = {
-      tiendas:      getTiendas(),
-      repartidores: getRepartidores(),
-      franjas:      getFranjas()
-    };
-    return buildJSON(data);
+    return buildJSON(getListas());
   } catch (err) {
     return buildJSON({ error: err.message });
   }
@@ -82,7 +77,7 @@ function verificarUsuario(body) {
   var row = encontrarFilaUsuario(usuario);
   if (!row) return { encontrado: false };
 
-  var activo  = String(row.ACTIVO  || '').trim().toUpperCase() === 'SI';
+  var activo  = esActivo(row.ACTIVO);
   var pwdHash = String(row.PASSWORD_HASH || '').trim();
   var nombre  = String(row.NOMBRE  || usuario).trim();
   var nivel   = String(row.NIVEL   || 'usuario 1').trim().toLowerCase();
@@ -109,8 +104,7 @@ function hacerLogin(body) {
   var row = encontrarFilaUsuario(usuario);
   if (!row) return { ok: false, error: 'Usuario no encontrado' };
 
-  var activo = String(row.ACTIVO || '').trim().toUpperCase() === 'SI';
-  if (!activo) return { ok: false, error: 'Usuario desactivado' };
+  if (!esActivo(row.ACTIVO)) return { ok: false, error: 'Usuario desactivado' };
 
   var storedHash = String(row.PASSWORD_HASH || '').trim();
   var inputHash  = sha256(pwd);
@@ -123,6 +117,21 @@ function hacerLogin(body) {
     nivel:  String(row.NIVEL  || 'usuario 1').trim().toLowerCase(),
     token:  Utilities.getUuid()
   };
+}
+
+/**
+ * Determina si un valor de la celda ACTIVO significa "activo".
+ * Acepta: "SI", "SÍ", "TRUE", "1", true (booleano de Sheets), "ACTIVO", "YES", "S"
+ * Rechaza: "NO", "FALSE", "0", false, vacío, cualquier otro valor.
+ */
+function esActivo(valor) {
+  if (valor === true)  return true;   // checkbox marcado en Sheets
+  if (valor === false) return false;  // checkbox desmarcado
+  if (valor === 1)     return true;
+  if (valor === 0)     return false;
+  var s = String(valor || '').trim().toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // quitar tildes
+  return s === 'SI' || s === 'YES' || s === 'TRUE' || s === '1' || s === 'ACTIVO' || s === 'S';
 }
 
 /**
@@ -156,7 +165,7 @@ function registrarPassword(body) {
     var rowUsr = String(data[i][colUsuario] || '').trim().toLowerCase();
     if (rowUsr !== usuario) continue;
 
-    var activo = String(data[i][colActivo] || '').trim().toUpperCase() === 'SI';
+    var activo = esActivo(data[i][colActivo]);
     if (!activo) return { ok: false, error: 'Usuario desactivado' };
 
     var existing = String(data[i][colPwd] || '').trim();
@@ -281,7 +290,7 @@ function procesarTicket(body) {
           'image/jpeg',
           'ticket_' + fecha + '_' + repartidor + '_' + Date.now() + '.jpg'
         );
-        var folderId = '15A9pWwJRTaxA_uHcQqhNmsKpJO11HEJb'; // ← CAMBIAR por tu folder real
+        var folderId = 'TU_FOLDER_ID_AQUI'; // ← CAMBIAR por tu folder real
         var folder = DriveApp.getFolderById(folderId);
         var file = folder.createFile(blob);
         file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -315,25 +324,101 @@ function procesarTicket(body) {
 }
 
 /* =============================================================
-   LISTAS — adaptar a tu hoja real
+   DIAGNÓSTICO — ejecutar manualmente desde Apps Script Editor
+   para ver exactamente qué lee la hoja.
+   Ejecuta esta función y revisa los logs (Ver → Registros).
    ============================================================= */
-function getTiendas()      { return getColumna('config', 'TIENDAS'); }
-function getRepartidores() { return getColumna('config', 'REPARTIDORES'); }
-function getFranjas()      { return getColumna('config', 'FRANJAS'); }
+function diagnosticarUsuarios() {
+  var ss    = SpreadsheetApp.openById('19bqTde5-Yf6P7B6IkcJ2tkb_xM9lH9hvSlR6LFvm_TY');
+  var sheet = ss.getSheetByName('database');
 
-function getColumna(sheetName, colHeader) {
-  try {
-    var ss     = SpreadsheetApp.openById('19bqTde5-Yf6P7B6IkcJ2tkb_xM9lH9hvSlR6LFvm_TY');
-    var sheet  = ss.getSheetByName(sheetName);
-    if (!sheet) return [];
-    var data   = sheet.getDataRange().getValues();
+  Logger.log('=== DIAGNÓSTICO TABLA USUARIOS ===');
+  Logger.log('COL_USUARIOS_START = ' + COL_USUARIOS_START + ' (columna ' + columnLetter(COL_USUARIOS_START) + ')');
+  Logger.log('Última columna hoja: ' + sheet.getLastColumn() + ' (' + columnLetter(sheet.getLastColumn()) + ')');
+  Logger.log('Última fila hoja: ' + sheet.getLastRow());
+
+  var data = leerTablaUsuarios(sheet);
+  if (data.length === 0) { Logger.log('ERROR: leerTablaUsuarios devolvió vacío'); return; }
+
+  Logger.log('--- FILA 1 (encabezados leídos) ---');
+  data[0].forEach(function(h, i) {
+    Logger.log('  [' + i + '] col ' + columnLetter(COL_USUARIOS_START + i) + ' → "' + h + '"');
+  });
+
+  Logger.log('--- FILAS DE DATOS ---');
+  for (var r = 1; r < data.length; r++) {
+    var fila = data[r];
+    var linea = 'Fila ' + (r + 1) + ': ';
+    fila.forEach(function(v, i) { linea += columnLetter(COL_USUARIOS_START + i) + '="' + v + '" '; });
+    Logger.log(linea);
+
+    // Diagnóstico específico del campo ACTIVO
     var header = data[0].map(function(h) { return String(h).trim().toUpperCase(); });
-    var col    = header.indexOf(colHeader);
-    if (col === -1) return [];
-    return data.slice(1)
-      .map(function(r) { return String(r[col] || '').trim(); })
-      .filter(function(v) { return v.length > 0; });
-  } catch(e) {
-    return [];
+    var colActivo = header.indexOf('ACTIVO');
+    if (colActivo !== -1) {
+      var valActivo = fila[colActivo];
+      var valActivoStr = String(valActivo || '').trim().toUpperCase();
+      Logger.log('  → ACTIVO raw="' + valActivo + '" tipo=' + typeof valActivo + ' trim+upper="' + valActivoStr + '" esSI=' + (valActivoStr === 'SI'));
+    }
   }
+  Logger.log('=== FIN DIAGNÓSTICO ===');
+}
+
+function columnLetter(col) {
+  var letter = '';
+  while (col > 0) {
+    var rem = (col - 1) % 26;
+    letter = String.fromCharCode(65 + rem) + letter;
+    col = Math.floor((col - 1) / 26);
+  }
+  return letter;
+}
+
+/* =============================================================
+   LISTAS — leen de database!A3, E3, G3 como el Apps Script original
+   Columnas:
+     A (col 1) = Tiendas
+     E (col 5) = Repartidores
+     G (col 7) = Franja Horaria
+   Las listas empiezan en la fila 3.
+   ============================================================= */
+function getListas() {
+  var ss    = SpreadsheetApp.openById('19bqTde5-Yf6P7B6IkcJ2tkb_xM9lH9hvSlR6LFvm_TY');
+  var sheet = ss.getSheetByName('database');
+  if (!sheet) return { tiendas: [], repartidores: [], franjas: [] };
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 3) return { tiendas: [], repartidores: [], franjas: [] };
+
+  var numRows = lastRow - 2; // filas desde la 3 hasta el final
+
+  // Leer las 3 columnas por separado para no asumir un rango contiguo
+  var colTiendas      = sheet.getRange(3, 1, numRows, 1).getValues(); // A3:A
+  var colRepartidores = sheet.getRange(3, 5, numRows, 1).getValues(); // E3:E
+  var colFranjas      = sheet.getRange(3, 7, numRows, 1).getValues(); // G3:G
+
+  function extraer(col) {
+    return col.map(function(r) { return String(r[0] || '').trim(); })
+              .filter(function(v) { return v.length > 0; });
+  }
+
+  return {
+    tiendas:      extraer(colTiendas),
+    repartidores: extraer(colRepartidores),
+    franjas:      extraer(colFranjas)
+  };
+}
+
+function getTiendas()      { return getListas().tiendas; }
+function getRepartidores() { return getListas().repartidores; }
+function getFranjas()      { return getListas().franjas; }
+
+/* Diagnóstico de listas — ejecutar manualmente en Apps Script Editor */
+function diagnosticarListas() {
+  var listas = getListas();
+  Logger.log('=== DIAGNÓSTICO LISTAS ===');
+  Logger.log('Tiendas (' + listas.tiendas.length + '): ' + JSON.stringify(listas.tiendas));
+  Logger.log('Repartidores (' + listas.repartidores.length + '): ' + JSON.stringify(listas.repartidores));
+  Logger.log('Franjas (' + listas.franjas.length + '): ' + JSON.stringify(listas.franjas));
+  Logger.log('=== FIN ===');
 }
