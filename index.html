@@ -527,16 +527,17 @@ fotoInput.addEventListener('change', async () => {
 });
 
 /* ============================================================
-   PROCESAMIENTO DE FOTO — MODO ESCÁNER
+   PROCESAMIENTO DE FOTO — MODO ESCÁNER v2
    Pipeline:
-     1. Leer orientación EXIF
-     2. Corregir rotación + forzar portrait
-     3. Escalar a resolución óptima para OCR (1800px alto)
-     4. Filtro escáner: escala de grises → contraste → umbral adaptativo
-     5. Exportar JPG calidad 0.88 (texto nítido, tamaño razonable)
+     1. Corregir EXIF + asegurar portrait estricto
+     2. Escala de grises + autocontraste
+     3. Detectar y recortar el rectángulo del ticket (papel blanco)
+     4. Umbral adaptativo (binarización tipo escáner)
+     5. Eliminar ruido de pixels sueltos
+     6. Exportar JPG calidad 0.90
    ============================================================ */
 
-/* --- 1. EXIF orientation --- */
+/* --- EXIF orientation --- */
 function getExifOrientation(dataURL) {
   try {
     const b64 = dataURL.split(',')[1];
@@ -569,15 +570,19 @@ function getExifOrientation(dataURL) {
   return 1;
 }
 
-/* --- 2. Dibujar imagen corregida en canvas (portrait) --- */
+/* --- Dibujar imagen en canvas: corrección EXIF + portrait forzado --- */
 function dibujarCorregida(img, orientation) {
   const swapExif = [5, 6, 7, 8].includes(orientation);
+
+  // Dimensiones visuales tras corrección EXIF
   let visW = swapExif ? img.naturalHeight : img.naturalWidth;
   let visH = swapExif ? img.naturalWidth  : img.naturalHeight;
-  const needsRot = visW > visH; // landscape → rotar a portrait
+
+  // SIEMPRE portrait: si es landscape, rotamos 270° (sentido de los tickets de cámara)
+  const needsRot = visW > visH;
   if (needsRot) [visW, visH] = [visH, visW];
 
-  // Resolución alta para texto nítido: máx 1800px alto, 1200px ancho
+  // Resolución alta para legibilidad: máx 1800px alto, 1200px ancho
   const MAX_H = 1800, MAX_W = 1200;
   const scale = Math.min(MAX_H / visH, MAX_W / visW, 1);
   const dstW  = Math.round(visW * scale);
@@ -590,10 +595,10 @@ function dibujarCorregida(img, orientation) {
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, dstW, dstH);
 
-  // Aplicar transformación
   ctx.save();
   const sW = swapExif ? img.naturalHeight : img.naturalWidth;
   const sH = swapExif ? img.naturalWidth  : img.naturalHeight;
+
   if (!needsRot) {
     const sx = dstW / sW, sy = dstH / sH;
     switch (orientation) {
@@ -605,11 +610,16 @@ function dibujarCorregida(img, orientation) {
       default: ctx.scale(sx,sy);
     }
   } else {
+    // Rotar 270° (= -90°): es la orientación más común cuando el teléfono
+    // está en landscape con el botón a la derecha
     const sx = dstH / sW, sy = dstW / sH;
+    ctx.translate(dstW, 0);
+    ctx.rotate(Math.PI / 2);   // 270° = 3 veces 90° = equivale a -90°
+    // Ajustar según EXIF adicional
     switch (orientation) {
-      case 6: ctx.translate(0,dstH); ctx.rotate(-Math.PI/2); ctx.scale(sy,sx); break;
-      case 8: ctx.translate(dstW,0); ctx.rotate(Math.PI/2); ctx.scale(sy,sx); break;
-      default: ctx.translate(0,dstH); ctx.rotate(-Math.PI/2); ctx.scale(sx,sy);
+      case 6: ctx.scale(sy, sx); break;
+      case 8: ctx.scale(-sy, sx); ctx.translate(-sW * sy, 0); break;
+      default: ctx.scale(sx, sy);
     }
   }
   ctx.drawImage(img, 0, 0);
@@ -618,41 +628,121 @@ function dibujarCorregida(img, orientation) {
   return canvas;
 }
 
-/* --- 3. FILTRO ESCÁNER sobre canvas ya dibujado --- */
-function aplicarFiltroEscaner(canvas) {
-  const ctx = canvas.getContext('2d');
-  const W   = canvas.width;
-  const H   = canvas.height;
-  const img = ctx.getImageData(0, 0, W, H);
-  const d   = img.data;
+/* --- Escala de grises + autocontraste → devuelve array de luminancias --- */
+function prepararGris(ctx, W, H) {
+  const imgData = ctx.getImageData(0, 0, W, H);
+  const d = imgData.data;
+  const gris = new Uint8Array(W * H);
 
-  // Paso 1: escala de grises ponderada (luminancia real)
-  for (let i = 0; i < d.length; i += 4) {
-    const g = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-    d[i] = d[i+1] = d[i+2] = g;
+  // Escala de grises con pesos de luminancia
+  for (let i = 0; i < W * H; i++) {
+    gris[i] = Math.round(0.299 * d[i*4] + 0.587 * d[i*4+1] + 0.114 * d[i*4+2]);
   }
 
-  // Paso 2: autocontraste — estira el histograma al rango completo 0-255
+  // Autocontraste: estira histograma al rango completo
   let mn = 255, mx = 0;
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i] < mn) mn = d[i];
-    if (d[i] > mx) mx = d[i];
+  for (let i = 0; i < gris.length; i++) {
+    if (gris[i] < mn) mn = gris[i];
+    if (gris[i] > mx) mx = gris[i];
   }
   const rng = mx - mn || 1;
-  for (let i = 0; i < d.length; i += 4) {
-    const v = Math.round((d[i] - mn) / rng * 255);
-    d[i] = d[i+1] = d[i+2] = v;
+  for (let i = 0; i < gris.length; i++) {
+    gris[i] = Math.round((gris[i] - mn) / rng * 255);
   }
 
-  // Paso 3: umbral adaptativo local (ventana 40px) — binarización tipo escáner
-  // Para cada pixel, comparar con la media local → blanco o negro
-  const BLOCK = 40; // tamaño de ventana (px)
-  const OFFSET = 10; // ajuste de sensibilidad (positivo = más texto visible)
-  const gris = new Uint8Array(W * H);
-  for (let i = 0; i < d.length; i += 4) gris[i / 4] = d[i];
+  return gris;
+}
 
-  // Integral de imagen para calcular medias locales en O(1)
-  const integral = new Float64Array((W + 1) * (H + 1));
+/* --- Detectar y recortar el ticket (zona de papel) por media + varianza --- */
+function detectarTicket(gris, W, H) {
+  // Calcular media y varianza por columna y por fila
+  const colMean = new Float32Array(W);
+  const colVar  = new Float32Array(W);
+  const rowMean = new Float32Array(H);
+  const rowVar  = new Float32Array(H);
+
+  // Media por columna
+  for (let x = 0; x < W; x++) {
+    let s = 0;
+    for (let y = 0; y < H; y++) s += gris[y * W + x];
+    colMean[x] = s / H;
+  }
+  // Varianza por columna
+  for (let x = 0; x < W; x++) {
+    let v = 0;
+    for (let y = 0; y < H; y++) {
+      const d = gris[y * W + x] - colMean[x];
+      v += d * d;
+    }
+    colVar[x] = v / H;
+  }
+  // Media por fila
+  for (let y = 0; y < H; y++) {
+    let s = 0;
+    for (let x = 0; x < W; x++) s += gris[y * W + x];
+    rowMean[y] = s / W;
+  }
+  // Varianza por fila
+  for (let y = 0; y < H; y++) {
+    let v = 0;
+    for (let x = 0; x < W; x++) {
+      const d = gris[y * W + x] - rowMean[y];
+      v += d * d;
+    }
+    rowVar[y] = v / W;
+  }
+
+  // Papel = brillo alto (media > 180) Y textura baja (varianza < 7000)
+  // Madera/fondo = varianza alta o brillo bajo
+  const MEAN_MIN = 170;
+  const VAR_MAX  = 7500;
+
+  const paperCols = [];
+  const paperRows = [];
+  for (let x = 0; x < W; x++) {
+    if (colMean[x] > MEAN_MIN && colVar[x] < VAR_MAX) paperCols.push(x);
+  }
+  for (let y = 0; y < H; y++) {
+    if (rowMean[y] > MEAN_MIN && rowVar[y] < VAR_MAX) paperRows.push(y);
+  }
+
+  if (paperCols.length < 50 || paperRows.length < 50) return null; // no hay suficiente papel
+
+  let c0 = paperCols[0], c1 = paperCols[paperCols.length - 1];
+  let r0 = paperRows[0], r1 = paperRows[paperRows.length - 1];
+
+  const MARGIN = 12;
+  c0 = Math.max(0, c0 - MARGIN);
+  c1 = Math.min(W - 1, c1 + MARGIN);
+  r0 = Math.max(0, r0 - MARGIN);
+  r1 = Math.min(H - 1, r1 + MARGIN);
+
+  const cropW = c1 - c0;
+  const cropH = r1 - r0;
+
+  // No recortar si el resultado es casi toda la imagen o muy pequeño
+  if (cropW < W * 0.15 || cropH < H * 0.15) return null;
+  if (cropW > W * 0.97 && cropH > H * 0.97) return null;
+
+  return { x: c0, y: r0, w: cropW, h: cropH };
+}
+
+/* --- Umbral adaptativo local (binarización tipo escáner) --- */
+function aplicarEscaner(ctx, W, H, gris) {
+  const imgData = ctx.getImageData(0, 0, W, H);
+  const d = imgData.data;
+
+  // Escribir los grises ya calculados en el imageData
+  for (let i = 0; i < W * H; i++) {
+    d[i*4] = d[i*4+1] = d[i*4+2] = gris[i];
+    d[i*4+3] = 255;
+  }
+
+  // Integral de imagen para umbral adaptativo en O(1)
+  const BLOCK = 40;  // ventana de vecindario
+  const OFFSET = 8;  // bias: positivo = más texto negro visible
+
+  const integral = new Float64Array((W+1) * (H+1));
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       integral[(y+1)*(W+1)+(x+1)] =
@@ -663,53 +753,46 @@ function aplicarFiltroEscaner(canvas) {
     }
   }
 
+  const bin = new Uint8Array(W * H);
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const x1 = Math.max(0, x - BLOCK);
       const y1 = Math.max(0, y - BLOCK);
-      const x2 = Math.min(W - 1, x + BLOCK);
-      const y2 = Math.min(H - 1, y + BLOCK);
-      const n  = (x2 - x1) * (y2 - y1);
+      const x2 = Math.min(W-1, x + BLOCK);
+      const y2 = Math.min(H-1, y + BLOCK);
+      const n   = (x2-x1) * (y2-y1);
       const sum = integral[(y2+1)*(W+1)+(x2+1)]
                 - integral[y1*(W+1)+(x2+1)]
                 - integral[(y2+1)*(W+1)+x1]
                 + integral[y1*(W+1)+x1];
       const media = sum / n;
-      const idx = (y * W + x) * 4;
-      const val = gris[y * W + x] < media - OFFSET ? 0 : 255;
+      const val = gris[y*W+x] < (media - OFFSET) ? 0 : 255;
+      bin[y*W+x] = val;
+      const idx = (y*W+x)*4;
       d[idx] = d[idx+1] = d[idx+2] = val;
     }
   }
 
-  // Paso 4: suavizado suave para eliminar ruido de píxeles sueltos
-  // (3x3 median-like: si ≥5 vecinos son del mismo color, mantener)
-  const bin = new Uint8Array(W * H);
-  for (let i = 0; i < W * H; i++) bin[i] = d[i * 4];
-
-  for (let y = 1; y < H - 1; y++) {
-    for (let x = 1; x < W - 1; x++) {
-      const idx = (y * W + x) * 4;
+  // Eliminación de ruido: pixels negros aislados (≤1 vecino negro) → borrar
+  for (let y = 1; y < H-1; y++) {
+    for (let x = 1; x < W-1; x++) {
+      if (bin[y*W+x] !== 0) continue;
       const negros = [
         bin[(y-1)*W+(x-1)], bin[(y-1)*W+x], bin[(y-1)*W+(x+1)],
         bin[y*W+(x-1)],                      bin[y*W+(x+1)],
         bin[(y+1)*W+(x-1)], bin[(y+1)*W+x], bin[(y+1)*W+(x+1)]
       ].filter(v => v === 0).length;
-      // Píxel negro aislado → borrar (ruido)
-      if (bin[y*W+x] === 0 && negros < 2) {
+      if (negros <= 1) {
+        const idx = (y*W+x)*4;
         d[idx] = d[idx+1] = d[idx+2] = 255;
-      }
-      // Píxel blanco rodeado → negro (rellenar huecos)
-      else if (bin[y*W+x] === 255 && negros >= 7) {
-        d[idx] = d[idx+1] = d[idx+2] = 0;
       }
     }
   }
 
-  ctx.putImageData(img, 0, 0);
-  return canvas;
+  ctx.putImageData(imgData, 0, 0);
 }
 
-/* --- 4. FUNCIÓN PRINCIPAL --- */
+/* --- FUNCIÓN PRINCIPAL --- */
 function optimizarFoto(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -722,17 +805,40 @@ function optimizarFoto(file) {
         try {
           const orientation = getExifOrientation(dataURL);
 
-          // 1. Dibujar en canvas corregido y en portrait
-          const canvas = dibujarCorregida(img, orientation);
+          // 1. Dibujar corregido en portrait
+          let canvas = dibujarCorregida(img, orientation);
+          let ctx    = canvas.getContext('2d');
+          let W = canvas.width, H = canvas.height;
 
-          // 2. Aplicar filtro escáner
-          aplicarFiltroEscaner(canvas);
+          // 2. Escala de grises + autocontraste
+          const gris = prepararGris(ctx, W, H);
 
-          // 3. Exportar — JPG calidad 0.88 (más alta que antes para preservar texto)
+          // 3. Detectar y recortar el ticket
+          const crop = detectarTicket(gris, W, H);
+          if (crop) {
+            // Crear nuevo canvas con solo el área del ticket
+            const cropped = document.createElement('canvas');
+            cropped.width  = crop.w;
+            cropped.height = crop.h;
+            const cctx = cropped.getContext('2d');
+            cctx.drawImage(canvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+            canvas = cropped;
+            ctx    = cctx;
+            W = crop.w;
+            H = crop.h;
+          }
+
+          // 4. Preparar gris del canvas recortado (o del original si no hubo crop)
+          const grisRecortado = crop ? prepararGris(ctx, W, H) : gris;
+
+          // 5. Aplicar filtro escáner (umbral adaptativo)
+          aplicarEscaner(ctx, W, H, grisRecortado);
+
+          // 6. Exportar JPG calidad 0.90
           canvas.toBlob(blob => {
             if (!blob) return reject(new Error('Error al exportar'));
             resolve(new File([blob], 'ticket_scan.jpg', { type: 'image/jpeg' }));
-          }, 'image/jpeg', 0.88);
+          }, 'image/jpeg', 0.90);
 
         } catch(err) {
           reject(err);
