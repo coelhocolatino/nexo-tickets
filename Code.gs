@@ -36,16 +36,30 @@ function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
 
-    // Rutas de autenticación
-    if (body.accion === 'verificarUsuario')   return buildJSON(verificarUsuario(body));
-    if (body.accion === 'login')              return buildJSON(hacerLogin(body));
-    if (body.accion === 'registrarPassword')  return buildJSON(registrarPassword(body));
+    // Rutas de autenticación — siempre devuelven JSON
+    if (body.accion === 'verificarUsuario') {
+      try { return buildJSON(verificarUsuario(body)); }
+      catch(err) { return buildJSON({ error: err.message }); }
+    }
+    if (body.accion === 'login') {
+      try { return buildJSON(hacerLogin(body)); }
+      catch(err) { return buildJSON({ ok: false, error: err.message }); }
+    }
+    if (body.accion === 'registrarPassword') {
+      try { return buildJSON(registrarPassword(body)); }
+      catch(err) { return buildJSON({ ok: false, error: err.message }); }
+    }
 
     // Subida de ticket (comportamiento original)
     return buildText(procesarTicket(body));
 
   } catch (err) {
     Logger.log('doPost ERROR: ' + err.message + '\n' + err.stack);
+    // Si el body tenía accion, devolver JSON de error
+    try {
+      var b = JSON.parse(e.postData.contents);
+      if (b.accion) return buildJSON({ error: err.message });
+    } catch(e2) {}
     return buildText('ERROR: ' + err.message);
   }
 }
@@ -81,7 +95,9 @@ function verificarUsuario(body) {
   var pwdHash   = String(row.PASSWORD_HASH || '').trim();
   var nombre    = String(row.NOMBRE    || usuario).trim();
   var nivel     = String(row.NIVEL     || 'usuario 1').trim().toLowerCase();
-  var tiendaPre = String(row.TIENDA_PRE || '').trim();
+  var tiendaPre = String(row.TIENDA_PRE != null ? row.TIENDA_PRE : '').trim();
+
+  Logger.log('verificarUsuario: usuario=' + usuario + ' activo=' + activo + ' nivel=' + nivel + ' tiendaPre=' + tiendaPre);
 
   return {
     encontrado: true,
@@ -218,28 +234,41 @@ function leerTablaUsuarios(sheet) {
  *   _colOffset = índice 0-based dentro del rango (P=0, Q=1, R=2...)
  */
 function encontrarFilaUsuario(usuario) {
-  var ss    = getSpreadsheet();
-  var sheet = ss.getSheetByName('database');
-  if (!sheet) throw new Error('Hoja "database" no encontrada');
-
-  var data   = leerTablaUsuarios(sheet);
-  if (data.length === 0) throw new Error('Tabla USUARIOS vacía o no encontrada en columna P');
-
-  // Fila 0 = encabezados
-  var header = data[0].map(function(h) { return String(h).trim().toUpperCase(); });
-
-  var colUsuario = header.indexOf('USUARIO');
-  if (colUsuario === -1) throw new Error('Columna USUARIO no encontrada en la tabla (columna P en adelante)');
-
-  for (var i = 1; i < data.length; i++) {
-    var rowUsr = String(data[i][colUsuario] || '').trim().toLowerCase();
-    if (rowUsr === usuario) {
-      var obj = { _fila: i + 1 }; // fila real en la hoja (1-indexed)
-      header.forEach(function(h, idx) { obj[h] = data[i][idx]; });
-      return obj;
+  try {
+    var ss    = getSpreadsheet();
+    var sheet = ss.getSheetByName('database');
+    if (!sheet) {
+      Logger.log('encontrarFilaUsuario: hoja database no encontrada');
+      return null;
     }
+
+    var data   = leerTablaUsuarios(sheet);
+    if (data.length === 0) {
+      Logger.log('encontrarFilaUsuario: tabla USUARIOS vacía');
+      return null;
+    }
+
+    var header = data[0].map(function(h) { return String(h).trim().toUpperCase(); });
+    var colUsuario = header.indexOf('USUARIO');
+    if (colUsuario === -1) {
+      Logger.log('encontrarFilaUsuario: columna USUARIO no encontrada. Headers: ' + JSON.stringify(header));
+      return null;
+    }
+
+    for (var i = 1; i < data.length; i++) {
+      var rowUsr = String(data[i][colUsuario] || '').trim().toLowerCase();
+      if (rowUsr === '' ) continue; // saltar filas vacías
+      if (rowUsr === usuario) {
+        var obj = { _fila: i + 1 };
+        header.forEach(function(h, idx) { obj[h] = data[i][idx]; });
+        return obj;
+      }
+    }
+    return null;
+  } catch(err) {
+    Logger.log('encontrarFilaUsuario ERROR: ' + err.message);
+    return null;
   }
-  return null;
 }
 
 /* ---- SHA-256 ---- */

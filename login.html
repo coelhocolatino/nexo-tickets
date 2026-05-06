@@ -309,7 +309,15 @@ function proxyPost(body) {
     body:JSON.stringify(body)
   }).then(r => {
     if (!r.ok) throw new Error("HTTP " + r.status);
-    return r.json();
+    return r.text();
+  }).then(text => {
+    try {
+      return JSON.parse(text);
+    } catch(e) {
+      // El Apps Script devolvió texto plano (error de script)
+      console.error('[Nexo] Respuesta no-JSON del servidor:', text);
+      throw new Error('Error del servidor: ' + text.substring(0, 120));
+    }
   });
 }
 
