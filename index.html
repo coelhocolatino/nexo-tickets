@@ -496,21 +496,47 @@ document.getElementById('btnArchivo').addEventListener('click', () => {
   fotoInput.click();
 });
 
-fotoInput.addEventListener('change', () => {
+fotoInput.addEventListener('change', async () => {
   const file = fotoInput.files[0];
   if (!file) return;
-  const url = URL.createObjectURL(file);
-  fotoPreview.onload = () => URL.revokeObjectURL(url);
-  fotoPreview.src = url;
+
+  // Preview inmediato del original
+  const urlOrig = URL.createObjectURL(file);
+  fotoPreview.onload = () => URL.revokeObjectURL(urlOrig);
+  fotoPreview.src = urlOrig;
   fotoPreview.style.display = 'block';
   const kb = (file.size / 1024).toFixed(0);
-  fotoInfo.textContent = `Original: ${kb} KB`;
+  fotoInfo.textContent = `Original: ${kb} KB · Procesando...`;
   fotoInfo.style.display = 'block';
+
+  // Preview del resultado procesado (escáner) en segundo plano
+  try {
+    const procesada = await optimizarFoto(file);
+    const urlProc = URL.createObjectURL(procesada);
+    fotoPreview.onload = () => URL.revokeObjectURL(urlProc);
+    fotoPreview.src = urlProc;
+    const kbProc = (procesada.size / 1024).toFixed(0);
+    fotoInfo.textContent = `Original: ${kb} KB → Escaneada: ${kbProc} KB ✅`;
+    // Guardar la versión procesada para no reprocesar al enviar
+    fotoInput._procesada = procesada;
+  } catch(e) {
+    fotoInfo.textContent = `Original: ${kb} KB (se procesará al subir)`;
+    fotoInput._procesada = null;
+    console.warn('[Nexo] Preview scan:', e);
+  }
 });
 
 /* ============================================================
-   OPTIMIZACIÓN DE FOTO
+   PROCESAMIENTO DE FOTO — MODO ESCÁNER
+   Pipeline:
+     1. Leer orientación EXIF
+     2. Corregir rotación + forzar portrait
+     3. Escalar a resolución óptima para OCR (1800px alto)
+     4. Filtro escáner: escala de grises → contraste → umbral adaptativo
+     5. Exportar JPG calidad 0.88 (texto nítido, tamaño razonable)
    ============================================================ */
+
+/* --- 1. EXIF orientation --- */
 function getExifOrientation(dataURL) {
   try {
     const b64 = dataURL.split(',')[1];
@@ -519,7 +545,6 @@ function getExifOrientation(dataURL) {
     for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
     const dv = new DataView(buf.buffer);
     if (dv.getUint16(0) !== 0xFFD8) return 1;
-
     let offset = 2;
     while (offset < dv.byteLength - 2) {
       const marker = dv.getUint16(offset);
@@ -540,10 +565,151 @@ function getExifOrientation(dataURL) {
       if ((marker & 0xFF00) !== 0xFF00) return 1;
       offset += 2 + len;
     }
-  } catch (e) {}
+  } catch(e) {}
   return 1;
 }
 
+/* --- 2. Dibujar imagen corregida en canvas (portrait) --- */
+function dibujarCorregida(img, orientation) {
+  const swapExif = [5, 6, 7, 8].includes(orientation);
+  let visW = swapExif ? img.naturalHeight : img.naturalWidth;
+  let visH = swapExif ? img.naturalWidth  : img.naturalHeight;
+  const needsRot = visW > visH; // landscape → rotar a portrait
+  if (needsRot) [visW, visH] = [visH, visW];
+
+  // Resolución alta para texto nítido: máx 1800px alto, 1200px ancho
+  const MAX_H = 1800, MAX_W = 1200;
+  const scale = Math.min(MAX_H / visH, MAX_W / visW, 1);
+  const dstW  = Math.round(visW * scale);
+  const dstH  = Math.round(visH * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width  = dstW;
+  canvas.height = dstH;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, dstW, dstH);
+
+  // Aplicar transformación
+  ctx.save();
+  const sW = swapExif ? img.naturalHeight : img.naturalWidth;
+  const sH = swapExif ? img.naturalWidth  : img.naturalHeight;
+  if (!needsRot) {
+    const sx = dstW / sW, sy = dstH / sH;
+    switch (orientation) {
+      case 2: ctx.translate(dstW,0); ctx.scale(-sx,sy); break;
+      case 3: ctx.translate(dstW,dstH); ctx.rotate(Math.PI); ctx.scale(sx,sy); break;
+      case 4: ctx.translate(0,dstH); ctx.scale(sx,-sy); break;
+      case 6: ctx.translate(dstW,0); ctx.rotate(Math.PI/2); ctx.scale(sy,sx); break;
+      case 8: ctx.rotate(-Math.PI/2); ctx.translate(-sW*sy,0); ctx.scale(sy,sx); break;
+      default: ctx.scale(sx,sy);
+    }
+  } else {
+    const sx = dstH / sW, sy = dstW / sH;
+    switch (orientation) {
+      case 6: ctx.translate(0,dstH); ctx.rotate(-Math.PI/2); ctx.scale(sy,sx); break;
+      case 8: ctx.translate(dstW,0); ctx.rotate(Math.PI/2); ctx.scale(sy,sx); break;
+      default: ctx.translate(0,dstH); ctx.rotate(-Math.PI/2); ctx.scale(sx,sy);
+    }
+  }
+  ctx.drawImage(img, 0, 0);
+  ctx.restore();
+
+  return canvas;
+}
+
+/* --- 3. FILTRO ESCÁNER sobre canvas ya dibujado --- */
+function aplicarFiltroEscaner(canvas) {
+  const ctx = canvas.getContext('2d');
+  const W   = canvas.width;
+  const H   = canvas.height;
+  const img = ctx.getImageData(0, 0, W, H);
+  const d   = img.data;
+
+  // Paso 1: escala de grises ponderada (luminancia real)
+  for (let i = 0; i < d.length; i += 4) {
+    const g = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+    d[i] = d[i+1] = d[i+2] = g;
+  }
+
+  // Paso 2: autocontraste — estira el histograma al rango completo 0-255
+  let mn = 255, mx = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i] < mn) mn = d[i];
+    if (d[i] > mx) mx = d[i];
+  }
+  const rng = mx - mn || 1;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = Math.round((d[i] - mn) / rng * 255);
+    d[i] = d[i+1] = d[i+2] = v;
+  }
+
+  // Paso 3: umbral adaptativo local (ventana 40px) — binarización tipo escáner
+  // Para cada pixel, comparar con la media local → blanco o negro
+  const BLOCK = 40; // tamaño de ventana (px)
+  const OFFSET = 10; // ajuste de sensibilidad (positivo = más texto visible)
+  const gris = new Uint8Array(W * H);
+  for (let i = 0; i < d.length; i += 4) gris[i / 4] = d[i];
+
+  // Integral de imagen para calcular medias locales en O(1)
+  const integral = new Float64Array((W + 1) * (H + 1));
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      integral[(y+1)*(W+1)+(x+1)] =
+        gris[y*W+x] +
+        integral[y*(W+1)+(x+1)] +
+        integral[(y+1)*(W+1)+x] -
+        integral[y*(W+1)+x];
+    }
+  }
+
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const x1 = Math.max(0, x - BLOCK);
+      const y1 = Math.max(0, y - BLOCK);
+      const x2 = Math.min(W - 1, x + BLOCK);
+      const y2 = Math.min(H - 1, y + BLOCK);
+      const n  = (x2 - x1) * (y2 - y1);
+      const sum = integral[(y2+1)*(W+1)+(x2+1)]
+                - integral[y1*(W+1)+(x2+1)]
+                - integral[(y2+1)*(W+1)+x1]
+                + integral[y1*(W+1)+x1];
+      const media = sum / n;
+      const idx = (y * W + x) * 4;
+      const val = gris[y * W + x] < media - OFFSET ? 0 : 255;
+      d[idx] = d[idx+1] = d[idx+2] = val;
+    }
+  }
+
+  // Paso 4: suavizado suave para eliminar ruido de píxeles sueltos
+  // (3x3 median-like: si ≥5 vecinos son del mismo color, mantener)
+  const bin = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) bin[i] = d[i * 4];
+
+  for (let y = 1; y < H - 1; y++) {
+    for (let x = 1; x < W - 1; x++) {
+      const idx = (y * W + x) * 4;
+      const negros = [
+        bin[(y-1)*W+(x-1)], bin[(y-1)*W+x], bin[(y-1)*W+(x+1)],
+        bin[y*W+(x-1)],                      bin[y*W+(x+1)],
+        bin[(y+1)*W+(x-1)], bin[(y+1)*W+x], bin[(y+1)*W+(x+1)]
+      ].filter(v => v === 0).length;
+      // Píxel negro aislado → borrar (ruido)
+      if (bin[y*W+x] === 0 && negros < 2) {
+        d[idx] = d[idx+1] = d[idx+2] = 255;
+      }
+      // Píxel blanco rodeado → negro (rellenar huecos)
+      else if (bin[y*W+x] === 255 && negros >= 7) {
+        d[idx] = d[idx+1] = d[idx+2] = 0;
+      }
+    }
+  }
+
+  ctx.putImageData(img, 0, 0);
+  return canvas;
+}
+
+/* --- 4. FUNCIÓN PRINCIPAL --- */
 function optimizarFoto(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -553,74 +719,29 @@ function optimizarFoto(file) {
       const img = new Image();
       img.onerror = () => reject(new Error('Imagen no válida'));
       img.onload  = function() {
-        const orientation = getExifOrientation(dataURL);
-        const swapExif = [5, 6, 7, 8].includes(orientation);
+        try {
+          const orientation = getExifOrientation(dataURL);
 
-        let visW = swapExif ? img.naturalHeight : img.naturalWidth;
-        let visH = swapExif ? img.naturalWidth  : img.naturalHeight;
+          // 1. Dibujar en canvas corregido y en portrait
+          const canvas = dibujarCorregida(img, orientation);
 
-        const needsPortraitRotation = (visW > visH);
-        if (needsPortraitRotation) [visW, visH] = [visH, visW];
+          // 2. Aplicar filtro escáner
+          aplicarFiltroEscaner(canvas);
 
-        const MAX_H = 1600, MAX_W = 1000;
-        const scale = Math.min(MAX_H / visH, MAX_W / visW, 1);
-        const dstW  = Math.round(visW * scale);
-        const dstH  = Math.round(visH * scale);
+          // 3. Exportar — JPG calidad 0.88 (más alta que antes para preservar texto)
+          canvas.toBlob(blob => {
+            if (!blob) return reject(new Error('Error al exportar'));
+            resolve(new File([blob], 'ticket_scan.jpg', { type: 'image/jpeg' }));
+          }, 'image/jpeg', 0.88);
 
-        const canvas = document.createElement('canvas');
-        canvas.width  = dstW;
-        canvas.height = dstH;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, dstW, dstH);
-
-        ctx.save();
-        applyTransform(ctx, orientation, img.naturalWidth, img.naturalHeight, dstW, dstH, needsPortraitRotation, swapExif);
-        ctx.drawImage(img, 0, 0);
-        ctx.restore();
-
-        canvas.toBlob(blob => {
-          if (!blob) return reject(new Error('Error al comprimir'));
-          resolve(new File([blob], 'ticket_opt.jpg', { type: 'image/jpeg' }));
-        }, 'image/jpeg', 0.72);
+        } catch(err) {
+          reject(err);
+        }
       };
       img.src = dataURL;
     };
     reader.readAsDataURL(file);
   });
-}
-
-function applyTransform(ctx, orientation, srcW, srcH, dstW, dstH, needsPortraitRot, swapExif) {
-  const sW = swapExif ? srcH : srcW;
-  const sH = swapExif ? srcW : srcH;
-
-  if (!needsPortraitRot) {
-    const sx = dstW / sW, sy = dstH / sH;
-    switch (orientation) {
-      case 1: ctx.scale(sx, sy); break;
-      case 2: ctx.translate(dstW,0); ctx.scale(-sx, sy); break;
-      case 3: ctx.translate(dstW,dstH); ctx.rotate(Math.PI); ctx.scale(sx,sy); break;
-      case 4: ctx.translate(0,dstH); ctx.scale(sx,-sy); break;
-      case 5: ctx.rotate(Math.PI/2); ctx.scale(sy,-sx); ctx.translate(0,-dstH); break;
-      case 6: ctx.translate(dstW,0); ctx.rotate(Math.PI/2); ctx.scale(sy,sx); break;
-      case 7: ctx.translate(dstW,dstH); ctx.rotate(Math.PI/2); ctx.scale(sy,-sx); break;
-      case 8: ctx.rotate(-Math.PI/2); ctx.translate(-sW*sy, 0); ctx.scale(sy,sx); break;
-      default: ctx.scale(sx,sy);
-    }
-  } else {
-    const sx = dstH / sW, sy = dstW / sH;
-    switch (orientation) {
-      case 1: ctx.translate(0,dstH); ctx.rotate(-Math.PI/2); ctx.scale(sx,sy); break;
-      case 2: ctx.translate(dstW,dstH); ctx.rotate(-Math.PI/2); ctx.scale(-sx,sy); break;
-      case 3: ctx.translate(dstW,0); ctx.rotate(Math.PI/2); ctx.scale(sx,sy); break;
-      case 4: ctx.translate(0,0); ctx.rotate(Math.PI/2); ctx.scale(sx,-sy); break;
-      case 5: ctx.scale(sy,sx); break;
-      case 6: ctx.translate(0,dstH); ctx.rotate(-Math.PI/2); ctx.scale(sy,sx); break;
-      case 7: ctx.translate(dstW,dstH); ctx.rotate(Math.PI); ctx.scale(sy,sx); break;
-      case 8: ctx.translate(dstW,0); ctx.rotate(Math.PI/2); ctx.scale(sy,sx); break;
-      default: ctx.translate(0,dstH); ctx.rotate(-Math.PI/2); ctx.scale(sx,sy);
-    }
-  }
 }
 
 /* ============================================================
@@ -661,15 +782,22 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
   setMsg('', '');
 
   try {
+    // Usar versión ya procesada del preview si existe, si no procesar ahora
     let fotoOpt;
-    try {
-      fotoOpt = await optimizarFoto(foto);
+    if (fotoInput._procesada) {
+      fotoOpt = fotoInput._procesada;
       const kbOpt = (fotoOpt.size / 1024).toFixed(0);
-      const kbOrig= (foto.size / 1024).toFixed(0);
-      fotoInfo.textContent = `Original: ${kbOrig} KB → Optimizada: ${kbOpt} KB`;
-    } catch (optErr) {
-      console.warn('[Nexo] Optimización falló, usando original:', optErr);
-      fotoOpt = foto;
+      fotoInfo.textContent = `Escaneada: ${kbOpt} KB ✅`;
+    } else {
+      try {
+        fotoOpt = await optimizarFoto(foto);
+        const kbOpt  = (fotoOpt.size / 1024).toFixed(0);
+        const kbOrig = (foto.size / 1024).toFixed(0);
+        fotoInfo.textContent = `Original: ${kbOrig} KB → Escaneada: ${kbOpt} KB`;
+      } catch (optErr) {
+        console.warn('[Nexo] Optimización falló, usando original:', optErr);
+        fotoOpt = foto;
+      }
     }
 
     spinnerTxt.textContent = 'Subiendo ticket...';
@@ -725,6 +853,7 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
       fotoPreview.style.display = 'none';
       fotoPreview.src = '';
       fotoInfo.style.display = 'none';
+      fotoInput._procesada = null;
       clearMsg();
       _submitting = false;
     }, 5000);
