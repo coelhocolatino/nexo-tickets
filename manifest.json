@@ -2,7 +2,7 @@
   "name": "Nexo · SAD Tickets",
   "short_name": "Nexo Tickets",
   "description": "Sube y gestiona los tickets de reparto. Distribución Inteligente.",
-  "start_url": "./login.html?ver=5",
+  "start_url": "./login.html?ver=6",
   "scope": "./",
   "display": "standalone",
   "background_color": "#07080f",
