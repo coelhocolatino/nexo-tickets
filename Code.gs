@@ -344,26 +344,30 @@ function diagnosticarUsuarios() {
   var data = leerTablaUsuarios(sheet);
   if (data.length === 0) { Logger.log('ERROR: leerTablaUsuarios devolvió vacío'); return; }
 
-  Logger.log('--- FILA 1 (encabezados leídos) ---');
+  var header = data[0].map(function(h) { return String(h).trim().toUpperCase(); });
+
+  Logger.log('--- ENCABEZADOS LEÍDOS ---');
   data[0].forEach(function(h, i) {
     Logger.log('  [' + i + '] col ' + columnLetter(COL_USUARIOS_START + i) + ' → "' + h + '"');
   });
 
+  // Verificar columnas críticas
+  Logger.log('--- COLUMNAS CRÍTICAS ---');
+  Logger.log('  USUARIO idx=' + header.indexOf('USUARIO'));
+  Logger.log('  NOMBRE idx='  + header.indexOf('NOMBRE'));
+  Logger.log('  ACTIVO idx='  + header.indexOf('ACTIVO'));
+  Logger.log('  PASSWORD_HASH idx=' + header.indexOf('PASSWORD_HASH'));
+  Logger.log('  NIVEL idx='   + header.indexOf('NIVEL'));
+  Logger.log('  TIENDA_PRE idx=' + header.indexOf('TIENDA_PRE'));
+
   Logger.log('--- FILAS DE DATOS ---');
   for (var r = 1; r < data.length; r++) {
     var fila = data[r];
-    var linea = 'Fila ' + (r + 1) + ': ';
-    fila.forEach(function(v, i) { linea += columnLetter(COL_USUARIOS_START + i) + '="' + v + '" '; });
-    Logger.log(linea);
-
-    // Diagnóstico específico del campo ACTIVO
-    var header = data[0].map(function(h) { return String(h).trim().toUpperCase(); });
-    var colActivo = header.indexOf('ACTIVO');
-    if (colActivo !== -1) {
-      var valActivo = fila[colActivo];
-      var valActivoStr = String(valActivo || '').trim().toUpperCase();
-      Logger.log('  → ACTIVO raw="' + valActivo + '" tipo=' + typeof valActivo + ' trim+upper="' + valActivoStr + '" esSI=' + (valActivoStr === 'SI'));
-    }
+    var usuario  = fila[header.indexOf('USUARIO')]   || '';
+    var activo   = fila[header.indexOf('ACTIVO')]    || '';
+    var nivel    = fila[header.indexOf('NIVEL')]     || '';
+    var tiendaPre= header.indexOf('TIENDA_PRE') !== -1 ? fila[header.indexOf('TIENDA_PRE')] : 'COL_NO_EXISTE';
+    Logger.log('  Fila ' + (r+1) + ': usuario="' + usuario + '" activo="' + activo + '" nivel="' + nivel + '" tiendaPre="' + tiendaPre + '"');
   }
   Logger.log('=== FIN DIAGNÓSTICO ===');
 }
