@@ -401,6 +401,40 @@ function diagnosticarUsuarios() {
   Logger.log('=== FIN DIAGNÓSTICO ===');
 }
 
+/* =============================================================
+   TEST RÁPIDO — ejecutar desde Apps Script Editor
+   Simula exactamente lo que hace el login.html
+   ============================================================= */
+function testVerificarUsuario() {
+  var body = { accion: 'verificarUsuario', usuario: 'wcoelho' };
+  Logger.log('=== TEST verificarUsuario ===');
+  Logger.log('Input: ' + JSON.stringify(body));
+  try {
+    var resultado = verificarUsuario(body);
+    Logger.log('Resultado: ' + JSON.stringify(resultado));
+  } catch(err) {
+    Logger.log('EXCEPCION: ' + err.message + '\n' + err.stack);
+  }
+  Logger.log('=== FIN TEST ===');
+}
+
+function testDoPost() {
+  // Simula un POST de verificarUsuario
+  var fakeEvent = {
+    postData: {
+      contents: JSON.stringify({ accion: 'verificarUsuario', usuario: 'wcoelho' })
+    }
+  };
+  Logger.log('=== TEST doPost ===');
+  try {
+    var resp = doPost(fakeEvent);
+    Logger.log('Respuesta: ' + resp.getContent());
+  } catch(err) {
+    Logger.log('EXCEPCION en doPost: ' + err.message + '\n' + err.stack);
+  }
+  Logger.log('=== FIN TEST doPost ===');
+}
+
 function columnLetter(col) {
   var letter = '';
   while (col > 0) {
