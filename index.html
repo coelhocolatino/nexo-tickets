@@ -622,41 +622,49 @@ function dibujarCorregida(img, orientation) {
   return canvas;
 }
 
-/* --- Escala de grises + autocontraste → devuelve array de luminancias --- */
+/* --- Escala de grises inteligente → devuelve {gris, yaEsBinaria} --- */
 function prepararGris(ctx, W, H) {
   const imgData = ctx.getImageData(0, 0, W, H);
   const d = imgData.data;
   const gris = new Uint8Array(W * H);
 
-  // Escala de grises con pesos de luminancia
   for (let i = 0; i < W * H; i++) {
     gris[i] = Math.round(0.299 * d[i*4] + 0.587 * d[i*4+1] + 0.114 * d[i*4+2]);
   }
 
-  // Autocontraste: estira histograma al rango completo
-  let mn = 255, mx = 0;
+  // Detectar si la imagen ya está binarizada (< 5% píxeles grises intermedios)
+  let intermedios = 0;
   for (let i = 0; i < gris.length; i++) {
-    if (gris[i] < mn) mn = gris[i];
-    if (gris[i] > mx) mx = gris[i];
+    if (gris[i] > 40 && gris[i] < 215) intermedios++;
   }
-  const rng = mx - mn || 1;
-  for (let i = 0; i < gris.length; i++) {
-    gris[i] = Math.round((gris[i] - mn) / rng * 255);
+  const yaEsBinaria = (intermedios / gris.length) < 0.05;
+
+  // Autocontraste solo si la imagen tiene grises ricos (no binarizada)
+  if (!yaEsBinaria) {
+    let mn = 255, mx = 0;
+    for (let i = 0; i < gris.length; i++) {
+      if (gris[i] < mn) mn = gris[i];
+      if (gris[i] > mx) mx = gris[i];
+    }
+    const rng = mx - mn || 1;
+    if (rng > 30) {
+      for (let i = 0; i < gris.length; i++) {
+        gris[i] = Math.round((gris[i] - mn) / rng * 255);
+      }
+    }
   }
 
-  return gris;
+  return { gris, yaEsBinaria };
 }
 
 /* --- Detectar y recortar el ticket excluyendo madera y relleno --- */
 function detectarTicket(gris, W, H) {
-  // Media por fila
   const rowMean = new Float32Array(H);
   for (let y = 0; y < H; y++) {
     let s = 0;
     for (let x = 0; x < W; x++) s += gris[y * W + x];
     rowMean[y] = s / W;
   }
-  // Media por columna
   const colMean = new Float32Array(W);
   for (let x = 0; x < W; x++) {
     let s = 0;
@@ -664,32 +672,30 @@ function detectarTicket(gris, W, H) {
     colMean[x] = s / H;
   }
 
-  // --- Límite SUPERIOR del ticket (primera fila brillante) ---
+  // Límite superior: primera fila brillante
   let r0 = 0;
   for (let y = 0; y < H; y++) {
     if (rowMean[y] > 180) { r0 = Math.max(0, y - 8); break; }
   }
 
-  // --- Límite INFERIOR del ticket (transición papel→madera o relleno) ---
-  // Buscar la última fila brillante ANTES de una zona oscura (madera)
+  // Límite inferior: transición papel→madera (media cae < 150 tras zona brillante)
   let r1 = H - 1;
   let inPaper = false;
   for (let y = 0; y < H; y++) {
     if (rowMean[y] > 180) inPaper = true;
     else if (inPaper && rowMean[y] < 150) {
-      // Transición: papel → madera/fondo oscuro
       r1 = Math.min(H - 1, y + 8);
       break;
     }
   }
-  // Si no encontró transición, tomar última fila brillante
-  if (r1 === H - 1) {
+  // Si no hubo transición, última fila brillante
+  if (!inPaper || r1 === H - 1) {
     for (let y = H - 1; y >= 0; y--) {
       if (rowMean[y] > 180) { r1 = Math.min(H - 1, y + 8); break; }
     }
   }
 
-  // --- Columnas: bordes izquierdo y derecho ---
+  // Columnas izquierda y derecha
   let c0 = 0, c1 = W - 1;
   for (let x = 0; x < W; x++) {
     if (colMean[x] > 140) { c0 = Math.max(0, x - 8); break; }
@@ -702,24 +708,30 @@ function detectarTicket(gris, W, H) {
   const cropH = r1 - r0;
 
   if (cropW < 50 || cropH < 50) return null;
+  // No recortar si ya es prácticamente toda la imagen
+  if (cropW > W * 0.97 && cropH > H * 0.97) return null;
 
   return { x: c0, y: r0, w: cropW, h: cropH };
 }
 
-/* --- Umbral adaptativo local (binarización tipo escáner) --- */
-function aplicarEscaner(ctx, W, H, gris) {
+/* --- Aplicar filtro escáner (adaptativo o fijo según tipo de imagen) --- */
+function aplicarEscaner(ctx, W, H, gris, yaEsBinaria) {
   const imgData = ctx.getImageData(0, 0, W, H);
   const d = imgData.data;
 
-  // Escribir los grises ya calculados en el imageData
-  for (let i = 0; i < W * H; i++) {
-    d[i*4] = d[i*4+1] = d[i*4+2] = gris[i];
-    d[i*4+3] = 255;
+  if (yaEsBinaria) {
+    // Imagen ya binarizada: umbral fijo 128, sin más procesamiento
+    for (let i = 0; i < W * H; i++) {
+      const val = gris[i] < 128 ? 0 : 255;
+      d[i*4] = d[i*4+1] = d[i*4+2] = val;
+      d[i*4+3] = 255;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return;
   }
 
-  // Integral de imagen para umbral adaptativo en O(1)
-  const BLOCK = 40;  // ventana de vecindario
-  const OFFSET = 8;  // bias: positivo = más texto negro visible
+  // Imagen con grises: umbral adaptativo local
+  const BLOCK = 40, OFFSET = 8;
 
   const integral = new Float64Array((W+1) * (H+1));
   for (let y = 0; y < H; y++) {
@@ -735,32 +747,34 @@ function aplicarEscaner(ctx, W, H, gris) {
   const bin = new Uint8Array(W * H);
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
-      const x1 = Math.max(0, x - BLOCK);
-      const y1 = Math.max(0, y - BLOCK);
-      const x2 = Math.min(W-1, x + BLOCK);
-      const y2 = Math.min(H-1, y + BLOCK);
+      const x1 = Math.max(0, x - BLOCK), y1 = Math.max(0, y - BLOCK);
+      const x2 = Math.min(W-1, x + BLOCK), y2 = Math.min(H-1, y + BLOCK);
       const n   = (x2-x1) * (y2-y1);
       const sum = integral[(y2+1)*(W+1)+(x2+1)]
                 - integral[y1*(W+1)+(x2+1)]
                 - integral[(y2+1)*(W+1)+x1]
                 + integral[y1*(W+1)+x1];
-      const media = sum / n;
-      const val = gris[y*W+x] < (media - OFFSET) ? 0 : 255;
+      const val = gris[y*W+x] < (sum / n - OFFSET) ? 0 : 255;
       bin[y*W+x] = val;
       const idx = (y*W+x)*4;
       d[idx] = d[idx+1] = d[idx+2] = val;
+      d[idx+3] = 255;
     }
   }
 
-  // Eliminación de ruido: pixels negros aislados (≤1 vecino negro) → borrar
+  // Eliminar ruido: pixels negros aislados → borrar
   for (let y = 1; y < H-1; y++) {
     for (let x = 1; x < W-1; x++) {
       if (bin[y*W+x] !== 0) continue;
-      const negros = [
-        bin[(y-1)*W+(x-1)], bin[(y-1)*W+x], bin[(y-1)*W+(x+1)],
-        bin[y*W+(x-1)],                      bin[y*W+(x+1)],
-        bin[(y+1)*W+(x-1)], bin[(y+1)*W+x], bin[(y+1)*W+(x+1)]
-      ].filter(v => v === 0).length;
+      let negros = 0;
+      if (bin[(y-1)*W+(x-1)] === 0) negros++;
+      if (bin[(y-1)*W+ x   ] === 0) negros++;
+      if (bin[(y-1)*W+(x+1)] === 0) negros++;
+      if (bin[ y   *W+(x-1)] === 0) negros++;
+      if (bin[ y   *W+(x+1)] === 0) negros++;
+      if (bin[(y+1)*W+(x-1)] === 0) negros++;
+      if (bin[(y+1)*W+ x   ] === 0) negros++;
+      if (bin[(y+1)*W+(x+1)] === 0) negros++;
       if (negros <= 1) {
         const idx = (y*W+x)*4;
         d[idx] = d[idx+1] = d[idx+2] = 255;
@@ -789,31 +803,29 @@ function optimizarFoto(file) {
           let ctx    = canvas.getContext('2d');
           let W = canvas.width, H = canvas.height;
 
-          // 2. Escala de grises + autocontraste
-          const gris = prepararGris(ctx, W, H);
+          // 2. Analizar grises (detecta si ya está binarizada)
+          let { gris, yaEsBinaria } = prepararGris(ctx, W, H);
 
-          // 3. Detectar y recortar el ticket
+          // 3. Detectar y recortar el ticket (quitar madera/fondo)
           const crop = detectarTicket(gris, W, H);
           if (crop) {
-            // Crear nuevo canvas con solo el área del ticket
             const cropped = document.createElement('canvas');
             cropped.width  = crop.w;
             cropped.height = crop.h;
             const cctx = cropped.getContext('2d');
             cctx.drawImage(canvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
-            canvas = cropped;
-            ctx    = cctx;
-            W = crop.w;
-            H = crop.h;
+            canvas = cropped; ctx = cctx;
+            W = crop.w; H = crop.h;
+            // Recalcular grises del área recortada
+            const r = prepararGris(ctx, W, H);
+            gris = r.gris;
+            yaEsBinaria = r.yaEsBinaria;
           }
 
-          // 4. Preparar gris del canvas recortado (o del original si no hubo crop)
-          const grisRecortado = crop ? prepararGris(ctx, W, H) : gris;
+          // 4. Aplicar filtro escáner
+          aplicarEscaner(ctx, W, H, gris, yaEsBinaria);
 
-          // 5. Aplicar filtro escáner (umbral adaptativo)
-          aplicarEscaner(ctx, W, H, grisRecortado);
-
-          // 6. Exportar JPG calidad 0.90
+          // 5. Exportar JPG calidad 0.90
           canvas.toBlob(blob => {
             if (!blob) return reject(new Error('Error al exportar'));
             resolve(new File([blob], 'ticket_scan.jpg', { type: 'image/jpeg' }));
