@@ -77,10 +77,11 @@ function verificarUsuario(body) {
   var row = encontrarFilaUsuario(usuario);
   if (!row) return { encontrado: false };
 
-  var activo  = esActivo(row.ACTIVO);
-  var pwdHash = String(row.PASSWORD_HASH || '').trim();
-  var nombre  = String(row.NOMBRE  || usuario).trim();
-  var nivel   = String(row.NIVEL   || 'usuario 1').trim().toLowerCase();
+  var activo    = esActivo(row.ACTIVO);
+  var pwdHash   = String(row.PASSWORD_HASH || '').trim();
+  var nombre    = String(row.NOMBRE    || usuario).trim();
+  var nivel     = String(row.NIVEL     || 'usuario 1').trim().toLowerCase();
+  var tiendaPre = String(row.TIENDA_PRE || '').trim();
 
   return {
     encontrado: true,
@@ -88,7 +89,8 @@ function verificarUsuario(body) {
     tienePwd:   pwdHash.length > 0,
     nombre:     nombre,
     usuario:    usuario,
-    nivel:      nivel
+    nivel:      nivel,
+    tiendaPre:  tiendaPre
   };
 }
 
@@ -112,10 +114,11 @@ function hacerLogin(body) {
   if (storedHash !== inputHash) return { ok: false };
 
   return {
-    ok:     true,
-    nombre: String(row.NOMBRE || usuario).trim(),
-    nivel:  String(row.NIVEL  || 'usuario 1').trim().toLowerCase(),
-    token:  Utilities.getUuid()
+    ok:        true,
+    nombre:    String(row.NOMBRE    || usuario).trim(),
+    nivel:     String(row.NIVEL     || 'usuario 1').trim().toLowerCase(),
+    tiendaPre: String(row.TIENDA_PRE || '').trim(),
+    token:     Utilities.getUuid()
   };
 }
 
@@ -179,10 +182,11 @@ function registrarPassword(body) {
     sheet.getRange(filaHoja, colHoja).setValue(sha256(pwd));
 
     return {
-      ok:     true,
-      nombre: String(data[i][colNombre] || usuario).trim(),
-      nivel:  String(data[i][colNivel]  || 'usuario 1').trim().toLowerCase(),
-      token:  Utilities.getUuid()
+      ok:        true,
+      nombre:    String(data[i][colNombre] || usuario).trim(),
+      nivel:     String(data[i][colNivel]  || 'usuario 1').trim().toLowerCase(),
+      tiendaPre: String(data[i][header.indexOf('TIENDA_PRE')] || '').trim(),
+      token:     Utilities.getUuid()
     };
   }
 
@@ -290,7 +294,7 @@ function procesarTicket(body) {
           'image/jpeg',
           'ticket_' + fecha + '_' + repartidor + '_' + Date.now() + '.jpg'
         );
-        var folderId = '15A9pWwJRTaxA_uHcQqhNmsKpJO11HEJb'; // ← CAMBIAR por tu folder real
+        var folderId = 'TU_FOLDER_ID_AQUI'; // ← CAMBIAR por tu folder real
         var folder = DriveApp.getFolderById(folderId);
         var file = folder.createFile(blob);
         file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
