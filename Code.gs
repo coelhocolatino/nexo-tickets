@@ -2,16 +2,25 @@
 // NEXO · SAD TICKETS — Code.gs
 // =============================================================================
 // HOJA: "database" → tabla USUARIOS
-// Columnas (fila 1):
-//   USUARIO | NOMBRE | ACTIVO | PASSWORD_HASH | NIVEL
-// Valores de NIVEL: "admin" | "usuario 1" | "usuario 2"
+//
+// La tabla USUARIOS empieza en la columna P (columna 16) de la fila 1:
+//   P1: USUARIO | Q1: NOMBRE | R1: ACTIVO | S1: PASSWORD_HASH | T1: NIVEL
+//
+// Valores de NIVEL:  "admin" | "usuario 1" | "usuario 2"
 // Valores de ACTIVO: "SI" o "NO"
+// PASSWORD_HASH:     vacío = usuario nuevo (crea contraseña en primer acceso)
+//
+// COL_USUARIOS_START = 16  ← columna P (1-indexed, como en getRange)
 // =============================================================================
 //
 // IMPORTANTE: Esta versión INTEGRA la autenticación al Apps Script existente.
 // Si tu doPost actual tiene lógica para guardar tickets, reemplaza el cuerpo
 // de procesarTicket() abajo por esa lógica.
 // =============================================================================
+
+// Columna de inicio de la tabla USUARIOS en la hoja "database" (1-indexed)
+// P = 16. Cambia este valor si mueves la tabla a otra columna.
+var COL_USUARIOS_START = 16;
 
 /* ========================= doGet ========================= */
 function doGet(e) {
@@ -126,16 +135,22 @@ function registrarPassword(body) {
   if (!usuario || !pwd) return { ok: false, error: 'Datos incompletos' };
   if (pwd.length < 6)   return { ok: false, error: 'Contraseña demasiado corta' };
 
-  var ss     = SpreadsheetApp.openById('19bqTde5-Yf6P7B6IkcJ2tkb_xM9lH9hvSlR6LFvm_TY');
-  var sheet  = ss.getSheetByName('database');
-  var data   = sheet.getDataRange().getValues();
+  var ss    = SpreadsheetApp.openById('19bqTde5-Yf6P7B6IkcJ2tkb_xM9lH9hvSlR6LFvm_TY');
+  var sheet = ss.getSheetByName('database');
+  if (!sheet) return { ok: false, error: 'Hoja database no encontrada' };
+
+  // Leer encabezados para saber en qué offset está PASSWORD_HASH
+  var data   = leerTablaUsuarios(sheet);
+  if (data.length === 0) return { ok: false, error: 'Tabla USUARIOS vacía' };
   var header = data[0].map(function(h) { return String(h).trim().toUpperCase(); });
 
   var colUsuario = header.indexOf('USUARIO');
   var colActivo  = header.indexOf('ACTIVO');
-  var colPwd     = header.indexOf('PASSWORD_HASH');
+  var colPwd     = header.indexOf('PASSWORD_HASH');  // índice 0-based dentro del rango P..
   var colNombre  = header.indexOf('NOMBRE');
   var colNivel   = header.indexOf('NIVEL');
+
+  if (colPwd === -1) return { ok: false, error: 'Columna PASSWORD_HASH no encontrada' };
 
   for (var i = 1; i < data.length; i++) {
     var rowUsr = String(data[i][colUsuario] || '').trim().toLowerCase();
@@ -147,7 +162,12 @@ function registrarPassword(body) {
     var existing = String(data[i][colPwd] || '').trim();
     if (existing.length > 0) return { ok: false, error: 'Este usuario ya tiene contraseña asignada' };
 
-    sheet.getRange(i + 1, colPwd + 1).setValue(sha256(pwd));
+    // Columna real en la hoja = COL_USUARIOS_START + colPwd (ambos 1-indexed y 0-indexed respectivamente)
+    // Fila real en la hoja = i + 1 (data[0] es fila 1, data[1] es fila 2, etc.)
+    var colHoja = COL_USUARIOS_START + colPwd; // columna real en la hoja (1-indexed)
+    var filaHoja = i + 1;                       // fila real en la hoja (1-indexed)
+
+    sheet.getRange(filaHoja, colHoja).setValue(sha256(pwd));
 
     return {
       ok:     true,
@@ -161,24 +181,47 @@ function registrarPassword(body) {
 }
 
 /**
- * Busca un usuario en la hoja "database" (búsqueda case-insensitive).
- * Devuelve un objeto { COLUMNA: valor } o null.
+ * Lee la tabla USUARIOS desde la columna COL_USUARIOS_START (P=16).
+ * Devuelve un array [fila0_headers, fila1_datos, ...] solo de esas columnas.
+ * El número de columnas lo determina la fila de encabezados (hasta que
+ * encuentre una celda vacía en la fila 1 a partir de P).
+ */
+function leerTablaUsuarios(sheet) {
+  var lastCol  = sheet.getLastColumn();
+  var lastRow  = sheet.getLastRow();
+  var numCols  = lastCol - COL_USUARIOS_START + 1;
+
+  if (numCols <= 0 || lastRow < 1) return [];
+
+  // Leer desde P1 hasta el final de los datos
+  var range = sheet.getRange(1, COL_USUARIOS_START, lastRow, numCols);
+  return range.getValues();
+}
+
+/**
+ * Busca un usuario en la tabla USUARIOS (columna P en adelante).
+ * Devuelve { COLUMNA: valor, _fila: N, _colOffset: N } o null.
+ *   _fila      = número de fila en la hoja (1-indexed) → para getRange al escribir
+ *   _colOffset = índice 0-based dentro del rango (P=0, Q=1, R=2...)
  */
 function encontrarFilaUsuario(usuario) {
-  var ss     = SpreadsheetApp.openById('19bqTde5-Yf6P7B6IkcJ2tkb_xM9lH9hvSlR6LFvm_TY');
-  var sheet  = ss.getSheetByName('database');
+  var ss    = SpreadsheetApp.openById('19bqTde5-Yf6P7B6IkcJ2tkb_xM9lH9hvSlR6LFvm_TY');
+  var sheet = ss.getSheetByName('database');
   if (!sheet) throw new Error('Hoja "database" no encontrada');
 
-  var data   = sheet.getDataRange().getValues();
+  var data   = leerTablaUsuarios(sheet);
+  if (data.length === 0) throw new Error('Tabla USUARIOS vacía o no encontrada en columna P');
+
+  // Fila 0 = encabezados
   var header = data[0].map(function(h) { return String(h).trim().toUpperCase(); });
 
   var colUsuario = header.indexOf('USUARIO');
-  if (colUsuario === -1) throw new Error('Columna USUARIO no encontrada en hoja database');
+  if (colUsuario === -1) throw new Error('Columna USUARIO no encontrada en la tabla (columna P en adelante)');
 
   for (var i = 1; i < data.length; i++) {
     var rowUsr = String(data[i][colUsuario] || '').trim().toLowerCase();
     if (rowUsr === usuario) {
-      var obj = {};
+      var obj = { _fila: i + 1 }; // fila real en la hoja (1-indexed)
       header.forEach(function(h, idx) { obj[h] = data[i][idx]; });
       return obj;
     }
@@ -238,7 +281,7 @@ function procesarTicket(body) {
           'image/jpeg',
           'ticket_' + fecha + '_' + repartidor + '_' + Date.now() + '.jpg'
         );
-        var folderId = 'TU_FOLDER_ID_AQUI'; // ← CAMBIAR por tu folder real
+        var folderId = '15A9pWwJRTaxA_uHcQqhNmsKpJO11HEJb'; // ← CAMBIAR por tu folder real
         var folder = DriveApp.getFolderById(folderId);
         var file = folder.createFile(blob);
         file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
