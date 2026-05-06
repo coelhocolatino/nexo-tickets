@@ -1,7 +1,7 @@
 // ==============================
 // Nexo · SAD Tickets - Service Worker v5
 // ==============================
-const CACHE_NAME = "nexo-tickets-v14";
+const CACHE_NAME = "nexo-tickets-v16";
 
 const ASSETS = [
   "./",

@@ -311,6 +311,7 @@ button:active { transform:scale(.97); }
         <button type="button" id="btnCamara">📷 Sacar foto</button>
         <button type="button" id="btnArchivo">🖼️ Galería</button>
       </div>
+      <button type="button" id="btnGirar" style="display:none; margin-top:8px; background:rgba(255,255,255,0.2); color:#fff; border:1px solid rgba(255,255,255,0.3); box-shadow:none; padding:10px; font-size:0.9rem;">🔄 Girar foto</button>
       <input type="file" id="foto" name="foto" accept="image/*" style="display:none;" />
     </div>
 
@@ -608,9 +609,14 @@ document.getElementById('btnArchivo').addEventListener('click', () => {
   fotoInput.click();
 });
 
+// Rotación manual acumulada (en grados: 0, 90, 180, 270)
+let rotacionManual = 0;
+
 fotoInput.addEventListener('change', async () => {
   const file = fotoInput.files[0];
   if (!file) return;
+
+  rotacionManual = 0; // resetear rotación al seleccionar nueva foto
 
   const urlOrig = URL.createObjectURL(file);
   fotoPreview.onload = () => URL.revokeObjectURL(urlOrig);
@@ -620,8 +626,11 @@ fotoInput.addEventListener('change', async () => {
   fotoInfo.textContent = `Original: ${kb} KB · Comprimiendo...`;
   fotoInfo.style.display = 'block';
 
+  // Mostrar botón de girar
+  document.getElementById('btnGirar').style.display = 'block';
+
   try {
-    const comprimida = await optimizarFoto(file);
+    const comprimida = await optimizarFoto(file, 0);
     const urlComp = URL.createObjectURL(comprimida);
     fotoPreview.onload = () => URL.revokeObjectURL(urlComp);
     fotoPreview.src = urlComp;
@@ -635,9 +644,36 @@ fotoInput.addEventListener('change', async () => {
   }
 });
 
+// Botón girar: rota +90° cada vez
+document.getElementById('btnGirar').addEventListener('click', async () => {
+  const file = fotoInput.files[0];
+  if (!file) return;
+
+  rotacionManual = (rotacionManual + 90) % 360;
+
+  const kb = (file.size / 1024).toFixed(0);
+  fotoInfo.textContent = `Girando... (${rotacionManual}°)`;
+
+  try {
+    const comprimida = await optimizarFoto(file, rotacionManual);
+    const urlComp = URL.createObjectURL(comprimida);
+    fotoPreview.onload = () => URL.revokeObjectURL(urlComp);
+    fotoPreview.src = urlComp;
+    const kbComp = (comprimida.size / 1024).toFixed(0);
+    fotoInfo.textContent = `${kb} KB → ${kbComp} KB · ${rotacionManual}° ✅`;
+    fotoInput._procesada = comprimida;
+  } catch(e) {
+    fotoInfo.textContent = `Error al girar`;
+    console.warn('[Nexo] Girar:', e);
+  }
+});
+
 /* ============================================================
-   OPTIMIZACIÓN DE FOTO — EN COLOR, SIN FILTROS
-   Solo: corrección EXIF + portrait + compresión JPG calidad 0.82
+   OPTIMIZACIÓN DE FOTO — EN COLOR, SIN FILTROS, SIN RECORTE
+   - Corrige orientación EXIF (la que guarda la cámara)
+   - Aplica rotación manual adicional si el usuario la pidió
+   - Comprime JPG calidad 0.82
+   - NO fuerza portrait, NO recorta
    ============================================================ */
 
 function getExifOrientation(dataURL) {
@@ -672,7 +708,8 @@ function getExifOrientation(dataURL) {
   return 1;
 }
 
-function optimizarFoto(file) {
+function optimizarFoto(file, rotacionExtra) {
+  rotacionExtra = rotacionExtra || 0;
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
@@ -683,56 +720,61 @@ function optimizarFoto(file) {
       img.onload = function() {
         try {
           const orientation = getExifOrientation(dataURL);
+
+          // Paso 1: crear canvas con corrección EXIF aplicada
+          // (la imagen queda en su orientación visual correcta)
           const swapExif = [5, 6, 7, 8].includes(orientation);
+          const visW = swapExif ? img.naturalHeight : img.naturalWidth;
+          const visH = swapExif ? img.naturalWidth  : img.naturalHeight;
 
-          // Dimensiones visuales tras EXIF
-          let visW = swapExif ? img.naturalHeight : img.naturalWidth;
-          let visH = swapExif ? img.naturalWidth  : img.naturalHeight;
-
-          // Forzar portrait
-          const needsRot = visW > visH;
-          if (needsRot) [visW, visH] = [visH, visW];
-
-          // Escalar: máx 1800px alto, 1200px ancho
-          const MAX_H = 1800, MAX_W = 1200;
-          const scale = Math.min(MAX_H / visH, MAX_W / visW, 1);
-          const dstW  = Math.round(visW * scale);
-          const dstH  = Math.round(visH * scale);
-
-          const canvas = document.createElement('canvas');
-          canvas.width  = dstW;
-          canvas.height = dstH;
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#fff';
-          ctx.fillRect(0, 0, dstW, dstH);
-
-          // Aplicar transformación EXIF + portrait
-          ctx.save();
-          const sW = swapExif ? img.naturalHeight : img.naturalWidth;
-          const sH = swapExif ? img.naturalWidth  : img.naturalHeight;
-
-          if (!needsRot) {
-            const sx = dstW / sW, sy = dstH / sH;
-            switch (orientation) {
-              case 2: ctx.translate(dstW,0); ctx.scale(-sx,sy); break;
-              case 3: ctx.translate(dstW,dstH); ctx.rotate(Math.PI); ctx.scale(sx,sy); break;
-              case 4: ctx.translate(0,dstH); ctx.scale(sx,-sy); break;
-              case 6: ctx.translate(dstW,0); ctx.rotate(Math.PI/2); ctx.scale(sy,sx); break;
-              case 8: ctx.rotate(-Math.PI/2); ctx.translate(-sW*sy,0); ctx.scale(sy,sx); break;
-              default: ctx.scale(sx,sy);
-            }
-          } else {
-            // Landscape → portrait: rotar 90° horario
-            const sx = dstH / sW, sy = dstW / sH;
-            ctx.translate(dstW, 0);
-            ctx.rotate(Math.PI / 2);
-            ctx.scale(sy, sx);
+          // Canvas intermedio con solo corrección EXIF
+          const c1 = document.createElement('canvas');
+          c1.width  = visW;
+          c1.height = visH;
+          const ctx1 = c1.getContext('2d');
+          ctx1.save();
+          switch (orientation) {
+            case 2: ctx1.transform(-1,0,0,1,visW,0); break;
+            case 3: ctx1.transform(-1,0,0,-1,visW,visH); break;
+            case 4: ctx1.transform(1,0,0,-1,0,visH); break;
+            case 5: ctx1.transform(0,1,1,0,0,0); break;
+            case 6: ctx1.transform(0,1,-1,0,visH,0); break;
+            case 7: ctx1.transform(0,-1,-1,0,visH,visW); break;
+            case 8: ctx1.transform(0,-1,1,0,0,visW); break;
+            default: break;
           }
-          ctx.drawImage(img, 0, 0);
-          ctx.restore();
+          ctx1.drawImage(img, 0, 0);
+          ctx1.restore();
+
+          // Paso 2: aplicar rotación manual adicional (0, 90, 180, 270)
+          const swap2 = rotacionExtra === 90 || rotacionExtra === 270;
+          const finalW = swap2 ? visH : visW;
+          const finalH = swap2 ? visW : visH;
+
+          // Escalar: máx 1800px en el lado más largo, sin upscaling
+          const MAX = 1800;
+          const scale = Math.min(MAX / Math.max(finalW, finalH), 1);
+          const dstW = Math.round(finalW * scale);
+          const dstH = Math.round(finalH * scale);
+
+          const c2 = document.createElement('canvas');
+          c2.width  = dstW;
+          c2.height = dstH;
+          const ctx2 = c2.getContext('2d');
+          ctx2.fillStyle = '#fff';
+          ctx2.fillRect(0, 0, dstW, dstH);
+          ctx2.save();
+          ctx2.translate(dstW / 2, dstH / 2);
+          ctx2.rotate(rotacionExtra * Math.PI / 180);
+          // Al rotar 90/270°, dstW y dstH están intercambiados respecto a c1
+          // c1 tiene visW × visH; tras escalar: visW*scale × visH*scale
+          const sw = Math.round(visW * scale);
+          const sh = Math.round(visH * scale);
+          ctx2.drawImage(c1, -sw / 2, -sh / 2, sw, sh);
+          ctx2.restore();
 
           // Exportar en COLOR, JPG calidad 0.82
-          canvas.toBlob(blob => {
+          c2.toBlob(blob => {
             if (!blob) return reject(new Error('Error al exportar'));
             resolve(new File([blob], 'ticket.jpg', { type: 'image/jpeg' }));
           }, 'image/jpeg', 0.82);
@@ -878,6 +920,8 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
       fotoPreview.src = '';
       fotoInfo.style.display = 'none';
       fotoInput._procesada = null;
+      rotacionManual = 0;
+      document.getElementById('btnGirar').style.display = 'none';
       clearMsg();
       _submitting = false;
     }, 5000);
