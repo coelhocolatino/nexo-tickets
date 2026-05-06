@@ -211,7 +211,7 @@ button:active { transform:scale(.97); }
 <script>
 (function installProxy() {
   var _fetch = window.fetch;
-  var BACKEND = "https://script.google.com/macros/s/AKfycbyrvwWEdjQs926K-njK7bmrUXxHF0bM4Atmdah1vXyCZEPJE14eFFvWA5jZ6BuFqVGh/exec";
+  var BACKEND = "https://script.google.com/macros/s/AKfycbwTwp6Cc35zWr18MeSc9hkE18m0j_Km6S9mOv5kY-2AFrHnFivLLiplQTyQRL9ysg7R/exec";
   var PROXY   = "https://sad-proxy.colatino-ventas-enlinea.workers.dev/";
   window.BACKEND_URL = BACKEND;
   window.fetch = function(input, init) {
@@ -548,26 +548,30 @@ function aplicarReglasFranja() {
   const franjaSel  = document.getElementById('franja');
   const permitidas = getFranjasPermitidas();
 
+  // Guardar SIEMPRE las opciones actuales no-vacías como referencia maestra
+  // (no usar caché porque el select puede haberse reconstruido)
+  const opcionesActuales = Array.from(franjaSel.options)
+    .filter(o => o.value !== '')
+    .map(o => ({ value: o.value, text: o.textContent }));
+
+  // Si el select aún no tiene opciones (listas no cargadas), salir
+  if (opcionesActuales.length === 0) return;
+
+  // Actualizar el maestre con las opciones actuales (para el reset)
+  franjaSel._allOptions = opcionesActuales;
+
   if (permitidas.length === 0) {
     setMsg('⚠️ Fuera del horario de reparto', '#ffcc00');
     return;
   }
 
-  // Guardar todas las opciones originales (excl. placeholder)
-  if (!franjaSel._allOptions) {
-    franjaSel._allOptions = Array.from(franjaSel.options)
-      .filter(o => o.value !== '')
-      .map(o => ({ value: o.value, text: o.textContent }));
-  }
-
   // Reconstruir el select con SOLO las opciones permitidas
-  // (style.display='none' no funciona en <select> nativo en iOS)
-  const placeholder = franjaSel.options[0]; // primer option (placeholder)
+  const placeholder = franjaSel.options[0].cloneNode(true);
   franjaSel.innerHTML = '';
-  franjaSel.appendChild(placeholder.cloneNode(true));
+  franjaSel.appendChild(placeholder);
 
   let primeraPermitida = null;
-  franjaSel._allOptions.forEach(op => {
+  opcionesActuales.forEach(op => {
     const permitida = permitidas.some(p => p.toLowerCase() === op.value.toLowerCase());
     if (permitida) {
       const el = document.createElement('option');
@@ -718,11 +722,11 @@ function optimizarFoto(file) {
               default: ctx.scale(sx,sy);
             }
           } else {
-            // Landscape → portrait: rotar 90° antihorario
+            // Landscape → portrait: rotar 90° horario
             const sx = dstH / sW, sy = dstW / sH;
-            ctx.translate(0, dstH);
-            ctx.rotate(-Math.PI / 2);
-            ctx.scale(sx, sy);
+            ctx.translate(dstW, 0);
+            ctx.rotate(Math.PI / 2);
+            ctx.scale(sy, sx);
           }
           ctx.drawImage(img, 0, 0);
           ctx.restore();
@@ -836,9 +840,32 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
       // Restablecer fecha (a hoy siempre)
       fechaInput.value = HOY;
 
-      // Restablecer tienda predefinida y franja
+      // Restablecer tienda predefinida
       aplicarReglasTienda();
-      aplicarReglasFranja();
+
+      // Restaurar TODAS las opciones de franja antes de aplicar reglas
+      // (form.reset() vacía el select, necesitamos las opciones maestras)
+      if (ES_USUARIO_2) {
+        const franjaSel = document.getElementById('franja');
+        const maestras  = franjaSel._allOptions;
+        if (maestras && maestras.length > 0) {
+          // Reconstruir con todas las franjas
+          const ph = franjaSel.options[0] ? franjaSel.options[0].cloneNode(true) : (() => {
+            const o = document.createElement('option');
+            o.value = ''; o.textContent = 'Seleccione franja horaria...';
+            o.disabled = true; o.selected = true;
+            return o;
+          })();
+          franjaSel.innerHTML = '';
+          franjaSel.appendChild(ph);
+          maestras.forEach(op => {
+            const el = document.createElement('option');
+            el.value = op.value; el.textContent = op.text;
+            franjaSel.appendChild(el);
+          });
+        }
+        aplicarReglasFranja();
+      }
 
       // Repartidor: para usuario 1, restablecer al suyo. Resto, placeholder
       if (ES_USUARIO_1) {
