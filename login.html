@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#07080f" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Nexo" />
+<link rel="manifest" href="manifest.json?v=5">
+<link rel="icon" href="nexo-icon-192.png">
+<link rel="apple-touch-icon" href="nexo-icon-192.png">
+<title>Nexo · Acceso</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --blue:#2563eb; --blue-light:#3b82f6;
+  --orange:#f97316; --orange-light:#fb923c;
+  --bg:#07080f;
+  --surface:rgba(255,255,255,.06);
+  --border:rgba(255,255,255,.10);
+  --text:#f1f5f9; --muted:#94a3b8;
+  --radius:16px;
+  --font:'Nunito', system-ui, sans-serif;
+}
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+html { -webkit-font-smoothing:antialiased; }
+body {
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh; min-height:100dvh;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:24px 16px 48px;
+  position:relative; overflow-x:hidden;
+}
+.blob { position:fixed; border-radius:50%; pointer-events:none; z-index:0; }
+.blob-blue   { top:-140px; left:-80px; width:420px; height:420px;
+  background:radial-gradient(circle, rgba(37,99,235,.22) 0%, transparent 70%); }
+.blob-orange { bottom:-120px; right:-60px; width:360px; height:360px;
+  background:radial-gradient(circle, rgba(249,115,22,.18) 0%, transparent 70%); }
+
+.logo-wrap {
+  position:relative; z-index:1;
+  display:flex; flex-direction:column; align-items:center;
+  margin-bottom:28px;
+  animation:fadeDown .55s cubic-bezier(.16,1,.3,1) both;
+}
+.logo-img {
+  width:240px; max-width:70vw; height:auto;
+  filter: drop-shadow(0 0 24px rgba(249,115,22,.35)) drop-shadow(0 0 12px rgba(37,99,235,.25));
+  background:#fff;
+  border-radius:24px;
+  padding:14px 22px;
+}
+
+.card {
+  position:relative; z-index:1;
+  width:100%; max-width:380px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:24px;
+  padding:28px 24px 32px;
+  backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  box-shadow:0 24px 64px rgba(0,0,0,.55);
+  animation:fadeUp .5s cubic-bezier(.16,1,.3,1) .08s both;
+}
+.card-title {
+  font-size:1.1rem; font-weight:800;
+  margin-bottom:22px;
+}
+.card-title em { font-style:normal; color:var(--blue-light); }
+
+.step { display:none; flex-direction:column; gap:14px; }
+.step.active { display:flex; }
+
+.field { display:flex; flex-direction:column; gap:5px; }
+label {
+  font-size:.78rem; font-weight:800;
+  color:var(--muted);
+  text-transform:uppercase; letter-spacing:.08em;
+}
+
+input[type="text"], input[type="password"] {
+  width:100%;
+  background:rgba(255,255,255,.08);
+  border:1.5px solid var(--border);
+  border-radius:var(--radius);
+  color:var(--text);
+  font-family:var(--font);
+  font-size:1rem; font-weight:600;
+  padding:13px 16px;
+  outline:none;
+  transition: border-color .18s, box-shadow .18s, background .18s;
+  -webkit-appearance:none; appearance:none;
+}
+input:focus {
+  border-color:var(--blue-light);
+  background:rgba(255,255,255,.11);
+  box-shadow:0 0 0 3px rgba(59,130,246,.22);
+}
+input::placeholder { color:#3d4e66; }
+
+.pwd-wrap { position:relative; }
+.pwd-wrap input { padding-right:48px; }
+.pwd-eye {
+  position:absolute; right:13px; top:50%;
+  transform:translateY(-50%);
+  background:none; border:none; cursor:pointer;
+  color:var(--muted);
+  font-size:1rem; line-height:1; padding:5px;
+  border-radius:6px; transition:color .15s;
+}
+.pwd-eye:hover { color:var(--text); }
+
+.btn {
+  width:100%; border:none;
+  border-radius:var(--radius);
+  font-family:var(--font);
+  font-size:1rem; font-weight:800;
+  padding:14px; cursor:pointer;
+  letter-spacing:.02em;
+  transition:transform .12s, box-shadow .18s, opacity .15s;
+}
+.btn:active { transform:scale(.97); }
+.btn:disabled { opacity:.65; cursor:not-allowed; transform:none; }
+.btn-primary {
+  background:linear-gradient(135deg, var(--blue), var(--blue-light));
+  color:#fff;
+  box-shadow:0 6px 20px rgba(37,99,235,.38);
+}
+.btn-primary:not(:disabled):hover { box-shadow:0 10px 28px rgba(37,99,235,.55); }
+.btn-orange {
+  background:linear-gradient(135deg, var(--orange), var(--orange-light));
+  color:#fff;
+  box-shadow:0 6px 20px rgba(249,115,22,.38);
+}
+.btn-orange:not(:disabled):hover { box-shadow:0 10px 28px rgba(249,115,22,.55); }
+.btn-ghost {
+  background:transparent; color:var(--muted);
+  font-size:.85rem; font-weight:600;
+  box-shadow:none; padding:8px;
+  margin-top:-6px;
+}
+.btn-ghost:hover { color:var(--text); }
+
+.msg {
+  display:none; font-size:.88rem; font-weight:700;
+  border-radius:10px; padding:10px 14px;
+  text-align:center; line-height:1.4;
+}
+.msg.show { display:block; }
+.msg.error   { background:rgba(239,68,68,.12);  color:#fca5a5; border:1px solid rgba(239,68,68,.25); }
+.msg.success { background:rgba(34,197,94,.12);  color:#86efac; border:1px solid rgba(34,197,94,.25); }
+.msg.warn    { background:rgba(251,191,36,.12); color:#fde68a; border:1px solid rgba(251,191,36,.25); }
+
+.strength-bar {
+  height:4px; border-radius:99px;
+  background:rgba(255,255,255,.08);
+  overflow:hidden; margin-top:4px;
+}
+.strength-fill { height:100%; width:0%; border-radius:99px;
+  transition: width .3s, background .3s; }
+
+.req-list { display:flex; flex-direction:column; gap:4px; margin-top:-4px; }
+.req-item {
+  display:flex; align-items:center; gap:7px;
+  font-size:.77rem; font-weight:600;
+  color:var(--muted); transition:color .2s;
+}
+.req-item.ok { color:#86efac; }
+.req-icon { font-size:.65rem; width:12px; text-align:center; }
+
+.hint {
+  font-size:.76rem; color:var(--muted);
+  text-align:center; line-height:1.5;
+}
+
+@keyframes spin { to { transform:rotate(360deg); } }
+.spinner {
+  display:inline-block; width:15px; height:15px;
+  border:2.5px solid rgba(255,255,255,.35);
+  border-top-color:#fff;
+  border-radius:50%;
+  animation:spin .65s linear infinite;
+  vertical-align:middle; margin-right:7px;
+}
+
+@keyframes fadeDown {
+  from { opacity:0; transform:translateY(-18px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(20px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+@supports (-webkit-touch-callout: none) {
+  input { font-size:16px !important; }
+  .btn  { font-size:16px !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="blob blob-blue"></div>
+<div class="blob blob-orange"></div>
+
+<div class="logo-wrap">
+  <img class="logo-img" src="nexo-logo-full.png" alt="Nexo · Distribución Inteligente" />
+</div>
+
+<div class="card" role="main">
+
+  <div class="step active" id="step1">
+    <div class="card-title">Acceso al <em>sistema</em></div>
+    <div class="field">
+      <label for="inputUsuario">Usuario</label>
+      <input type="text" id="inputUsuario"
+        placeholder="Tu nombre de usuario"
+        autocomplete="username" autocapitalize="none"
+        autocorrect="off" spellcheck="false" />
+    </div>
+    <div class="msg" id="msg1" role="alert"></div>
+    <button class="btn btn-primary" id="btnContinuar" onclick="verificarUsuario()">
+      Continuar →
+    </button>
+    <p class="hint">Solo usuarios registrados por el administrador</p>
+  </div>
+
+  <div class="step" id="step2login">
+    <div class="card-title">Hola, <em id="nombreMostrado">—</em> 👋</div>
+    <div class="field">
+      <label for="inputPassword">Contraseña</label>
+      <div class="pwd-wrap">
+        <input type="password" id="inputPassword"
+          placeholder="Tu contraseña" autocomplete="current-password" />
+        <button class="pwd-eye" type="button" onclick="togglePwd('inputPassword', this)" aria-label="Mostrar contraseña">👁</button>
+      </div>
+    </div>
+    <div class="msg" id="msg2" role="alert"></div>
+    <button class="btn btn-primary" id="btnLogin" onclick="hacerLogin()">Entrar</button>
+    <button class="btn btn-ghost" type="button" onclick="volver()">← Cambiar usuario</button>
+  </div>
+
+  <div class="step" id="step2registro">
+    <div class="card-title">Bienvenido, <em id="nombreNuevo">—</em> 🎉</div>
+    <p class="hint" style="text-align:left;">Es tu primer acceso. Crea una contraseña segura.</p>
+    <div class="field">
+      <label for="inputPwdNueva">Nueva contraseña</label>
+      <div class="pwd-wrap">
+        <input type="password" id="inputPwdNueva"
+          placeholder="Mínimo 6 caracteres"
+          autocomplete="new-password" oninput="checkStrength()" />
+        <button class="pwd-eye" type="button" onclick="togglePwd('inputPwdNueva', this)" aria-label="Mostrar contraseña">👁</button>
+      </div>
+      <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+    </div>
+    <div class="field">
+      <label for="inputPwdConfirm">Confirmar contraseña</label>
+      <div class="pwd-wrap">
+        <input type="password" id="inputPwdConfirm"
+          placeholder="Repite la contraseña" autocomplete="new-password" />
+        <button class="pwd-eye" type="button" onclick="togglePwd('inputPwdConfirm', this)" aria-label="Mostrar contraseña">👁</button>
+      </div>
+    </div>
+    <div class="req-list">
+      <div class="req-item" id="req-len"><span class="req-icon">○</span>Mínimo 6 caracteres</div>
+      <div class="req-item" id="req-num"><span class="req-icon">○</span>Al menos un número</div>
+      <div class="req-item" id="req-upper"><span class="req-icon">○</span>Al menos una mayúscula</div>
+    </div>
+    <div class="msg" id="msg3" role="alert"></div>
+    <button class="btn btn-orange" id="btnRegistrar" onclick="registrarPassword()">
+      Crear contraseña y entrar
+    </button>
+    <button class="btn btn-ghost" type="button" onclick="volver()">← Volver</button>
+  </div>
+
+</div>
+
+<script>
+const BACKEND_URL = "https://script.google.com/macros/s/AKfycbwTwp6Cc35zWr18MeSc9hkE18m0j_Km6S9mOv5kY-2AFrHnFivLLiplQTyQRL9ysg7R/exec";
+const PROXY       = "https://sad-proxy.colatino-ventas-enlinea.workers.dev/";
+
+let usuarioActual = null;
+let _busy = false;
+
+(function checkSession() {
+  try {
+    const raw = sessionStorage.getItem('sad_user');
+    if (!raw) return;
+    const u = JSON.parse(raw);
+    if (u && u.usuario && u.token) {
+      window.location.replace('index.html');
+    }
+  } catch(e) { sessionStorage.removeItem('sad_user'); }
+})();
+
+function proxyPost(body) {
+  const url = PROXY + "?url=" + encodeURIComponent(BACKEND_URL);
+  return fetch(url, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(body)
+  }).then(r => {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  });
+}
+
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = "msg show " + type;
+}
+function hideMsg(id) {
+  const el = document.getElementById(id);
+  el.textContent = "";
+  el.className = "msg";
+}
+function setLoading(btnEl, loading, text) {
+  if (loading) {
+    btnEl.dataset.orig = btnEl.innerHTML;
+    btnEl.innerHTML = '<span class="spinner"></span>' + (text || "Verificando...");
+    btnEl.disabled = true;
+  } else {
+    btnEl.innerHTML = btnEl.dataset.orig || btnEl.innerHTML;
+    btnEl.disabled = false;
+  }
+}
+function showStep(id) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function togglePwd(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+function volver() {
+  _busy = false;
+  showStep('step1');
+  hideMsg('msg1'); hideMsg('msg2'); hideMsg('msg3');
+  document.getElementById('inputUsuario').value = '';
+  setTimeout(() => document.getElementById('inputUsuario').focus(), 80);
+}
+function guardarSesion(data) {
+  const sesion = {
+    usuario:   usuarioActual.usuario,
+    nombre:    usuarioActual.nombre || usuarioActual.usuario,
+    nivel:     usuarioActual.nivel  || 'usuario 1',
+    token:     data.token            || Date.now().toString(36),
+    timestamp: Date.now()
+  };
+  sessionStorage.setItem('sad_user', JSON.stringify(sesion));
+}
+
+function checkStrength() {
+  const val = document.getElementById('inputPwdNueva').value;
+  const hasLen   = val.length >= 6;
+  const hasNum   = /\d/.test(val);
+  const hasUpper = /[A-Z]/.test(val);
+  setReq('req-len', hasLen);
+  setReq('req-num', hasNum);
+  setReq('req-upper', hasUpper);
+  const score = [hasLen, hasNum, hasUpper].filter(Boolean).length;
+  const fill  = document.getElementById('strengthFill');
+  fill.style.width      = (score / 3 * 100) + '%';
+  fill.style.background = score === 3 ? '#86efac' : score === 2 ? '#fde68a' : '#fca5a5';
+}
+function setReq(id, ok) {
+  const el = document.getElementById(id);
+  el.className = 'req-item' + (ok ? ' ok' : '');
+  el.querySelector('.req-icon').textContent = ok ? '✓' : '○';
+}
+
+async function verificarUsuario() {
+  if (_busy) return;
+  const usuario = document.getElementById('inputUsuario').value.trim();
+  if (!usuario) { showMsg('msg1', 'Ingresa tu nombre de usuario', 'warn'); return; }
+
+  _busy = true;
+  const btn = document.getElementById('btnContinuar');
+  setLoading(btn, true, 'Verificando...');
+  hideMsg('msg1');
+
+  try {
+    const data = await proxyPost({ accion:'verificarUsuario', usuario: usuario.toLowerCase() });
+
+    if (!data.encontrado) {
+      showMsg('msg1', '❌ Usuario no encontrado. Contacta al administrador.', 'error');
+      _busy = false; setLoading(btn, false); return;
+    }
+    if (!data.activo) {
+      showMsg('msg1', '🚫 Tu acceso está desactivado. Contacta al administrador.', 'error');
+      _busy = false; setLoading(btn, false); return;
+    }
+
+    usuarioActual = {
+      usuario:  usuario.toLowerCase(),
+      nombre:   data.nombre || usuario,
+      activo:   data.activo,
+      nivel:    data.nivel || 'usuario 1',
+      tienePwd: data.tienePwd
+    };
+
+    setLoading(btn, false);
+
+    if (data.tienePwd) {
+      document.getElementById('nombreMostrado').textContent = usuarioActual.nombre;
+      showStep('step2login');
+      setTimeout(() => document.getElementById('inputPassword').focus(), 80);
+    } else {
+      document.getElementById('nombreNuevo').textContent = usuarioActual.nombre;
+      showStep('step2registro');
+      setTimeout(() => document.getElementById('inputPwdNueva').focus(), 80);
+    }
+  } catch (err) {
+    showMsg('msg1', '⚠️ Error de conexión. Inténtalo de nuevo.', 'error');
+    console.error('[Nexo-Login] verificarUsuario:', err);
+    setLoading(btn, false);
+  }
+  _busy = false;
+}
+
+async function hacerLogin() {
+  if (_busy) return;
+  const pwd = document.getElementById('inputPassword').value;
+  if (!pwd) { showMsg('msg2', 'Ingresa tu contraseña', 'warn'); return; }
+
+  _busy = true;
+  const btn = document.getElementById('btnLogin');
+  setLoading(btn, true, 'Entrando...');
+  hideMsg('msg2');
+
+  try {
+    const data = await proxyPost({ accion:'login', usuario:usuarioActual.usuario, password:pwd });
+
+    if (data.ok) {
+      usuarioActual.nivel  = data.nivel  || usuarioActual.nivel;
+      usuarioActual.nombre = data.nombre || usuarioActual.nombre;
+      guardarSesion(data);
+      showMsg('msg2', '✅ Acceso concedido. Entrando...', 'success');
+      setTimeout(() => window.location.replace('index.html'), 900);
+    } else {
+      showMsg('msg2', '❌ Contraseña incorrecta. Inténtalo de nuevo.', 'error');
+      document.getElementById('inputPassword').value = '';
+      setTimeout(() => document.getElementById('inputPassword').focus(), 50);
+      setLoading(btn, false); _busy = false;
+    }
+  } catch (err) {
+    showMsg('msg2', '⚠️ Error de conexión. Inténtalo de nuevo.', 'error');
+    console.error('[Nexo-Login] hacerLogin:', err);
+    setLoading(btn, false); _busy = false;
+  }
+}
+
+async function registrarPassword() {
+  if (_busy) return;
+  const pwd1 = document.getElementById('inputPwdNueva').value;
+  const pwd2 = document.getElementById('inputPwdConfirm').value;
+
+  if (pwd1.length < 6) { showMsg('msg3', '⚠️ La contraseña debe tener al menos 6 caracteres', 'warn'); return; }
+  if (pwd1 !== pwd2)   { showMsg('msg3', '❌ Las contraseñas no coinciden', 'error'); return; }
+
+  _busy = true;
+  const btn = document.getElementById('btnRegistrar');
+  setLoading(btn, true, 'Guardando...');
+  hideMsg('msg3');
+
+  try {
+    const data = await proxyPost({ accion:'registrarPassword', usuario:usuarioActual.usuario, password:pwd1 });
+
+    if (data.ok) {
+      usuarioActual.nivel  = data.nivel  || usuarioActual.nivel;
+      usuarioActual.nombre = data.nombre || usuarioActual.nombre;
+      guardarSesion(data);
+      showMsg('msg3', '✅ Contraseña creada. Entrando...', 'success');
+      setTimeout(() => window.location.replace('index.html'), 1000);
+    } else {
+      showMsg('msg3', '❌ ' + (data.error || 'Error al guardar. Inténtalo de nuevo.'), 'error');
+      setLoading(btn, false); _busy = false;
+    }
+  } catch (err) {
+    showMsg('msg3', '⚠️ Error de conexión. Inténtalo de nuevo.', 'error');
+    console.error('[Nexo-Login] registrarPassword:', err);
+    setLoading(btn, false); _busy = false;
+  }
+}
+
+document.getElementById('inputUsuario').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); verificarUsuario(); }
+});
+document.getElementById('inputPassword').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); hacerLogin(); }
+});
+document.getElementById('inputPwdConfirm').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); registrarPassword(); }
+});
+
+setTimeout(() => document.getElementById('inputUsuario').focus(), 200);
+</script>
+</body>
+</html>

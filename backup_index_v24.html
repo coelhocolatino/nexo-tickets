@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#003366" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="SAD Tickets" />
+  <meta name="display" content="standalone" />
+  <link rel="manifest" href="manifest.json?v=2">
+  <link rel="icon" href="sr-icon-192-v2.png">
+  <link rel="apple-touch-icon" href="sr-icon-192-v2.png">
+  <meta name="theme-color" content="#003366">
+
+  <title>SAD Tickets</title>
+
+  <style>
+    :root {
+      --bg1: #003366;
+      --bg2: #0077cc;
+      --card-bg: rgba(255,255,255,0.12);
+      --text-main: #ffffff;
+      --text-dark: #003366;
+      --radius-card: 24px;
+      --radius-field: 12px;
+      --font: system-ui, -apple-system, BlinkMacSystemFont, "Poppins", "Roboto", "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+      font-family: var(--font);
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(180deg, var(--bg1), var(--bg2));
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 24px 16px 48px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--card-bg);
+      border-radius: var(--radius-card);
+      box-shadow: 0 16px 32px rgba(0,0,0,0.4);
+      padding: 20px 16px 24px;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .logo {
+      width: 100px;
+      height: auto;
+      margin: 0 auto 10px auto;
+      display: block;
+      object-fit: contain;
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0;
+      color: var(--text-main);
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    label {
+      font-size: .9rem;
+      font-weight: 500;
+      color: var(--text-main);
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .control {
+      width: 100%;
+      border: none;
+      border-radius: var(--radius-field);
+      background: #fff;
+      color: var(--text-dark);
+      font-size: 1rem;
+      font-weight: 500;
+      padding: 14px 12px;
+    }
+
+    .row-2 {
+      display: flex;
+      gap: 12px;
+    }
+
+    .row-2 .group {
+      flex: 1;
+    }
+    .row-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .row-3 .group label {
+      font-size: 0.85rem;
+      text-align: center;
+      display: block;
+    }
+    .row-3 .control {
+      text-align: center;
+      font-size: 1rem;
+      padding: 12px 8px;
+    }
+    button {
+      width: 100%;
+      border: none;
+      border-radius: var(--radius-field);
+      background: #fff;
+      color: var(--text-dark);
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 16px 14px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+
+    #msg {
+      text-align: center;
+      min-height: 1.4em;
+      font-size: .9rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @supports (-webkit-touch-callout:none) {
+      input, select, button { font-size:16px !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SPINNER DE CARGA -->
+  <div id="spinner" style="
+    position:fixed; inset:0;
+    display:flex; justify-content:center; align-items:center;
+    background:rgba(0,0,0,0.6);
+    z-index:1000; visibility:hidden;">
+    <div style="
+      width:60px; height:60px;
+      border:6px solid #fff;
+      border-top-color:#0077cc;
+      border-radius:50%;
+      animation:spin 1s linear infinite;"></div>
+  </div>
+
+  <!-- FORMULARIO PRINCIPAL -->
+  <div class="card">
+    <div class="header">
+      <img class="logo" src="sr-logo-blanco-192.png" alt="SR Logo" onerror="this.style.display='none'">
+      <h1>SAD Ticket Upload</h1>
+    </div>
+
+<form id="ticketForm">
+  <div class="group">
+    <label>Fecha</label>
+    <input class="control" type="date" name="fecha" id="fecha" required />
+  </div>
+
+  <div class="group">
+    <label>Tienda</label>
+    <select class="control" name="tienda" id="tienda" required>
+      <option value="">Seleccione Tienda</option>
+    </select>
+  </div>
+
+  <div class="group">
+    <label>Repartidor</label>
+    <select class="control" name="repartidor" id="repartidor" required>
+      <option value="">Seleccione Repartidor</option>
+    </select>
+  </div>
+
+  <div class="group">
+    <label>Franja horaria</label>
+    <select class="control" name="franja" id="franja" required>
+      <option value="">Seleccione Franja</option>
+    </select>
+  </div>
+
+  <div class="row-2">
+    <div class="group">
+      <label>Pedidos (P)</label>
+      <input class="control" type="number" name="pedidos" min="1" max="40" required />
+    </div>
+    <div class="group">
+      <label>Dobles (D)</label>
+      <input class="control" type="number" name="dobles" min="0" max="12" value="0" required />
+    </div>
+  </div>
+
+  <div class="row-3">
+    <div class="group">
+      <label>XR</label>
+      <input class="control" type="number" name="xr" min="0" max="12" value="0" required />
+    </div>
+    <div class="group">
+      <label>Km</label>
+      <input class="control" type="number" name="km" id="km" min="0" max="200" value="0" required />
+    </div>
+      <div class="group">
+        <label>Obs</label>
+        <input class="control" type="text" name="obs" id="obs" maxlength="20" placeholder="Opcional" />
+      </div>
+    </div>
+
+    <div class="group">
+      <label>Foto ticket</label>
+      <div class="row-2">
+        <button type="button" id="btnCamara" class="control" style="background:#0055aa; color:#fff;">📸 Sacar foto</button>
+        <button type="button" id="btnArchivo" class="control" style="background:#0077cc; color:#fff;">📂 Subir archivo</button>
+      </div>
+      <input class="control" type="file" id="foto" accept="image/*" style="display:none;" required />
+    </div>
+
+  <button type="submit">⬆️ Subir ticket</button>
+
+  <div id="msg"></div>
+</form>
+  </div>
+
+  <!-- SCRIPT PRINCIPAL -->
+  <script src="app.js"></script>
+
+  <script>
+    // Registrar el service worker (PWA)
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js").catch(err => {
+        console.warn("SW fail:", err);
+      });
+    }
+  </script>
+
+  <!-- ALERTA SIN CONEXIÓN -->
+  <div id="offline-alert" style="
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:#ff5555; color:#fff; font-weight:600; font-size:0.95rem;
+    padding:12px 20px; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.3);
+    z-index:2000; display:none;">
+    ⚠️ Sin conexión. Guarda y reintenta más tarde.
+  </div>
+
+</body>
+</html>

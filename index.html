@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#003366" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Nexo Tickets" />
+<meta name="display" content="standalone" />
+<link rel="manifest" href="manifest.json?v=5">
+<link rel="icon" href="nexo-icon-192.png">
+<link rel="apple-touch-icon" href="nexo-icon-192.png">
+<title>Nexo · SAD Tickets</title>
+
+<style>
+:root {
+  --bg1:#003366; --bg2:#0077cc;
+  --card-bg:rgba(255,255,255,.12);
+  --text-main:#fff; --text-dark:#003366;
+  --radius-card:24px; --radius-field:12px;
+  --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+}
+*, *::before, *::after { box-sizing:border-box; -webkit-font-smoothing:antialiased; font-family:var(--font); }
+body {
+  margin:0; min-height:100vh;
+  background:linear-gradient(180deg, var(--bg1), var(--bg2));
+  color:var(--text-main);
+  display:flex; justify-content:center; align-items:flex-start;
+  padding:24px 16px 56px;
+}
+
+.card {
+  width:100%; max-width:420px;
+  background:var(--card-bg);
+  border-radius:var(--radius-card);
+  box-shadow:0 16px 40px rgba(0,0,0,.45);
+  padding:20px 16px 28px;
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+}
+
+.header { text-align:center; margin-bottom:18px; }
+.logo {
+  width:170px; max-width:65%;
+  height:auto; display:block;
+  margin:0 auto 10px auto;
+  background:#fff;
+  border-radius:14px;
+  padding:8px 14px;
+}
+.user-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(255,255,255,.15);
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:20px;
+  padding:5px 14px 5px 10px;
+  font-size:.8rem; font-weight:700;
+  color:rgba(255,255,255,.92);
+  margin-bottom:6px; cursor:pointer;
+  transition:background .18s;
+}
+.user-badge:hover { background:rgba(255,255,255,.23); }
+.nivel-tag {
+  display:inline-block;
+  background:rgba(96,165,250,.25);
+  color:#bfdbfe;
+  padding:2px 8px;
+  border-radius:10px;
+  font-size:.65rem;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  margin-left:6px;
+}
+.nivel-tag.admin { background:rgba(251,146,60,.25); color:#fed7aa; }
+.app-version { font-size:.78rem; font-weight:600; color:rgba(255,255,255,.45); }
+
+form { display:flex; flex-direction:column; gap:12px; }
+label {
+  font-size:.88rem; font-weight:600;
+  color:var(--text-main);
+  margin-bottom:3px; display:block;
+}
+
+.control {
+  width:100%; border:none; border-radius:var(--radius-field);
+  background:#fff; color:var(--text-dark);
+  font-weight:500; padding:13px 12px;
+  font-size: max(1rem, 16px);
+  outline:none;
+}
+select.control { -webkit-appearance:none; appearance:none; }
+
+/* Campos bloqueados (lock visual) */
+.control.locked, .control:disabled {
+  background:#e5e7eb !important;
+  color:#475569 !important;
+  cursor:not-allowed !important;
+  opacity:1;
+}
+.lock-hint {
+  font-size:.7rem;
+  color:rgba(255,255,255,.6);
+  font-style:italic;
+  margin-top:-8px;
+  display:flex; align-items:center; gap:4px;
+}
+
+.row-2 { display:flex; gap:12px; }
+.row-2 .group { flex:1; min-width:0; }
+.row-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.row-3 .group label { font-size:.82rem; text-align:center; }
+.row-3 .control { text-align:center; padding:12px 4px; }
+
+button {
+  width:100%; border:none;
+  border-radius:var(--radius-field);
+  background:#fff; color:var(--text-dark);
+  font-weight:700; padding:15px 14px;
+  font-size: max(1rem, 16px);
+  cursor:pointer;
+  box-shadow:0 8px 22px rgba(0,0,0,.38);
+  transition:transform .12s, box-shadow .18s;
+}
+button:active { transform:scale(.97); }
+
+.btn-foto-wrap { display:flex; gap:10px; }
+.btn-foto-wrap button { flex:1; }
+
+#fotoPreview {
+  width:100%; border-radius:12px;
+  max-height:220px; object-fit:contain;
+  display:none;
+  border:2px solid rgba(255,255,255,.3);
+  background:rgba(0,0,0,.2);
+}
+#fotoInfo {
+  font-size:.75rem; font-weight:600;
+  color:rgba(255,255,255,.55);
+  text-align:center; display:none;
+}
+
+#msg {
+  text-align:center; min-height:1.3em;
+  font-size:.93rem; font-weight:700;
+  margin-top:4px; padding:8px 10px;
+  border-radius:10px;
+  transition:opacity .4s;
+}
+
+@keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+#spinner {
+  position:fixed; inset:0;
+  display:flex; flex-direction:column;
+  justify-content:center; align-items:center;
+  gap:14px;
+  background:rgba(0,0,0,.62);
+  z-index:1000; visibility:hidden; opacity:0;
+  transition:opacity .2s, visibility .2s;
+}
+#spinner.visible { visibility:visible; opacity:1; }
+#spinner-ring {
+  width:58px; height:58px;
+  border:6px solid rgba(255,255,255,.25);
+  border-top-color:#60a5fa;
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+#spinner-text {
+  color:rgba(255,255,255,.8);
+  font-size:.9rem; font-weight:700;
+}
+
+.offline-alert {
+  position:fixed; top:12px; left:50%;
+  transform:translateX(-50%);
+  background:#dc2626; color:white;
+  padding:10px 18px; border-radius:12px;
+  font-weight:700; font-size:.85rem;
+  z-index:1100; display:none;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+</style>
+
+<!-- GUARD DE SESIÓN: redirige antes de pintar nada -->
+<script>
+(function sessionGuard() {
+  try {
+    var raw = sessionStorage.getItem('sad_user');
+    if (!raw) { window.location.replace('login.html'); return; }
+    var u = JSON.parse(raw);
+    if (!u || !u.usuario || !u.token) {
+      sessionStorage.removeItem('sad_user');
+      window.location.replace('login.html');
+    }
+  } catch(e) {
+    sessionStorage.removeItem('sad_user');
+    window.location.replace('login.html');
+  }
+})();
+</script>
+
+<!-- PROXY FETCH -->
+<script>
+(function installProxy() {
+  var _fetch = window.fetch;
+  var BACKEND = "https://script.google.com/macros/s/AKfycbwTwp6Cc35zWr18MeSc9hkE18m0j_Km6S9mOv5kY-2AFrHnFivLLiplQTyQRL9ysg7R/exec";
+  var PROXY   = "https://sad-proxy.colatino-ventas-enlinea.workers.dev/";
+  window.BACKEND_URL = BACKEND;
+  window.fetch = function(input, init) {
+    init = init || {};
+    try {
+      var url = (typeof input === "string") ? input : (input && input.url ? input.url : "");
+      if (url === BACKEND) {
+        var proxied = PROXY + "?url=" + encodeURIComponent(BACKEND);
+        return _fetch(proxied, init);
+      }
+    } catch(e) { /* sin proxy si falla */ }
+    return _fetch(input, init);
+  };
+})();
+</script>
+</head>
+<body>
+
+<div class="offline-alert" id="offline-alert">⚠️ Sin conexión a internet</div>
+
+<div id="spinner" role="status" aria-live="polite">
+  <div id="spinner-ring"></div>
+  <div id="spinner-text">Procesando...</div>
+</div>
+
+<div class="card">
+
+  <div class="header">
+    <img class="logo" src="nexo-logo-full.png" alt="Nexo · Distribución Inteligente" />
+    <div class="user-badge" id="userBadge" onclick="cerrarSesion()" title="Pulsa para cerrar sesión">
+      👤 <span id="badgeNombre">—</span>
+      <span class="nivel-tag" id="nivelTag">—</span>
+      &nbsp;·&nbsp;Salir
+    </div>
+    <div class="app-version">SAD Ticket Upload v2.5</div>
+  </div>
+
+  <form id="ticketForm" novalidate>
+
+    <div>
+      <label for="fecha">Fecha</label>
+      <input class="control" type="date" name="fecha" id="fecha" required />
+      <div class="lock-hint" id="hintFecha" style="display:none;">🔒 Solo se puede registrar la fecha de hoy</div>
+    </div>
+
+    <div>
+      <label for="tienda">Tienda</label>
+      <select class="control" id="tienda" name="tienda" required>
+        <option value="" disabled selected>Cargando...</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="repartidor">Repartidor</label>
+      <select class="control" id="repartidor" name="repartidor" required>
+        <option value="" disabled selected>Cargando...</option>
+      </select>
+      <div class="lock-hint" id="hintRepartidor" style="display:none;">🔒 Repartidor fijado a tu cuenta</div>
+    </div>
+
+    <div>
+      <label for="franja">Franja horaria</label>
+      <select class="control" id="franja" name="franja" required>
+        <option value="" disabled selected>Cargando...</option>
+      </select>
+    </div>
+
+    <div class="row-2">
+      <div class="group">
+        <label for="pedidos">Pedidos (P)</label>
+        <input class="control" type="number" name="pedidos" id="pedidos" min="-40" max="40" placeholder="0" required />
+      </div>
+      <div class="group">
+        <label for="dobles">Dobles (D)</label>
+        <input class="control" type="number" name="dobles" id="dobles" min="-16" max="16" value="0" required />
+      </div>
+    </div>
+
+    <div class="row-3">
+      <div class="group">
+        <label for="xr">XR</label>
+        <input class="control" type="number" name="xr" id="xr" min="-12" max="12" value="0" required />
+      </div>
+      <div class="group">
+        <label for="km">Km</label>
+        <input class="control" type="number" name="km" id="km" min="-200" max="200" value="0" required />
+      </div>
+      <div class="group">
+        <label for="obs">Obs</label>
+        <input class="control" type="text" name="obs" id="obs" maxlength="20" placeholder="Opcional" />
+      </div>
+    </div>
+
+    <div>
+      <label>Foto del ticket</label>
+      <div class="btn-foto-wrap">
+        <button type="button" id="btnCamara">📷 Sacar foto</button>
+        <button type="button" id="btnArchivo">🖼️ Galería</button>
+      </div>
+      <input type="file" id="foto" name="foto" accept="image/*" style="display:none;" />
+    </div>
+
+    <img id="fotoPreview" src="" alt="Vista previa del ticket" />
+    <div id="fotoInfo"></div>
+
+    <button type="submit" id="btnSubir">⬆️ Subir ticket</button>
+
+    <div id="msg" role="alert" aria-live="polite"></div>
+
+  </form>
+</div>
+
+<script>
+/* ============================================================
+   REFERENCIAS DOM
+   ============================================================ */
+const msgEl       = document.getElementById('msg');
+const spinnerEl   = document.getElementById('spinner');
+const spinnerTxt  = document.getElementById('spinner-text');
+const fotoInput   = document.getElementById('foto');
+const fotoPreview = document.getElementById('fotoPreview');
+const fotoInfo    = document.getElementById('fotoInfo');
+const fechaInput  = document.getElementById('fecha');
+const repartSel   = document.getElementById('repartidor');
+
+/* ============================================================
+   SESIÓN — niveles: admin / usuario 1 / usuario 2
+   ============================================================ */
+let sesion = null;
+try { sesion = JSON.parse(sessionStorage.getItem('sad_user')); } catch(e) {}
+
+const NIVEL = (sesion && sesion.nivel ? String(sesion.nivel).toLowerCase().trim() : 'usuario 1');
+const ES_ADMIN     = NIVEL === 'admin';
+const ES_USUARIO_1 = NIVEL === 'usuario 1' || NIVEL === 'usuario1';
+const ES_USUARIO_2 = NIVEL === 'usuario 2' || NIVEL === 'usuario2';
+
+document.getElementById('badgeNombre').textContent = sesion?.nombre || '—';
+const nivelTag = document.getElementById('nivelTag');
+nivelTag.textContent = NIVEL;
+if (ES_ADMIN) nivelTag.classList.add('admin');
+
+function cerrarSesion() {
+  if (confirm('¿Cerrar sesión?')) {
+    sessionStorage.removeItem('sad_user');
+    window.location.replace('login.html');
+  }
+}
+
+/* ============================================================
+   SPINNER / MENSAJES
+   ============================================================ */
+function showSpinner(t) { spinnerTxt.textContent = t || 'Procesando...'; spinnerEl.classList.add('visible'); }
+function hideSpinner() { spinnerEl.classList.remove('visible'); }
+function setMsg(text, color) {
+  msgEl.textContent = text;
+  msgEl.style.color      = color || '#fff';
+  msgEl.style.background = color
+    ? (color === '#9dffb0' ? 'rgba(34,197,94,.12)' :
+       color === '#ffcc00' ? 'rgba(251,191,36,.12)' : 'rgba(239,68,68,.12)')
+    : 'transparent';
+  msgEl.style.opacity = '1';
+}
+function clearMsg() {
+  msgEl.style.transition = 'opacity .5s';
+  msgEl.style.opacity    = '0';
+  setTimeout(() => { msgEl.textContent = ''; msgEl.style.background = 'transparent'; }, 520);
+}
+function showOfflineAlert() {
+  const el = document.getElementById('offline-alert');
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 4000);
+}
+
+/* ============================================================
+   FECHA POR DEFECTO Y BLOQUEO
+   ============================================================ */
+const HOY = new Date().toISOString().split('T')[0];
+fechaInput.value = HOY;
+
+if (!ES_ADMIN) {
+  // usuario 1 y usuario 2: fecha bloqueada a hoy
+  fechaInput.min = HOY;
+  fechaInput.max = HOY;
+  fechaInput.readOnly = true;
+  fechaInput.classList.add('locked');
+  document.getElementById('hintFecha').style.display = 'flex';
+
+  // Forzar reset si alguien intenta cambiarla por DevTools
+  fechaInput.addEventListener('change', () => {
+    if (fechaInput.value !== HOY) fechaInput.value = HOY;
+  });
+}
+
+/* ============================================================
+   CARGAR LISTAS
+   ============================================================ */
+let listasCargadas = false;
+(async function cargarListas() {
+  try {
+    const r = await fetch(window.BACKEND_URL);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+
+    fillSelect('tienda',     data.tiendas,       'Seleccione tienda...');
+    fillSelect('repartidor', data.repartidores,  'Seleccione repartidor...');
+    fillSelect('franja',     data.franjas,       'Seleccione franja horaria...');
+
+    listasCargadas = true;
+    aplicarReglasRepartidor();
+  } catch (err) {
+    setMsg('⚠️ Error cargando listas. Recarga la página.', '#ffcc00');
+    console.error('[Nexo] cargarListas:', err);
+  }
+})();
+
+function fillSelect(id, arr, placeholder) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  const ph = document.createElement('option');
+  ph.value = ''; ph.textContent = placeholder;
+  ph.disabled = true; ph.selected = true;
+  el.appendChild(ph);
+  (arr || []).forEach(v => {
+    const op = document.createElement('option');
+    op.value = v; op.textContent = v;
+    el.appendChild(op);
+  });
+}
+
+/* ============================================================
+   REGLAS PARA REPARTIDOR SEGÚN NIVEL
+   ============================================================
+   - admin     : selector libre
+   - usuario 1 : repartidor = nombre login (bloqueado)
+   - usuario 2 : selector libre, igual que admin
+   ============================================================ */
+function aplicarReglasRepartidor() {
+  if (!listasCargadas || !sesion) return;
+
+  if (ES_USUARIO_1) {
+    // Buscar el nombre del usuario en la lista de repartidores
+    const opciones = Array.from(repartSel.options).map(o => o.value);
+    const miNombre = sesion.nombre || sesion.usuario;
+
+    // Coincidencia case-insensitive
+    const match = opciones.find(o =>
+      o.toLowerCase().trim() === miNombre.toLowerCase().trim()
+    );
+
+    if (match) {
+      repartSel.value = match;
+    } else {
+      // Si no aparece en la lista, lo añadimos como opción única
+      const op = document.createElement('option');
+      op.value = miNombre;
+      op.textContent = miNombre;
+      op.selected = true;
+      repartSel.appendChild(op);
+      repartSel.value = miNombre;
+    }
+
+    repartSel.disabled = true;
+    repartSel.classList.add('locked');
+    document.getElementById('hintRepartidor').style.display = 'flex';
+  }
+  // admin y usuario 2: sin restricciones
+}
+
+/* ============================================================
+   BOTONES FOTO
+   ============================================================ */
+document.getElementById('btnCamara').addEventListener('click', () => {
+  fotoInput.removeAttribute('capture');
+  fotoInput.setAttribute('capture', 'environment');
+  fotoInput.click();
+});
+document.getElementById('btnArchivo').addEventListener('click', () => {
+  fotoInput.removeAttribute('capture');
+  fotoInput.click();
+});
+
+fotoInput.addEventListener('change', () => {
+  const file = fotoInput.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  fotoPreview.onload = () => URL.revokeObjectURL(url);
+  fotoPreview.src = url;
+  fotoPreview.style.display = 'block';
+  const kb = (file.size / 1024).toFixed(0);
+  fotoInfo.textContent = `Original: ${kb} KB`;
+  fotoInfo.style.display = 'block';
+});
+
+/* ============================================================
+   OPTIMIZACIÓN DE FOTO
+   ============================================================ */
+function getExifOrientation(dataURL) {
+  try {
+    const b64 = dataURL.split(',')[1];
+    const bin = atob(b64);
+    const buf = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    const dv = new DataView(buf.buffer);
+    if (dv.getUint16(0) !== 0xFFD8) return 1;
+
+    let offset = 2;
+    while (offset < dv.byteLength - 2) {
+      const marker = dv.getUint16(offset);
+      const len    = dv.getUint16(offset + 2);
+      if (marker === 0xFFE1) {
+        if (dv.getUint32(offset + 4) === 0x45786966 && dv.getUint16(offset + 8) === 0x0000) {
+          const tiff = offset + 10;
+          const le   = dv.getUint16(tiff) === 0x4949;
+          const ifd  = dv.getUint32(tiff + 4, le);
+          const n    = dv.getUint16(tiff + ifd, le);
+          for (let i = 0; i < n; i++) {
+            const tag = dv.getUint16(tiff + ifd + 2 + i * 12, le);
+            if (tag === 0x0112) return dv.getUint16(tiff + ifd + 2 + i * 12 + 8, le);
+          }
+        }
+        return 1;
+      }
+      if ((marker & 0xFF00) !== 0xFF00) return 1;
+      offset += 2 + len;
+    }
+  } catch (e) {}
+  return 1;
+}
+
+function optimizarFoto(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
+    reader.onload  = function(ev) {
+      const dataURL = ev.target.result;
+      const img = new Image();
+      img.onerror = () => reject(new Error('Imagen no válida'));
+      img.onload  = function() {
+        const orientation = getExifOrientation(dataURL);
+        const swapExif = [5, 6, 7, 8].includes(orientation);
+
+        let visW = swapExif ? img.naturalHeight : img.naturalWidth;
+        let visH = swapExif ? img.naturalWidth  : img.naturalHeight;
+
+        const needsPortraitRotation = (visW > visH);
+        if (needsPortraitRotation) [visW, visH] = [visH, visW];
+
+        const MAX_H = 1600, MAX_W = 1000;
+        const scale = Math.min(MAX_H / visH, MAX_W / visW, 1);
+        const dstW  = Math.round(visW * scale);
+        const dstH  = Math.round(visH * scale);
+
+        const canvas = document.createElement('canvas');
+        canvas.width  = dstW;
+        canvas.height = dstH;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, dstW, dstH);
+
+        ctx.save();
+        applyTransform(ctx, orientation, img.naturalWidth, img.naturalHeight, dstW, dstH, needsPortraitRotation, swapExif);
+        ctx.drawImage(img, 0, 0);
+        ctx.restore();
+
+        canvas.toBlob(blob => {
+          if (!blob) return reject(new Error('Error al comprimir'));
+          resolve(new File([blob], 'ticket_opt.jpg', { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.72);
+      };
+      img.src = dataURL;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function applyTransform(ctx, orientation, srcW, srcH, dstW, dstH, needsPortraitRot, swapExif) {
+  const sW = swapExif ? srcH : srcW;
+  const sH = swapExif ? srcW : srcH;
+
+  if (!needsPortraitRot) {
+    const sx = dstW / sW, sy = dstH / sH;
+    switch (orientation) {
+      case 1: ctx.scale(sx, sy); break;
+      case 2: ctx.translate(dstW,0); ctx.scale(-sx, sy); break;
+      case 3: ctx.translate(dstW,dstH); ctx.rotate(Math.PI); ctx.scale(sx,sy); break;
+      case 4: ctx.translate(0,dstH); ctx.scale(sx,-sy); break;
+      case 5: ctx.rotate(Math.PI/2); ctx.scale(sy,-sx); ctx.translate(0,-dstH); break;
+      case 6: ctx.translate(dstW,0); ctx.rotate(Math.PI/2); ctx.scale(sy,sx); break;
+      case 7: ctx.translate(dstW,dstH); ctx.rotate(Math.PI/2); ctx.scale(sy,-sx); break;
+      case 8: ctx.rotate(-Math.PI/2); ctx.translate(-sW*sy, 0); ctx.scale(sy,sx); break;
+      default: ctx.scale(sx,sy);
+    }
+  } else {
+    const sx = dstH / sW, sy = dstW / sH;
+    switch (orientation) {
+      case 1: ctx.translate(0,dstH); ctx.rotate(-Math.PI/2); ctx.scale(sx,sy); break;
+      case 2: ctx.translate(dstW,dstH); ctx.rotate(-Math.PI/2); ctx.scale(-sx,sy); break;
+      case 3: ctx.translate(dstW,0); ctx.rotate(Math.PI/2); ctx.scale(sx,sy); break;
+      case 4: ctx.translate(0,0); ctx.rotate(Math.PI/2); ctx.scale(sx,-sy); break;
+      case 5: ctx.scale(sy,sx); break;
+      case 6: ctx.translate(0,dstH); ctx.rotate(-Math.PI/2); ctx.scale(sy,sx); break;
+      case 7: ctx.translate(dstW,dstH); ctx.rotate(Math.PI); ctx.scale(sy,sx); break;
+      case 8: ctx.translate(dstW,0); ctx.rotate(Math.PI/2); ctx.scale(sy,sx); break;
+      default: ctx.translate(0,dstH); ctx.rotate(-Math.PI/2); ctx.scale(sx,sy);
+    }
+  }
+}
+
+/* ============================================================
+   ENVÍO DEL TICKET
+   ============================================================ */
+let _submitting = false;
+
+document.getElementById('ticketForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  if (_submitting) return;
+
+  if (!navigator.onLine) { showOfflineAlert(); return; }
+
+  const foto = fotoInput.files[0];
+  if (!foto) { alert('Por favor, selecciona una foto del ticket.'); return; }
+
+  // Forzar fecha de hoy para usuario 1 y usuario 2 (defensa adicional)
+  if (!ES_ADMIN) fechaInput.value = HOY;
+
+  // Forzar repartidor para usuario 1 (defensa adicional)
+  if (ES_USUARIO_1 && sesion) {
+    const miNombre = sesion.nombre || sesion.usuario;
+    const opciones = Array.from(repartSel.options).map(o => o.value);
+    const match = opciones.find(o => o.toLowerCase().trim() === miNombre.toLowerCase().trim());
+    repartSel.value = match || miNombre;
+  }
+
+  const campos = ['fecha','tienda','repartidor','franja','pedidos'];
+  for (const c of campos) {
+    if (!document.getElementById(c).value) {
+      alert('Por favor, completa todos los campos obligatorios.');
+      return;
+    }
+  }
+
+  _submitting = true;
+  showSpinner('Optimizando foto...');
+  setMsg('', '');
+
+  try {
+    let fotoOpt;
+    try {
+      fotoOpt = await optimizarFoto(foto);
+      const kbOpt = (fotoOpt.size / 1024).toFixed(0);
+      const kbOrig= (foto.size / 1024).toFixed(0);
+      fotoInfo.textContent = `Original: ${kbOrig} KB → Optimizada: ${kbOpt} KB`;
+    } catch (optErr) {
+      console.warn('[Nexo] Optimización falló, usando original:', optErr);
+      fotoOpt = foto;
+    }
+
+    spinnerTxt.textContent = 'Subiendo ticket...';
+
+    const base64 = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload  = () => res(r.result);
+      r.onerror = () => rej(new Error('Error leyendo foto optimizada'));
+      r.readAsDataURL(fotoOpt);
+    });
+
+    const fd = new FormData(document.getElementById('ticketForm'));
+    const datos = {};
+    fd.forEach((v, k) => { if (k !== 'foto') datos[k] = v; });
+    datos.imagenBase64  = base64;
+    datos.usuarioSesion = sesion ? sesion.usuario : '';
+    datos.nivelSesion   = NIVEL;
+
+    const resp = await fetch(window.BACKEND_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(datos)
+    });
+    const text = await resp.text();
+
+    if (text.includes('OK')) {
+      setMsg('✅ ' + text, '#9dffb0');
+    } else if (text.includes('NO_DETECTADO')) {
+      setMsg('⚠️ Ticket subido (número no detectado).', '#ffcc00');
+    } else {
+      setMsg(text, text.includes('ERROR') ? '#fca5a5' : '#9dffb0');
+    }
+
+    setTimeout(() => {
+      const form = document.getElementById('ticketForm');
+      form.reset();
+
+      // Restablecer fecha (a hoy siempre)
+      fechaInput.value = HOY;
+
+      // Restablecer placeholders en selects
+      ['tienda','franja'].forEach(id => {
+        document.getElementById(id).selectedIndex = 0;
+      });
+
+      // Repartidor: para usuario 1, restablecer al suyo. Resto, placeholder
+      if (ES_USUARIO_1) {
+        aplicarReglasRepartidor();
+      } else {
+        repartSel.selectedIndex = 0;
+      }
+
+      fotoPreview.style.display = 'none';
+      fotoPreview.src = '';
+      fotoInfo.style.display = 'none';
+      clearMsg();
+      _submitting = false;
+    }, 5000);
+
+  } catch (err) {
+    setMsg('❌ Error: ' + err.message, '#fca5a5');
+    console.error('[Nexo] submit:', err);
+    _submitting = false;
+  } finally {
+    hideSpinner();
+  }
+});
+
+/* ============================================================
+   REGISTRAR SERVICE WORKER
+   ============================================================ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(e => {
+      console.warn('[Nexo] SW register failed:', e);
+    });
+  });
+}
+</script>
+</body>
+</html>
