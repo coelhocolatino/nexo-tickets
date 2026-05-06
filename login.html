@@ -284,7 +284,7 @@ input::placeholder { color:#3d4e66; }
 </div>
 
 <script>
-const BACKEND_URL = "https://script.google.com/macros/s/AKfycbzRNebUzjn6JQq55uXYnNhyYwzlmVBUKoirHqvQnPCi8kWSzLH608c7nt375fViEN6V/exec";
+const BACKEND_URL = "https://script.google.com/macros/s/AKfycbwTwp6Cc35zWr18MeSc9hkE18m0j_Km6S9mOv5kY-2AFrHnFivLLiplQTyQRL9ysg7R/exec";
 const PROXY       = "https://sad-proxy.colatino-ventas-enlinea.workers.dev/";
 
 let usuarioActual = null;
@@ -352,9 +352,10 @@ function volver() {
 function guardarSesion(data) {
   const sesion = {
     usuario:   usuarioActual.usuario,
-    nombre:    usuarioActual.nombre || usuarioActual.usuario,
-    nivel:     usuarioActual.nivel  || 'usuario 1',
-    token:     data.token            || Date.now().toString(36),
+    nombre:    usuarioActual.nombre    || usuarioActual.usuario,
+    nivel:     usuarioActual.nivel     || 'usuario 1',
+    tiendaPre: usuarioActual.tiendaPre || data.tiendaPre || '',
+    token:     data.token               || Date.now().toString(36),
     timestamp: Date.now()
   };
   sessionStorage.setItem('sad_user', JSON.stringify(sesion));
@@ -402,11 +403,12 @@ async function verificarUsuario() {
     }
 
     usuarioActual = {
-      usuario:  usuario.toLowerCase(),
-      nombre:   data.nombre || usuario,
-      activo:   data.activo,
-      nivel:    data.nivel || 'usuario 1',
-      tienePwd: data.tienePwd
+      usuario:   usuario.toLowerCase(),
+      nombre:    data.nombre    || usuario,
+      activo:    data.activo,
+      nivel:     data.nivel     || 'usuario 1',
+      tiendaPre: data.tiendaPre || '',
+      tienePwd:  data.tienePwd
     };
 
     setLoading(btn, false);
@@ -442,8 +444,9 @@ async function hacerLogin() {
     const data = await proxyPost({ accion:'login', usuario:usuarioActual.usuario, password:pwd });
 
     if (data.ok) {
-      usuarioActual.nivel  = data.nivel  || usuarioActual.nivel;
-      usuarioActual.nombre = data.nombre || usuarioActual.nombre;
+      usuarioActual.nivel     = data.nivel     || usuarioActual.nivel;
+      usuarioActual.nombre    = data.nombre    || usuarioActual.nombre;
+      usuarioActual.tiendaPre = data.tiendaPre || usuarioActual.tiendaPre || '';
       guardarSesion(data);
       showMsg('msg2', '✅ Acceso concedido. Entrando...', 'success');
       setTimeout(() => window.location.replace('index.html'), 900);
@@ -477,8 +480,9 @@ async function registrarPassword() {
     const data = await proxyPost({ accion:'registrarPassword', usuario:usuarioActual.usuario, password:pwd1 });
 
     if (data.ok) {
-      usuarioActual.nivel  = data.nivel  || usuarioActual.nivel;
-      usuarioActual.nombre = data.nombre || usuarioActual.nombre;
+      usuarioActual.nivel     = data.nivel     || usuarioActual.nivel;
+      usuarioActual.nombre    = data.nombre    || usuarioActual.nombre;
+      usuarioActual.tiendaPre = data.tiendaPre || usuarioActual.tiendaPre || '';
       guardarSesion(data);
       showMsg('msg3', '✅ Contraseña creada. Entrando...', 'success');
       setTimeout(() => window.location.replace('index.html'), 1000);

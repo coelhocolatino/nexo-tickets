@@ -424,6 +424,8 @@ let listasCargadas = false;
 
     listasCargadas = true;
     aplicarReglasRepartidor();
+    aplicarReglasTienda();
+    aplicarReglasFranja();
   } catch (err) {
     setMsg('⚠️ Error cargando listas: ' + err.message, '#ffcc00');
     console.error('[Nexo] cargarListas:', err);
@@ -446,41 +448,122 @@ function fillSelect(id, arr, placeholder) {
 
 /* ============================================================
    REGLAS PARA REPARTIDOR SEGÚN NIVEL
-   ============================================================
    - admin     : selector libre
    - usuario 1 : repartidor = nombre login (bloqueado)
-   - usuario 2 : selector libre, igual que admin
+   - usuario 2 : selector libre
    ============================================================ */
 function aplicarReglasRepartidor() {
   if (!listasCargadas || !sesion) return;
 
   if (ES_USUARIO_1) {
-    // Buscar el nombre del usuario en la lista de repartidores
     const opciones = Array.from(repartSel.options).map(o => o.value);
     const miNombre = sesion.nombre || sesion.usuario;
-
-    // Coincidencia case-insensitive
     const match = opciones.find(o =>
       o.toLowerCase().trim() === miNombre.toLowerCase().trim()
     );
-
     if (match) {
       repartSel.value = match;
     } else {
-      // Si no aparece en la lista, lo añadimos como opción única
       const op = document.createElement('option');
-      op.value = miNombre;
-      op.textContent = miNombre;
-      op.selected = true;
+      op.value = miNombre; op.textContent = miNombre; op.selected = true;
       repartSel.appendChild(op);
       repartSel.value = miNombre;
     }
-
     repartSel.disabled = true;
     repartSel.classList.add('locked');
     document.getElementById('hintRepartidor').style.display = 'flex';
   }
-  // admin y usuario 2: sin restricciones
+}
+
+/* ============================================================
+   TIENDA PREDEFINIDA (columna U = TIENDA_PRE en tabla USUARIOS)
+   Todos los niveles pueden cambiarla, pero aparece preseleccionada
+   ============================================================ */
+function aplicarReglasTienda() {
+  const tiendaPre = sesion && sesion.tiendaPre ? sesion.tiendaPre.trim() : '';
+  if (!tiendaPre) return;
+
+  const tiendaSel = document.getElementById('tienda');
+  const opciones  = Array.from(tiendaSel.options).map(o => o.value);
+  const match = opciones.find(o =>
+    o.toLowerCase().trim() === tiendaPre.toLowerCase()
+  );
+  if (match) {
+    tiendaSel.value = match;
+  } else {
+    // Añadir si no existe en la lista
+    const op = document.createElement('option');
+    op.value = tiendaPre; op.textContent = tiendaPre; op.selected = true;
+    tiendaSel.appendChild(op);
+    tiendaSel.value = tiendaPre;
+  }
+}
+
+/* ============================================================
+   FRANJA HORARIA — bloqueada para USUARIO 2 según hora actual
+   Reglas:
+     09:00-11:00 → solo 10-13H
+     11:00-14:30 → solo 12-14H, 13-16H
+     15:00-16:30 → solo 16-19H
+     16:30-19:00 → solo 17-19H
+     18:00-19:30 → solo 17-19H, 19-22H
+   Admin y usuario 1: libre
+   ============================================================ */
+function getFranjasPermitidas() {
+  const ahora = new Date();
+  const h = ahora.getHours();
+  const m = ahora.getMinutes();
+  const mins = h * 60 + m; // minutos desde medianoche
+
+  const t = (hh, mm) => hh * 60 + mm;
+
+  // Las reglas se evalúan en orden — si se solapan, gana la más específica
+  // (18:00-19:30 incluye parte de 16:30-19:00, se añaden ambas)
+  let franjas = [];
+
+  if (mins >= t(9,0)  && mins < t(11,0))  franjas = ['10-13H'];
+  if (mins >= t(11,0) && mins < t(14,30)) franjas = ['12-14H','13-16H'];
+  if (mins >= t(15,0) && mins < t(16,30)) franjas = ['16-19H'];
+  if (mins >= t(16,30)&& mins < t(19,0))  franjas = ['17-19H'];
+  if (mins >= t(18,0) && mins < t(19,30)) franjas = ['17-19H','19-22H'];
+
+  return franjas; // array vacío = fuera de horario
+}
+
+function aplicarReglasFranja() {
+  if (!ES_USUARIO_2) return; // admin y usuario 1: sin restricción
+
+  const franjaSel = document.getElementById('franja');
+  const permitidas = getFranjasPermitidas();
+
+  if (permitidas.length === 0) {
+    // Fuera de horario — mostrar mensaje pero no bloquear
+    setMsg('⚠️ Fuera del horario de reparto', '#ffcc00');
+    return;
+  }
+
+  // Dejar solo las opciones permitidas en el selector
+  const todas = Array.from(franjaSel.options);
+  todas.forEach(op => {
+    if (op.value === '') return; // placeholder
+    const permitida = permitidas.some(p =>
+      p.toLowerCase() === op.value.toLowerCase()
+    );
+    op.disabled = !permitida;
+    op.style.display = permitida ? '' : 'none';
+  });
+
+  // Preseleccionar la primera permitida
+  const primera = todas.find(op =>
+    op.value !== '' && permitidas.some(p => p.toLowerCase() === op.value.toLowerCase())
+  );
+  if (primera) franjaSel.value = primera.value;
+
+  // Bloquear si solo hay una opción
+  if (permitidas.length === 1) {
+    franjaSel.disabled = true;
+    franjaSel.classList.add('locked');
+  }
 }
 
 /* ============================================================
@@ -500,44 +583,34 @@ fotoInput.addEventListener('change', async () => {
   const file = fotoInput.files[0];
   if (!file) return;
 
-  // Preview inmediato del original
   const urlOrig = URL.createObjectURL(file);
   fotoPreview.onload = () => URL.revokeObjectURL(urlOrig);
   fotoPreview.src = urlOrig;
   fotoPreview.style.display = 'block';
   const kb = (file.size / 1024).toFixed(0);
-  fotoInfo.textContent = `Original: ${kb} KB · Procesando...`;
+  fotoInfo.textContent = `Original: ${kb} KB · Comprimiendo...`;
   fotoInfo.style.display = 'block';
 
-  // Preview del resultado procesado (escáner) en segundo plano
   try {
-    const procesada = await optimizarFoto(file);
-    const urlProc = URL.createObjectURL(procesada);
-    fotoPreview.onload = () => URL.revokeObjectURL(urlProc);
-    fotoPreview.src = urlProc;
-    const kbProc = (procesada.size / 1024).toFixed(0);
-    fotoInfo.textContent = `Original: ${kb} KB → Escaneada: ${kbProc} KB ✅`;
-    // Guardar la versión procesada para no reprocesar al enviar
-    fotoInput._procesada = procesada;
+    const comprimida = await optimizarFoto(file);
+    const urlComp = URL.createObjectURL(comprimida);
+    fotoPreview.onload = () => URL.revokeObjectURL(urlComp);
+    fotoPreview.src = urlComp;
+    const kbComp = (comprimida.size / 1024).toFixed(0);
+    fotoInfo.textContent = `${kb} KB → ${kbComp} KB ✅`;
+    fotoInput._procesada = comprimida;
   } catch(e) {
-    fotoInfo.textContent = `Original: ${kb} KB (se procesará al subir)`;
+    fotoInfo.textContent = `${kb} KB (se comprimirá al subir)`;
     fotoInput._procesada = null;
-    console.warn('[Nexo] Preview scan:', e);
+    console.warn('[Nexo] Compresión preview:', e);
   }
 });
 
 /* ============================================================
-   PROCESAMIENTO DE FOTO — MODO ESCÁNER v2
-   Pipeline:
-     1. Corregir EXIF + asegurar portrait estricto
-     2. Escala de grises + autocontraste
-     3. Detectar y recortar el rectángulo del ticket (papel blanco)
-     4. Umbral adaptativo (binarización tipo escáner)
-     5. Eliminar ruido de pixels sueltos
-     6. Exportar JPG calidad 0.90
+   OPTIMIZACIÓN DE FOTO — EN COLOR, SIN FILTROS
+   Solo: corrección EXIF + portrait + compresión JPG calidad 0.82
    ============================================================ */
 
-/* --- EXIF orientation --- */
 function getExifOrientation(dataURL) {
   try {
     const b64 = dataURL.split(',')[1];
@@ -570,276 +643,79 @@ function getExifOrientation(dataURL) {
   return 1;
 }
 
-/* --- Dibujar imagen en canvas: corrección EXIF + portrait forzado --- */
-function dibujarCorregida(img, orientation) {
-  const swapExif = [5, 6, 7, 8].includes(orientation);
-
-  // Dimensiones visuales tras corrección EXIF
-  let visW = swapExif ? img.naturalHeight : img.naturalWidth;
-  let visH = swapExif ? img.naturalWidth  : img.naturalHeight;
-
-  // SIEMPRE portrait: si es landscape, rotamos 270° (sentido de los tickets de cámara)
-  const needsRot = visW > visH;
-  if (needsRot) [visW, visH] = [visH, visW];
-
-  // Resolución alta para legibilidad: máx 1800px alto, 1200px ancho
-  const MAX_H = 1800, MAX_W = 1200;
-  const scale = Math.min(MAX_H / visH, MAX_W / visW, 1);
-  const dstW  = Math.round(visW * scale);
-  const dstH  = Math.round(visH * scale);
-
-  const canvas = document.createElement('canvas');
-  canvas.width  = dstW;
-  canvas.height = dstH;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, dstW, dstH);
-
-  ctx.save();
-  const sW = swapExif ? img.naturalHeight : img.naturalWidth;
-  const sH = swapExif ? img.naturalWidth  : img.naturalHeight;
-
-  if (!needsRot) {
-    const sx = dstW / sW, sy = dstH / sH;
-    switch (orientation) {
-      case 2: ctx.translate(dstW,0); ctx.scale(-sx,sy); break;
-      case 3: ctx.translate(dstW,dstH); ctx.rotate(Math.PI); ctx.scale(sx,sy); break;
-      case 4: ctx.translate(0,dstH); ctx.scale(sx,-sy); break;
-      case 6: ctx.translate(dstW,0); ctx.rotate(Math.PI/2); ctx.scale(sy,sx); break;
-      case 8: ctx.rotate(-Math.PI/2); ctx.translate(-sW*sy,0); ctx.scale(sy,sx); break;
-      default: ctx.scale(sx,sy);
-    }
-  } else {
-    // Landscape → portrait: rotar 90° antihorario (validado con fotos reales)
-    const sx = dstH / sW, sy = dstW / sH;
-    ctx.translate(0, dstH);
-    ctx.rotate(-Math.PI / 2);
-    ctx.scale(sx, sy);
-  }
-  ctx.drawImage(img, 0, 0);
-  ctx.restore();
-
-  return canvas;
-}
-
-/* --- Escala de grises inteligente → devuelve {gris, yaEsBinaria} --- */
-function prepararGris(ctx, W, H) {
-  const imgData = ctx.getImageData(0, 0, W, H);
-  const d = imgData.data;
-  const gris = new Uint8Array(W * H);
-
-  for (let i = 0; i < W * H; i++) {
-    gris[i] = Math.round(0.299 * d[i*4] + 0.587 * d[i*4+1] + 0.114 * d[i*4+2]);
-  }
-
-  // Detectar si la imagen ya está binarizada (< 5% píxeles grises intermedios)
-  let intermedios = 0;
-  for (let i = 0; i < gris.length; i++) {
-    if (gris[i] > 40 && gris[i] < 215) intermedios++;
-  }
-  const yaEsBinaria = (intermedios / gris.length) < 0.05;
-
-  // Autocontraste solo si la imagen tiene grises ricos (no binarizada)
-  if (!yaEsBinaria) {
-    let mn = 255, mx = 0;
-    for (let i = 0; i < gris.length; i++) {
-      if (gris[i] < mn) mn = gris[i];
-      if (gris[i] > mx) mx = gris[i];
-    }
-    const rng = mx - mn || 1;
-    if (rng > 30) {
-      for (let i = 0; i < gris.length; i++) {
-        gris[i] = Math.round((gris[i] - mn) / rng * 255);
-      }
-    }
-  }
-
-  return { gris, yaEsBinaria };
-}
-
-/* --- Detectar y recortar el ticket excluyendo madera y relleno --- */
-function detectarTicket(gris, W, H) {
-  const rowMean = new Float32Array(H);
-  for (let y = 0; y < H; y++) {
-    let s = 0;
-    for (let x = 0; x < W; x++) s += gris[y * W + x];
-    rowMean[y] = s / W;
-  }
-  const colMean = new Float32Array(W);
-  for (let x = 0; x < W; x++) {
-    let s = 0;
-    for (let y = 0; y < H; y++) s += gris[y * W + x];
-    colMean[x] = s / H;
-  }
-
-  // Límite superior: primera fila brillante
-  let r0 = 0;
-  for (let y = 0; y < H; y++) {
-    if (rowMean[y] > 180) { r0 = Math.max(0, y - 8); break; }
-  }
-
-  // Límite inferior: transición papel→madera (media cae < 150 tras zona brillante)
-  let r1 = H - 1;
-  let inPaper = false;
-  for (let y = 0; y < H; y++) {
-    if (rowMean[y] > 180) inPaper = true;
-    else if (inPaper && rowMean[y] < 150) {
-      r1 = Math.min(H - 1, y + 8);
-      break;
-    }
-  }
-  // Si no hubo transición, última fila brillante
-  if (!inPaper || r1 === H - 1) {
-    for (let y = H - 1; y >= 0; y--) {
-      if (rowMean[y] > 180) { r1 = Math.min(H - 1, y + 8); break; }
-    }
-  }
-
-  // Columnas izquierda y derecha
-  let c0 = 0, c1 = W - 1;
-  for (let x = 0; x < W; x++) {
-    if (colMean[x] > 140) { c0 = Math.max(0, x - 8); break; }
-  }
-  for (let x = W - 1; x >= 0; x--) {
-    if (colMean[x] > 140) { c1 = Math.min(W - 1, x + 8); break; }
-  }
-
-  const cropW = c1 - c0;
-  const cropH = r1 - r0;
-
-  if (cropW < 50 || cropH < 50) return null;
-  // No recortar si ya es prácticamente toda la imagen
-  if (cropW > W * 0.97 && cropH > H * 0.97) return null;
-
-  return { x: c0, y: r0, w: cropW, h: cropH };
-}
-
-/* --- Aplicar filtro escáner (adaptativo o fijo según tipo de imagen) --- */
-function aplicarEscaner(ctx, W, H, gris, yaEsBinaria) {
-  const imgData = ctx.getImageData(0, 0, W, H);
-  const d = imgData.data;
-
-  if (yaEsBinaria) {
-    // Imagen ya binarizada: umbral fijo 128, sin más procesamiento
-    for (let i = 0; i < W * H; i++) {
-      const val = gris[i] < 128 ? 0 : 255;
-      d[i*4] = d[i*4+1] = d[i*4+2] = val;
-      d[i*4+3] = 255;
-    }
-    ctx.putImageData(imgData, 0, 0);
-    return;
-  }
-
-  // Imagen con grises: umbral adaptativo local
-  const BLOCK = 40, OFFSET = 8;
-
-  const integral = new Float64Array((W+1) * (H+1));
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      integral[(y+1)*(W+1)+(x+1)] =
-        gris[y*W+x] +
-        integral[y*(W+1)+(x+1)] +
-        integral[(y+1)*(W+1)+x] -
-        integral[y*(W+1)+x];
-    }
-  }
-
-  const bin = new Uint8Array(W * H);
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const x1 = Math.max(0, x - BLOCK), y1 = Math.max(0, y - BLOCK);
-      const x2 = Math.min(W-1, x + BLOCK), y2 = Math.min(H-1, y + BLOCK);
-      const n   = (x2-x1) * (y2-y1);
-      const sum = integral[(y2+1)*(W+1)+(x2+1)]
-                - integral[y1*(W+1)+(x2+1)]
-                - integral[(y2+1)*(W+1)+x1]
-                + integral[y1*(W+1)+x1];
-      const val = gris[y*W+x] < (sum / n - OFFSET) ? 0 : 255;
-      bin[y*W+x] = val;
-      const idx = (y*W+x)*4;
-      d[idx] = d[idx+1] = d[idx+2] = val;
-      d[idx+3] = 255;
-    }
-  }
-
-  // Eliminar ruido: pixels negros aislados → borrar
-  for (let y = 1; y < H-1; y++) {
-    for (let x = 1; x < W-1; x++) {
-      if (bin[y*W+x] !== 0) continue;
-      let negros = 0;
-      if (bin[(y-1)*W+(x-1)] === 0) negros++;
-      if (bin[(y-1)*W+ x   ] === 0) negros++;
-      if (bin[(y-1)*W+(x+1)] === 0) negros++;
-      if (bin[ y   *W+(x-1)] === 0) negros++;
-      if (bin[ y   *W+(x+1)] === 0) negros++;
-      if (bin[(y+1)*W+(x-1)] === 0) negros++;
-      if (bin[(y+1)*W+ x   ] === 0) negros++;
-      if (bin[(y+1)*W+(x+1)] === 0) negros++;
-      if (negros <= 1) {
-        const idx = (y*W+x)*4;
-        d[idx] = d[idx+1] = d[idx+2] = 255;
-      }
-    }
-  }
-
-  ctx.putImageData(imgData, 0, 0);
-}
-
-/* --- FUNCIÓN PRINCIPAL --- */
 function optimizarFoto(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
-    reader.onload  = function(ev) {
+    reader.onload = function(ev) {
       const dataURL = ev.target.result;
       const img = new Image();
       img.onerror = () => reject(new Error('Imagen no válida'));
-      img.onload  = function() {
+      img.onload = function() {
         try {
           const orientation = getExifOrientation(dataURL);
+          const swapExif = [5, 6, 7, 8].includes(orientation);
 
-          // 1. Dibujar corregido en portrait
-          let canvas = dibujarCorregida(img, orientation);
-          let ctx    = canvas.getContext('2d');
-          let W = canvas.width, H = canvas.height;
+          // Dimensiones visuales tras EXIF
+          let visW = swapExif ? img.naturalHeight : img.naturalWidth;
+          let visH = swapExif ? img.naturalWidth  : img.naturalHeight;
 
-          // 2. Analizar grises (detecta si ya está binarizada)
-          let { gris, yaEsBinaria } = prepararGris(ctx, W, H);
+          // Forzar portrait
+          const needsRot = visW > visH;
+          if (needsRot) [visW, visH] = [visH, visW];
 
-          // 3. Detectar y recortar el ticket (quitar madera/fondo)
-          const crop = detectarTicket(gris, W, H);
-          if (crop) {
-            const cropped = document.createElement('canvas');
-            cropped.width  = crop.w;
-            cropped.height = crop.h;
-            const cctx = cropped.getContext('2d');
-            cctx.drawImage(canvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
-            canvas = cropped; ctx = cctx;
-            W = crop.w; H = crop.h;
-            // Recalcular grises del área recortada
-            const r = prepararGris(ctx, W, H);
-            gris = r.gris;
-            yaEsBinaria = r.yaEsBinaria;
+          // Escalar: máx 1800px alto, 1200px ancho
+          const MAX_H = 1800, MAX_W = 1200;
+          const scale = Math.min(MAX_H / visH, MAX_W / visW, 1);
+          const dstW  = Math.round(visW * scale);
+          const dstH  = Math.round(visH * scale);
+
+          const canvas = document.createElement('canvas');
+          canvas.width  = dstW;
+          canvas.height = dstH;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, dstW, dstH);
+
+          // Aplicar transformación EXIF + portrait
+          ctx.save();
+          const sW = swapExif ? img.naturalHeight : img.naturalWidth;
+          const sH = swapExif ? img.naturalWidth  : img.naturalHeight;
+
+          if (!needsRot) {
+            const sx = dstW / sW, sy = dstH / sH;
+            switch (orientation) {
+              case 2: ctx.translate(dstW,0); ctx.scale(-sx,sy); break;
+              case 3: ctx.translate(dstW,dstH); ctx.rotate(Math.PI); ctx.scale(sx,sy); break;
+              case 4: ctx.translate(0,dstH); ctx.scale(sx,-sy); break;
+              case 6: ctx.translate(dstW,0); ctx.rotate(Math.PI/2); ctx.scale(sy,sx); break;
+              case 8: ctx.rotate(-Math.PI/2); ctx.translate(-sW*sy,0); ctx.scale(sy,sx); break;
+              default: ctx.scale(sx,sy);
+            }
+          } else {
+            // Landscape → portrait: rotar 90° antihorario
+            const sx = dstH / sW, sy = dstW / sH;
+            ctx.translate(0, dstH);
+            ctx.rotate(-Math.PI / 2);
+            ctx.scale(sx, sy);
           }
+          ctx.drawImage(img, 0, 0);
+          ctx.restore();
 
-          // 4. Aplicar filtro escáner
-          aplicarEscaner(ctx, W, H, gris, yaEsBinaria);
-
-          // 5. Exportar JPG calidad 0.90
+          // Exportar en COLOR, JPG calidad 0.82
           canvas.toBlob(blob => {
             if (!blob) return reject(new Error('Error al exportar'));
-            resolve(new File([blob], 'ticket_scan.jpg', { type: 'image/jpeg' }));
-          }, 'image/jpeg', 0.90);
+            resolve(new File([blob], 'ticket.jpg', { type: 'image/jpeg' }));
+          }, 'image/jpeg', 0.82);
 
-        } catch(err) {
-          reject(err);
-        }
+        } catch(err) { reject(err); }
       };
       img.src = dataURL;
     };
     reader.readAsDataURL(file);
   });
 }
+
 
 /* ============================================================
    ENVÍO DEL TICKET
@@ -935,10 +811,9 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
       // Restablecer fecha (a hoy siempre)
       fechaInput.value = HOY;
 
-      // Restablecer placeholders en selects
-      ['tienda','franja'].forEach(id => {
-        document.getElementById(id).selectedIndex = 0;
-      });
+      // Restablecer tienda predefinida y franja
+      aplicarReglasTienda();
+      aplicarReglasFranja();
 
       // Repartidor: para usuario 1, restablecer al suyo. Resto, placeholder
       if (ES_USUARIO_1) {
