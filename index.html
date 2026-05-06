@@ -193,6 +193,12 @@ button:active { transform:scale(.97); }
     if (!u || !u.usuario || !u.token) {
       sessionStorage.removeItem('sad_user');
       window.location.replace('login.html');
+      return;
+    }
+    // Si la sesión no tiene tiendaPre (sesión antigua), forzar re-login
+    if (typeof u.tiendaPre === 'undefined') {
+      sessionStorage.removeItem('sad_user');
+      window.location.replace('login.html');
     }
   } catch(e) {
     sessionStorage.removeItem('sad_user');
@@ -423,6 +429,11 @@ let listasCargadas = false;
     fillSelect('franja',     data.franjas,      'Seleccione franja horaria...');
 
     listasCargadas = true;
+
+    // Debug: mostrar sesión en consola para verificar tiendaPre
+    console.log('[Nexo] sesion:', JSON.stringify(sesion));
+    console.log('[Nexo] tiendaPre:', sesion && sesion.tiendaPre);
+
     aplicarReglasRepartidor();
     aplicarReglasTienda();
     aplicarReglasFranja();
@@ -485,15 +496,21 @@ function aplicarReglasTienda() {
 
   const tiendaSel = document.getElementById('tienda');
   const opciones  = Array.from(tiendaSel.options).map(o => o.value);
+
+  // Buscar coincidencia exacta (case-insensitive)
   const match = opciones.find(o =>
     o.toLowerCase().trim() === tiendaPre.toLowerCase()
   );
+
   if (match) {
     tiendaSel.value = match;
   } else {
-    // Añadir si no existe en la lista
+    // Si la tienda predefinida no está en la lista (aún no cargada o no existe),
+    // añadirla temporalmente
     const op = document.createElement('option');
-    op.value = tiendaPre; op.textContent = tiendaPre; op.selected = true;
+    op.value = tiendaPre;
+    op.textContent = tiendaPre;
+    op.selected = true;
     tiendaSel.appendChild(op);
     tiendaSel.value = tiendaPre;
   }
@@ -511,58 +528,66 @@ function aplicarReglasTienda() {
    ============================================================ */
 function getFranjasPermitidas() {
   const ahora = new Date();
-  const h = ahora.getHours();
-  const m = ahora.getMinutes();
-  const mins = h * 60 + m; // minutos desde medianoche
-
+  const mins  = ahora.getHours() * 60 + ahora.getMinutes();
   const t = (hh, mm) => hh * 60 + mm;
 
-  // Las reglas se evalúan en orden — si se solapan, gana la más específica
-  // (18:00-19:30 incluye parte de 16:30-19:00, se añaden ambas)
+  // Reglas en orden de prioridad — la última que aplique gana
+  // (los rangos solapados 18:00-19:30 y 16:30-19:00 se manejan con acumulación)
   let franjas = [];
-
-  if (mins >= t(9,0)  && mins < t(11,0))  franjas = ['10-13H'];
-  if (mins >= t(11,0) && mins < t(14,30)) franjas = ['12-14H','13-16H'];
-  if (mins >= t(15,0) && mins < t(16,30)) franjas = ['16-19H'];
-  if (mins >= t(16,30)&& mins < t(19,0))  franjas = ['17-19H'];
-  if (mins >= t(18,0) && mins < t(19,30)) franjas = ['17-19H','19-22H'];
-
-  return franjas; // array vacío = fuera de horario
+  if (mins >= t(9,0)   && mins < t(11,0))  franjas = ['10-13H'];
+  if (mins >= t(11,0)  && mins < t(14,30)) franjas = ['12-14H','13-16H'];
+  if (mins >= t(15,0)  && mins < t(16,30)) franjas = ['16-19H'];
+  if (mins >= t(16,30) && mins < t(19,0))  franjas = ['17-19H'];
+  if (mins >= t(18,0)  && mins < t(19,30)) franjas = ['17-19H','19-22H'];
+  return franjas;
 }
 
 function aplicarReglasFranja() {
-  if (!ES_USUARIO_2) return; // admin y usuario 1: sin restricción
+  if (!ES_USUARIO_2) return;
 
-  const franjaSel = document.getElementById('franja');
+  const franjaSel  = document.getElementById('franja');
   const permitidas = getFranjasPermitidas();
 
   if (permitidas.length === 0) {
-    // Fuera de horario — mostrar mensaje pero no bloquear
     setMsg('⚠️ Fuera del horario de reparto', '#ffcc00');
     return;
   }
 
-  // Dejar solo las opciones permitidas en el selector
-  const todas = Array.from(franjaSel.options);
-  todas.forEach(op => {
-    if (op.value === '') return; // placeholder
-    const permitida = permitidas.some(p =>
-      p.toLowerCase() === op.value.toLowerCase()
-    );
-    op.disabled = !permitida;
-    op.style.display = permitida ? '' : 'none';
+  // Guardar todas las opciones originales (excl. placeholder)
+  if (!franjaSel._allOptions) {
+    franjaSel._allOptions = Array.from(franjaSel.options)
+      .filter(o => o.value !== '')
+      .map(o => ({ value: o.value, text: o.textContent }));
+  }
+
+  // Reconstruir el select con SOLO las opciones permitidas
+  // (style.display='none' no funciona en <select> nativo en iOS)
+  const placeholder = franjaSel.options[0]; // primer option (placeholder)
+  franjaSel.innerHTML = '';
+  franjaSel.appendChild(placeholder.cloneNode(true));
+
+  let primeraPermitida = null;
+  franjaSel._allOptions.forEach(op => {
+    const permitida = permitidas.some(p => p.toLowerCase() === op.value.toLowerCase());
+    if (permitida) {
+      const el = document.createElement('option');
+      el.value = op.value;
+      el.textContent = op.text;
+      franjaSel.appendChild(el);
+      if (!primeraPermitida) primeraPermitida = op.value;
+    }
   });
 
   // Preseleccionar la primera permitida
-  const primera = todas.find(op =>
-    op.value !== '' && permitidas.some(p => p.toLowerCase() === op.value.toLowerCase())
-  );
-  if (primera) franjaSel.value = primera.value;
+  if (primeraPermitida) franjaSel.value = primeraPermitida;
 
-  // Bloquear si solo hay una opción
+  // Bloquear si solo hay una opción posible
   if (permitidas.length === 1) {
     franjaSel.disabled = true;
     franjaSel.classList.add('locked');
+  } else {
+    franjaSel.disabled = false;
+    franjaSel.classList.remove('locked');
   }
 }
 
