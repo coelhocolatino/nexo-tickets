@@ -610,17 +610,11 @@ function dibujarCorregida(img, orientation) {
       default: ctx.scale(sx,sy);
     }
   } else {
-    // Rotar 270° (= -90°): es la orientación más común cuando el teléfono
-    // está en landscape con el botón a la derecha
+    // Landscape → portrait: rotar 90° antihorario (validado con fotos reales)
     const sx = dstH / sW, sy = dstW / sH;
-    ctx.translate(dstW, 0);
-    ctx.rotate(Math.PI / 2);   // 270° = 3 veces 90° = equivale a -90°
-    // Ajustar según EXIF adicional
-    switch (orientation) {
-      case 6: ctx.scale(sy, sx); break;
-      case 8: ctx.scale(-sy, sx); ctx.translate(-sW * sy, 0); break;
-      default: ctx.scale(sx, sy);
-    }
+    ctx.translate(0, dstH);
+    ctx.rotate(-Math.PI / 2);
+    ctx.scale(sx, sy);
   }
   ctx.drawImage(img, 0, 0);
   ctx.restore();
@@ -653,76 +647,61 @@ function prepararGris(ctx, W, H) {
   return gris;
 }
 
-/* --- Detectar y recortar el ticket (zona de papel) por media + varianza --- */
+/* --- Detectar y recortar el ticket excluyendo madera y relleno --- */
 function detectarTicket(gris, W, H) {
-  // Calcular media y varianza por columna y por fila
-  const colMean = new Float32Array(W);
-  const colVar  = new Float32Array(W);
-  const rowMean = new Float32Array(H);
-  const rowVar  = new Float32Array(H);
-
-  // Media por columna
-  for (let x = 0; x < W; x++) {
-    let s = 0;
-    for (let y = 0; y < H; y++) s += gris[y * W + x];
-    colMean[x] = s / H;
-  }
-  // Varianza por columna
-  for (let x = 0; x < W; x++) {
-    let v = 0;
-    for (let y = 0; y < H; y++) {
-      const d = gris[y * W + x] - colMean[x];
-      v += d * d;
-    }
-    colVar[x] = v / H;
-  }
   // Media por fila
+  const rowMean = new Float32Array(H);
   for (let y = 0; y < H; y++) {
     let s = 0;
     for (let x = 0; x < W; x++) s += gris[y * W + x];
     rowMean[y] = s / W;
   }
-  // Varianza por fila
-  for (let y = 0; y < H; y++) {
-    let v = 0;
-    for (let x = 0; x < W; x++) {
-      const d = gris[y * W + x] - rowMean[y];
-      v += d * d;
-    }
-    rowVar[y] = v / W;
-  }
-
-  // Papel = brillo alto (media > 180) Y textura baja (varianza < 7000)
-  // Madera/fondo = varianza alta o brillo bajo
-  const MEAN_MIN = 170;
-  const VAR_MAX  = 7500;
-
-  const paperCols = [];
-  const paperRows = [];
+  // Media por columna
+  const colMean = new Float32Array(W);
   for (let x = 0; x < W; x++) {
-    if (colMean[x] > MEAN_MIN && colVar[x] < VAR_MAX) paperCols.push(x);
+    let s = 0;
+    for (let y = 0; y < H; y++) s += gris[y * W + x];
+    colMean[x] = s / H;
   }
+
+  // --- Límite SUPERIOR del ticket (primera fila brillante) ---
+  let r0 = 0;
   for (let y = 0; y < H; y++) {
-    if (rowMean[y] > MEAN_MIN && rowVar[y] < VAR_MAX) paperRows.push(y);
+    if (rowMean[y] > 180) { r0 = Math.max(0, y - 8); break; }
   }
 
-  if (paperCols.length < 50 || paperRows.length < 50) return null; // no hay suficiente papel
+  // --- Límite INFERIOR del ticket (transición papel→madera o relleno) ---
+  // Buscar la última fila brillante ANTES de una zona oscura (madera)
+  let r1 = H - 1;
+  let inPaper = false;
+  for (let y = 0; y < H; y++) {
+    if (rowMean[y] > 180) inPaper = true;
+    else if (inPaper && rowMean[y] < 150) {
+      // Transición: papel → madera/fondo oscuro
+      r1 = Math.min(H - 1, y + 8);
+      break;
+    }
+  }
+  // Si no encontró transición, tomar última fila brillante
+  if (r1 === H - 1) {
+    for (let y = H - 1; y >= 0; y--) {
+      if (rowMean[y] > 180) { r1 = Math.min(H - 1, y + 8); break; }
+    }
+  }
 
-  let c0 = paperCols[0], c1 = paperCols[paperCols.length - 1];
-  let r0 = paperRows[0], r1 = paperRows[paperRows.length - 1];
-
-  const MARGIN = 12;
-  c0 = Math.max(0, c0 - MARGIN);
-  c1 = Math.min(W - 1, c1 + MARGIN);
-  r0 = Math.max(0, r0 - MARGIN);
-  r1 = Math.min(H - 1, r1 + MARGIN);
+  // --- Columnas: bordes izquierdo y derecho ---
+  let c0 = 0, c1 = W - 1;
+  for (let x = 0; x < W; x++) {
+    if (colMean[x] > 140) { c0 = Math.max(0, x - 8); break; }
+  }
+  for (let x = W - 1; x >= 0; x--) {
+    if (colMean[x] > 140) { c1 = Math.min(W - 1, x + 8); break; }
+  }
 
   const cropW = c1 - c0;
   const cropH = r1 - r0;
 
-  // No recortar si el resultado es casi toda la imagen o muy pequeño
-  if (cropW < W * 0.15 || cropH < H * 0.15) return null;
-  if (cropW > W * 0.97 && cropH > H * 0.97) return null;
+  if (cropW < 50 || cropH < 50) return null;
 
   return { x: c0, y: r0, w: cropW, h: cropH };
 }
