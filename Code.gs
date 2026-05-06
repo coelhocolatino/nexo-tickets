@@ -144,7 +144,7 @@ function registrarPassword(body) {
   if (!usuario || !pwd) return { ok: false, error: 'Datos incompletos' };
   if (pwd.length < 6)   return { ok: false, error: 'Contraseña demasiado corta' };
 
-  var ss    = SpreadsheetApp.openById('19bqTde5-Yf6P7B6IkcJ2tkb_xM9lH9hvSlR6LFvm_TY');
+  var ss    = getSpreadsheet();
   var sheet = ss.getSheetByName('database');
   if (!sheet) return { ok: false, error: 'Hoja database no encontrada' };
 
@@ -214,7 +214,7 @@ function leerTablaUsuarios(sheet) {
  *   _colOffset = índice 0-based dentro del rango (P=0, Q=1, R=2...)
  */
 function encontrarFilaUsuario(usuario) {
-  var ss    = SpreadsheetApp.openById('19bqTde5-Yf6P7B6IkcJ2tkb_xM9lH9hvSlR6LFvm_TY');
+  var ss    = getSpreadsheet();
   var sheet = ss.getSheetByName('database');
   if (!sheet) throw new Error('Hoja "database" no encontrada');
 
@@ -264,7 +264,7 @@ function procesarTicket(body) {
     //   body.pedidos, body.dobles, body.xr, body.km, body.obs
     //   body.imagenBase64, body.usuarioSesion, body.nivelSesion
 
-    var ss     = SpreadsheetApp.openById('19bqTde5-Yf6P7B6IkcJ2tkb_xM9lH9hvSlR6LFvm_TY');
+    var ss     = getSpreadsheet();
     var sheet  = ss.getSheetByName('tickets') || ss.getSheets()[0];
 
     var fecha       = body.fecha       || '';
@@ -290,7 +290,7 @@ function procesarTicket(body) {
           'image/jpeg',
           'ticket_' + fecha + '_' + repartidor + '_' + Date.now() + '.jpg'
         );
-        var folderId = 'TU_FOLDER_ID_AQUI'; // ← CAMBIAR por tu folder real
+        var folderId = '15A9pWwJRTaxA_uHcQqhNmsKpJO11HEJb'; // ← CAMBIAR por tu folder real
         var folder = DriveApp.getFolderById(folderId);
         var file = folder.createFile(blob);
         file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -329,7 +329,7 @@ function procesarTicket(body) {
    Ejecuta esta función y revisa los logs (Ver → Registros).
    ============================================================= */
 function diagnosticarUsuarios() {
-  var ss    = SpreadsheetApp.openById('19bqTde5-Yf6P7B6IkcJ2tkb_xM9lH9hvSlR6LFvm_TY');
+  var ss    = getSpreadsheet();
   var sheet = ss.getSheetByName('database');
 
   Logger.log('=== DIAGNÓSTICO TABLA USUARIOS ===');
@@ -375,50 +375,105 @@ function columnLetter(col) {
 }
 
 /* =============================================================
-   LISTAS — leen de database!A3, E3, G3 como el Apps Script original
+   LISTAS — leen de database!A3, E3, G3
    Columnas:
      A (col 1) = Tiendas
      E (col 5) = Repartidores
      G (col 7) = Franja Horaria
-   Las listas empiezan en la fila 3.
+   Las listas empiezan en la fila 4 (fila 3 = encabezados: TIENDAS, REPARTIDORES, FRANJA HORARIA).
    ============================================================= */
-function getListas() {
-  var ss    = SpreadsheetApp.openById('19bqTde5-Yf6P7B6IkcJ2tkb_xM9lH9hvSlR6LFvm_TY');
-  var sheet = ss.getSheetByName('database');
-  if (!sheet) return { tiendas: [], repartidores: [], franjas: [] };
+var SS_ID = '19bqTde5-Yf6P7B6IkcJ2tkb_xM9lH9hvSlR6LFvm_TY';
 
-  var lastRow = sheet.getLastRow();
-  if (lastRow < 3) return { tiendas: [], repartidores: [], franjas: [] };
-
-  var numRows = lastRow - 2; // filas desde la 3 hasta el final
-
-  // Leer las 3 columnas por separado para no asumir un rango contiguo
-  var colTiendas      = sheet.getRange(3, 1, numRows, 1).getValues(); // A3:A
-  var colRepartidores = sheet.getRange(3, 5, numRows, 1).getValues(); // E3:E
-  var colFranjas      = sheet.getRange(3, 7, numRows, 1).getValues(); // G3:G
-
-  function extraer(col) {
-    return col.map(function(r) { return String(r[0] || '').trim(); })
-              .filter(function(v) { return v.length > 0; });
+function getSpreadsheet() {
+  // Intenta por ID primero, luego getActive como fallback
+  try {
+    return SpreadsheetApp.openById(SS_ID);
+  } catch(e) {
+    Logger.log('openById falló: ' + e.message + ' — usando getActiveSpreadsheet');
+    return SpreadsheetApp.getActiveSpreadsheet();
   }
-
-  return {
-    tiendas:      extraer(colTiendas),
-    repartidores: extraer(colRepartidores),
-    franjas:      extraer(colFranjas)
-  };
 }
 
-function getTiendas()      { return getListas().tiendas; }
-function getRepartidores() { return getListas().repartidores; }
-function getFranjas()      { return getListas().franjas; }
+function getListas() {
+  try {
+    var ss    = getSpreadsheet();
+    var sheet = ss.getSheetByName('database');
+
+    if (!sheet) {
+      Logger.log('ERROR getListas: hoja "database" no encontrada. Hojas disponibles: ' +
+        ss.getSheets().map(function(s){ return s.getName(); }).join(', '));
+      return { tiendas: [], repartidores: [], franjas: [] };
+    }
+
+    var lastRow = sheet.getLastRow();
+    Logger.log('getListas: lastRow=' + lastRow);
+    if (lastRow < 3) {
+      Logger.log('getListas: lastRow < 4, no hay datos');
+      return { tiendas: [], repartidores: [], franjas: [] };
+    }
+
+    var numRows = lastRow - 3; // filas desde la 4 hasta el final (fila 3 = encabezados)
+    if (numRows < 1) {
+      Logger.log('getListas: no hay datos desde fila 4');
+      return { tiendas: [], repartidores: [], franjas: [] };
+    }
+
+    var colTiendas      = sheet.getRange(4, 1, numRows, 1).getValues(); // A4:A
+    var colRepartidores = sheet.getRange(4, 5, numRows, 1).getValues(); // E4:E
+    var colFranjas      = sheet.getRange(4, 7, numRows, 1).getValues(); // G4:G
+
+    function extraer(col) {
+      return col.map(function(r) { return String(r[0] || '').trim(); })
+                .filter(function(v) { return v.length > 0; });
+    }
+
+    var resultado = {
+      tiendas:      extraer(colTiendas),
+      repartidores: extraer(colRepartidores),
+      franjas:      extraer(colFranjas)
+    };
+
+    Logger.log('getListas OK: tiendas=' + resultado.tiendas.length +
+      ' repartidores=' + resultado.repartidores.length +
+      ' franjas=' + resultado.franjas.length);
+
+    return resultado;
+
+  } catch(err) {
+    Logger.log('getListas EXCEPCION: ' + err.message);
+    return { tiendas: [], repartidores: [], franjas: [] };
+  }
+}
 
 /* Diagnóstico de listas — ejecutar manualmente en Apps Script Editor */
 function diagnosticarListas() {
-  var listas = getListas();
   Logger.log('=== DIAGNÓSTICO LISTAS ===');
-  Logger.log('Tiendas (' + listas.tiendas.length + '): ' + JSON.stringify(listas.tiendas));
-  Logger.log('Repartidores (' + listas.repartidores.length + '): ' + JSON.stringify(listas.repartidores));
-  Logger.log('Franjas (' + listas.franjas.length + '): ' + JSON.stringify(listas.franjas));
+  Logger.log('SS_ID: ' + SS_ID);
+
+  try {
+    var ss = getSpreadsheet();
+    Logger.log('Spreadsheet nombre: ' + ss.getName());
+    Logger.log('Hojas: ' + ss.getSheets().map(function(s){ return '"' + s.getName() + '"'; }).join(', '));
+
+    var sheet = ss.getSheetByName('database');
+    if (!sheet) { Logger.log('ERROR: hoja "database" no encontrada'); return; }
+
+    Logger.log('lastRow: ' + sheet.getLastRow() + ' | lastCol: ' + sheet.getLastColumn());
+
+    // Mostrar filas 1 a 5 para referencia
+    for (var r = 1; r <= Math.min(5, sheet.getLastRow()); r++) {
+      var row = sheet.getRange(r, 1, 1, Math.min(10, sheet.getLastColumn())).getValues()[0];
+      Logger.log('Fila ' + r + ': ' + JSON.stringify(row));
+    }
+
+    var listas = getListas();
+    Logger.log('--- RESULTADO ---');
+    Logger.log('Tiendas (' + listas.tiendas.length + '): ' + JSON.stringify(listas.tiendas.slice(0,5)));
+    Logger.log('Repartidores (' + listas.repartidores.length + '): ' + JSON.stringify(listas.repartidores.slice(0,5)));
+    Logger.log('Franjas (' + listas.franjas.length + '): ' + JSON.stringify(listas.franjas.slice(0,5)));
+
+  } catch(e) {
+    Logger.log('EXCEPCION: ' + e.message);
+  }
   Logger.log('=== FIN ===');
 }
