@@ -789,6 +789,168 @@ function optimizarFoto(file, rotacionExtra) {
 
 
 /* ============================================================
+   COLA OFFLINE — IndexedDB
+   Guarda tickets pendientes cuando no hay conexión y los sube
+   automáticamente cuando se recupera.
+   ============================================================ */
+const DB_NAME    = 'nexo-tickets-queue';
+const DB_VERSION = 1;
+const STORE_NAME = 'pendientes';
+
+function abrirDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+async function guardarEnCola(datos) {
+  const db    = await abrirDB();
+  const tx    = db.transaction(STORE_NAME, 'readwrite');
+  const store = tx.objectStore(STORE_NAME);
+  const item  = { ...datos, _ts: Date.now(), _intentos: 0 };
+  return new Promise((resolve, reject) => {
+    const req = store.add(item);
+    req.onsuccess = () => resolve(req.result); // devuelve el id
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+async function obtenerPendientes() {
+  const db    = await abrirDB();
+  const tx    = db.transaction(STORE_NAME, 'readonly');
+  const store = tx.objectStore(STORE_NAME);
+  return new Promise((resolve, reject) => {
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+async function eliminarDeCola(id) {
+  const db    = await abrirDB();
+  const tx    = db.transaction(STORE_NAME, 'readwrite');
+  const store = tx.objectStore(STORE_NAME);
+  return new Promise((resolve, reject) => {
+    const req = store.delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+async function contarPendientes() {
+  const db    = await abrirDB();
+  const tx    = db.transaction(STORE_NAME, 'readonly');
+  const store = tx.objectStore(STORE_NAME);
+  return new Promise((resolve, reject) => {
+    const req = store.count();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => resolve(0);
+  });
+}
+
+/* Badge de pendientes en el header */
+async function actualizarBadgePendientes() {
+  try {
+    const n = await contarPendientes();
+    let badge = document.getElementById('badgePendientes');
+    if (n > 0) {
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'badgePendientes';
+        badge.style.cssText = `
+          display:inline-flex; align-items:center; gap:6px;
+          background:rgba(251,191,36,.25); border:1px solid rgba(251,191,36,.4);
+          border-radius:20px; padding:4px 12px; font-size:.78rem; font-weight:700;
+          color:#fde68a; margin-bottom:6px; cursor:pointer;
+        `;
+        badge.title = 'Tickets pendientes de subir';
+        badge.onclick = () => procesarCola(true);
+        document.getElementById('userBadge').insertAdjacentElement('afterend', badge);
+      }
+      badge.textContent = `⏳ ${n} ticket${n > 1 ? 's' : ''} pendiente${n > 1 ? 's' : ''}`;
+    } else if (badge) {
+      badge.remove();
+    }
+  } catch(e) { /* ignorar */ }
+}
+
+/* Enviar un ticket de la cola al servidor */
+async function enviarTicketDeCola(item) {
+  const { id, ...datos } = item;
+  const resp = await fetch(window.BACKEND_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(datos)
+  });
+  const text = await resp.text();
+  if (!resp.ok || text.includes('ERROR')) throw new Error(text);
+  return text;
+}
+
+/* Procesar toda la cola — llamado al recuperar conexión */
+let _procesandoCola = false;
+async function procesarCola(mostrarMsg) {
+  if (_procesandoCola || !navigator.onLine) return;
+  _procesandoCola = true;
+
+  try {
+    const pendientes = await obtenerPendientes();
+    if (pendientes.length === 0) { _procesandoCola = false; return; }
+
+    if (mostrarMsg) setMsg(`⏳ Subiendo ${pendientes.length} ticket(s) pendiente(s)...`, '#ffcc00');
+
+    let ok = 0, fail = 0;
+    for (const item of pendientes) {
+      try {
+        await enviarTicketDeCola(item);
+        await eliminarDeCola(item.id);
+        ok++;
+      } catch(e) {
+        console.warn('[Nexo] Cola: fallo en item', item.id, e.message);
+        fail++;
+      }
+    }
+
+    await actualizarBadgePendientes();
+
+    if (mostrarMsg) {
+      if (fail === 0) {
+        setMsg(`✅ ${ok} ticket(s) subido(s) correctamente`, '#9dffb0');
+        setTimeout(clearMsg, 4000);
+      } else {
+        setMsg(`⚠️ ${ok} subidos, ${fail} fallaron (se reintentarán)`, '#ffcc00');
+      }
+    }
+  } catch(e) {
+    console.error('[Nexo] procesarCola:', e);
+  }
+  _procesandoCola = false;
+}
+
+/* Detectar recuperación de conexión → procesar cola automáticamente */
+window.addEventListener('online', () => {
+  console.log('[Nexo] Conexión recuperada — procesando cola');
+  setTimeout(() => procesarCola(true), 1500); // pequeño delay para que la conexión se estabilice
+});
+
+/* Al cargar: mostrar badge y procesar si hay pendientes + hay conexión */
+window.addEventListener('load', async () => {
+  await actualizarBadgePendientes();
+  if (navigator.onLine) {
+    const n = await contarPendientes();
+    if (n > 0) setTimeout(() => procesarCola(true), 2000);
+  }
+});
+
+/* ============================================================
    ENVÍO DEL TICKET
    ============================================================ */
 let _submitting = false;
@@ -797,15 +959,13 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
   e.preventDefault();
   if (_submitting) return;
 
-  if (!navigator.onLine) { showOfflineAlert(); return; }
-
   const foto = fotoInput.files[0];
   if (!foto) { alert('Por favor, selecciona una foto del ticket.'); return; }
 
-  // Forzar fecha de hoy para usuario 1 y usuario 2 (defensa adicional)
+  // Forzar fecha de hoy para usuario 1 y usuario 2
   if (!ES_ADMIN) fechaInput.value = HOY;
 
-  // Forzar repartidor para usuario 1 (defensa adicional)
+  // Forzar repartidor para usuario 1
   if (ES_USUARIO_1 && sesion) {
     const miNombre = sesion.nombre || sesion.usuario;
     const opciones = Array.from(repartSel.options).map(o => o.value);
@@ -822,37 +982,32 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
   }
 
   _submitting = true;
-  showSpinner('Optimizando foto...');
+  showSpinner('Procesando foto...');
   setMsg('', '');
 
   try {
-    // Usar versión ya procesada del preview si existe, si no procesar ahora
+    // Preparar foto
     let fotoOpt;
     if (fotoInput._procesada) {
       fotoOpt = fotoInput._procesada;
-      const kbOpt = (fotoOpt.size / 1024).toFixed(0);
-      fotoInfo.textContent = `Escaneada: ${kbOpt} KB ✅`;
     } else {
       try {
-        fotoOpt = await optimizarFoto(foto);
-        const kbOpt  = (fotoOpt.size / 1024).toFixed(0);
-        const kbOrig = (foto.size / 1024).toFixed(0);
-        fotoInfo.textContent = `Original: ${kbOrig} KB → Escaneada: ${kbOpt} KB`;
-      } catch (optErr) {
+        fotoOpt = await optimizarFoto(foto, rotacionManual);
+      } catch(optErr) {
         console.warn('[Nexo] Optimización falló, usando original:', optErr);
         fotoOpt = foto;
       }
     }
 
-    spinnerTxt.textContent = 'Subiendo ticket...';
-
+    // Convertir a base64
     const base64 = await new Promise((res, rej) => {
       const r = new FileReader();
       r.onload  = () => res(r.result);
-      r.onerror = () => rej(new Error('Error leyendo foto optimizada'));
+      r.onerror = () => rej(new Error('Error leyendo foto'));
       r.readAsDataURL(fotoOpt);
     });
 
+    // Construir payload
     const fd = new FormData(document.getElementById('ticketForm'));
     const datos = {};
     fd.forEach((v, k) => { if (k !== 'foto') datos[k] = v; });
@@ -860,12 +1015,34 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
     datos.usuarioSesion = sesion ? sesion.usuario : '';
     datos.nivelSesion   = NIVEL;
 
-    const resp = await fetch(window.BACKEND_URL, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(datos)
-    });
-    const text = await resp.text();
+    // --- SIN CONEXIÓN: guardar en cola ---
+    if (!navigator.onLine) {
+      spinnerTxt.textContent = 'Guardando en cola...';
+      const id = await guardarEnCola(datos);
+      await actualizarBadgePendientes();
+      setMsg('📦 Sin conexión — ticket guardado. Se subirá automáticamente.', '#ffcc00');
+      resetFormulario(true);
+      return;
+    }
+
+    // --- CON CONEXIÓN: enviar directamente ---
+    spinnerTxt.textContent = 'Subiendo ticket...';
+    let text;
+    try {
+      const resp = await fetch(window.BACKEND_URL, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(datos)
+      });
+      text = await resp.text();
+    } catch(netErr) {
+      // Error de red aunque onLine dijera true → guardar en cola
+      const id = await guardarEnCola(datos);
+      await actualizarBadgePendientes();
+      setMsg('📦 Error de red — ticket guardado. Se subirá cuando haya conexión.', '#ffcc00');
+      resetFormulario(true);
+      return;
+    }
 
     if (text.includes('OK')) {
       setMsg('✅ ' + text, '#9dffb0');
@@ -875,56 +1052,7 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
       setMsg(text, text.includes('ERROR') ? '#fca5a5' : '#9dffb0');
     }
 
-    setTimeout(() => {
-      const form = document.getElementById('ticketForm');
-      form.reset();
-
-      // Restablecer fecha (a hoy siempre)
-      fechaInput.value = HOY;
-
-      // Restablecer tienda predefinida
-      aplicarReglasTienda();
-
-      // Restaurar TODAS las opciones de franja antes de aplicar reglas
-      // (form.reset() vacía el select, necesitamos las opciones maestras)
-      if (ES_USUARIO_2) {
-        const franjaSel = document.getElementById('franja');
-        const maestras  = franjaSel._allOptions;
-        if (maestras && maestras.length > 0) {
-          // Reconstruir con todas las franjas
-          const ph = franjaSel.options[0] ? franjaSel.options[0].cloneNode(true) : (() => {
-            const o = document.createElement('option');
-            o.value = ''; o.textContent = 'Seleccione franja horaria...';
-            o.disabled = true; o.selected = true;
-            return o;
-          })();
-          franjaSel.innerHTML = '';
-          franjaSel.appendChild(ph);
-          maestras.forEach(op => {
-            const el = document.createElement('option');
-            el.value = op.value; el.textContent = op.text;
-            franjaSel.appendChild(el);
-          });
-        }
-        aplicarReglasFranja();
-      }
-
-      // Repartidor: para usuario 1, restablecer al suyo. Resto, placeholder
-      if (ES_USUARIO_1) {
-        aplicarReglasRepartidor();
-      } else {
-        repartSel.selectedIndex = 0;
-      }
-
-      fotoPreview.style.display = 'none';
-      fotoPreview.src = '';
-      fotoInfo.style.display = 'none';
-      fotoInput._procesada = null;
-      rotacionManual = 0;
-      document.getElementById('btnGirar').style.display = 'none';
-      clearMsg();
-      _submitting = false;
-    }, 5000);
+    resetFormulario(false);
 
   } catch (err) {
     setMsg('❌ Error: ' + err.message, '#fca5a5');
@@ -934,6 +1062,51 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
     hideSpinner();
   }
 });
+
+/* Reset del formulario tras envío exitoso */
+function resetFormulario(inmediato) {
+  const delay = inmediato ? 3000 : 5000;
+  setTimeout(() => {
+    const form = document.getElementById('ticketForm');
+    form.reset();
+    fechaInput.value = HOY;
+
+    aplicarReglasTienda();
+
+    if (ES_USUARIO_2) {
+      const franjaSel = document.getElementById('franja');
+      const maestras  = franjaSel._allOptions;
+      if (maestras && maestras.length > 0) {
+        const ph = document.createElement('option');
+        ph.value = ''; ph.textContent = 'Seleccione franja horaria...';
+        ph.disabled = true; ph.selected = true;
+        franjaSel.innerHTML = '';
+        franjaSel.appendChild(ph);
+        maestras.forEach(op => {
+          const el = document.createElement('option');
+          el.value = op.value; el.textContent = op.text;
+          franjaSel.appendChild(el);
+        });
+      }
+      aplicarReglasFranja();
+    }
+
+    if (ES_USUARIO_1) {
+      aplicarReglasRepartidor();
+    } else {
+      repartSel.selectedIndex = 0;
+    }
+
+    fotoPreview.style.display = 'none';
+    fotoPreview.src = '';
+    fotoInfo.style.display = 'none';
+    fotoInput._procesada = null;
+    rotacionManual = 0;
+    document.getElementById('btnGirar').style.display = 'none';
+    clearMsg();
+    _submitting = false;
+  }, delay);
+}
 
 /* ============================================================
    REGISTRAR SERVICE WORKER
