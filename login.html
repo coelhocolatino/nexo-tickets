@@ -12,15 +12,14 @@
 <link rel="icon" href="nexo-icon-192.png">
 <link rel="apple-touch-icon" href="nexo-icon-192.png">
 <title>Nexo · Acceso</title>
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-
 <style>
 :root {
   --blue:#2563eb; --blue-light:#3b82f6;
   --orange:#f97316; --orange-light:#fb923c;
+  --purple:#7c3aed; --purple-light:#a78bfa;
   --bg:#07080f;
   --surface:rgba(255,255,255,.06);
   --border:rgba(255,255,255,.10);
@@ -28,8 +27,10 @@
   --radius:16px;
   --font:'Nunito', system-ui, sans-serif;
 }
+
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 html { -webkit-font-smoothing:antialiased; }
+
 body {
   font-family:var(--font);
   background:var(--bg);
@@ -39,8 +40,9 @@ body {
   padding:24px 16px 48px;
   position:relative; overflow-x:hidden;
 }
+
 .blob { position:fixed; border-radius:50%; pointer-events:none; z-index:0; }
-.blob-blue   { top:-140px; left:-80px; width:420px; height:420px;
+.blob-blue { top:-140px; left:-80px; width:420px; height:420px;
   background:radial-gradient(circle, rgba(37,99,235,.22) 0%, transparent 70%); }
 .blob-orange { bottom:-120px; right:-60px; width:360px; height:360px;
   background:radial-gradient(circle, rgba(249,115,22,.18) 0%, transparent 70%); }
@@ -51,6 +53,7 @@ body {
   margin-bottom:28px;
   animation:fadeDown .55s cubic-bezier(.16,1,.3,1) both;
 }
+
 .logo-img {
   width:240px; max-width:70vw; height:auto;
   filter: drop-shadow(0 0 24px rgba(249,115,22,.35)) drop-shadow(0 0 12px rgba(37,99,235,.25));
@@ -70,6 +73,7 @@ body {
   box-shadow:0 24px 64px rgba(0,0,0,.55);
   animation:fadeUp .5s cubic-bezier(.16,1,.3,1) .08s both;
 }
+
 .card-title {
   font-size:1.1rem; font-weight:800;
   margin-bottom:22px;
@@ -80,6 +84,7 @@ body {
 .step.active { display:flex; }
 
 .field { display:flex; flex-direction:column; gap:5px; }
+
 label {
   font-size:.78rem; font-weight:800;
   color:var(--muted);
@@ -99,15 +104,18 @@ input[type="text"], input[type="password"] {
   transition: border-color .18s, box-shadow .18s, background .18s;
   -webkit-appearance:none; appearance:none;
 }
+
 input:focus {
   border-color:var(--blue-light);
   background:rgba(255,255,255,.11);
   box-shadow:0 0 0 3px rgba(59,130,246,.22);
 }
+
 input::placeholder { color:#3d4e66; }
 
 .pwd-wrap { position:relative; }
 .pwd-wrap input { padding-right:48px; }
+
 .pwd-eye {
   position:absolute; right:13px; top:50%;
   transform:translateY(-50%);
@@ -129,18 +137,41 @@ input::placeholder { color:#3d4e66; }
 }
 .btn:active { transform:scale(.97); }
 .btn:disabled { opacity:.65; cursor:not-allowed; transform:none; }
+
 .btn-primary {
   background:linear-gradient(135deg, var(--blue), var(--blue-light));
   color:#fff;
   box-shadow:0 6px 20px rgba(37,99,235,.38);
 }
 .btn-primary:not(:disabled):hover { box-shadow:0 10px 28px rgba(37,99,235,.55); }
+
 .btn-orange {
   background:linear-gradient(135deg, var(--orange), var(--orange-light));
   color:#fff;
   box-shadow:0 6px 20px rgba(249,115,22,.38);
 }
 .btn-orange:not(:disabled):hover { box-shadow:0 10px 28px rgba(249,115,22,.55); }
+
+/* ── Botón biométrico (huella / Face ID) ── */
+.btn-bio {
+  background:linear-gradient(135deg, var(--purple), var(--purple-light));
+  color:#fff;
+  box-shadow:0 6px 20px rgba(124,58,237,.38);
+  display:flex; align-items:center; justify-content:center; gap:10px;
+}
+.btn-bio:not(:disabled):hover { box-shadow:0 10px 28px rgba(124,58,237,.55); }
+.bio-icon { font-size:1.2rem; line-height:1; }
+
+/* Divisor */
+.divider {
+  display:flex; align-items:center; gap:10px;
+  color:var(--muted); font-size:.75rem; font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase;
+}
+.divider::before, .divider::after {
+  content:''; flex:1; height:1px; background:var(--border);
+}
+
 .btn-ghost {
   background:transparent; color:var(--muted);
   font-size:.85rem; font-weight:600;
@@ -148,6 +179,18 @@ input::placeholder { color:#3d4e66; }
   margin-top:-6px;
 }
 .btn-ghost:hover { color:var(--text); }
+
+/* Eliminar biometría */
+.bio-remove {
+  text-align:center; margin-top:-8px;
+}
+.bio-remove button {
+  background:none; border:none; cursor:pointer;
+  color:#475569; font-size:.72rem; font-weight:600;
+  font-family:var(--font); padding:4px 8px; border-radius:6px;
+  transition:color .15s;
+}
+.bio-remove button:hover { color:#fca5a5; }
 
 .msg {
   display:none; font-size:.88rem; font-weight:700;
@@ -158,6 +201,7 @@ input::placeholder { color:#3d4e66; }
 .msg.error   { background:rgba(239,68,68,.12);  color:#fca5a5; border:1px solid rgba(239,68,68,.25); }
 .msg.success { background:rgba(34,197,94,.12);  color:#86efac; border:1px solid rgba(34,197,94,.25); }
 .msg.warn    { background:rgba(251,191,36,.12); color:#fde68a; border:1px solid rgba(251,191,36,.25); }
+.msg.info    { background:rgba(124,58,237,.12); color:#c4b5fd; border:1px solid rgba(124,58,237,.25); }
 
 .strength-bar {
   height:4px; border-radius:99px;
@@ -181,6 +225,29 @@ input::placeholder { color:#3d4e66; }
   text-align:center; line-height:1.5;
 }
 
+/* Ilustración biométrica */
+.bio-illustration {
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  padding:20px 0 8px;
+}
+.bio-illustration .bio-big-icon {
+  font-size:3.5rem; line-height:1;
+  filter: drop-shadow(0 0 16px rgba(124,58,237,.5));
+  animation: bioPulse 2s ease-in-out infinite;
+}
+.bio-illustration p {
+  font-size:.82rem; color:var(--muted); text-align:center; line-height:1.55; font-weight:600;
+}
+
+/* Badge de sesión activa */
+.session-badge {
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:.72rem; font-weight:700; color:#86efac;
+  background:rgba(34,197,94,.1); border:1px solid rgba(34,197,94,.2);
+  border-radius:99px; padding:3px 10px;
+  margin:0 auto;
+}
+
 @keyframes spin { to { transform:rotate(360deg); } }
 .spinner {
   display:inline-block; width:15px; height:15px;
@@ -198,6 +265,10 @@ input::placeholder { color:#3d4e66; }
 @keyframes fadeUp {
   from { opacity:0; transform:translateY(20px); }
   to   { opacity:1; transform:translateY(0); }
+}
+@keyframes bioPulse {
+  0%, 100% { transform:scale(1); opacity:1; }
+  50%       { transform:scale(1.08); opacity:.85; }
 }
 
 @supports (-webkit-touch-callout: none) {
@@ -217,8 +288,20 @@ input::placeholder { color:#3d4e66; }
 
 <div class="card" role="main">
 
+  <!-- ── STEP 1: Introducir usuario ── -->
   <div class="step active" id="step1">
     <div class="card-title">Acceso al <em>sistema</em></div>
+
+    <!-- Botón biométrico (visible solo si hay credencial guardada) -->
+    <button class="btn btn-bio" id="btnBiometria" style="display:none" onclick="loginBiometrico()">
+      <span class="bio-icon">🔐</span> Entrar con huella / Face ID
+    </button>
+    <div class="bio-remove" id="bioRemoveWrap" style="display:none">
+      <button type="button" onclick="eliminarBiometria()">✕ Quitar biometría</button>
+    </div>
+
+    <div class="divider" id="dividerOr" style="display:none">o</div>
+
     <div class="field">
       <label for="inputUsuario">Usuario</label>
       <input type="text" id="inputUsuario"
@@ -226,13 +309,16 @@ input::placeholder { color:#3d4e66; }
         autocomplete="username" autocapitalize="none"
         autocorrect="off" spellcheck="false" />
     </div>
+
     <div class="msg" id="msg1" role="alert"></div>
+
     <button class="btn btn-primary" id="btnContinuar" onclick="verificarUsuario()">
       Continuar →
     </button>
     <p class="hint">Solo usuarios registrados por el administrador</p>
   </div>
 
+  <!-- ── STEP 2A: Login con contraseña ── -->
   <div class="step" id="step2login">
     <div class="card-title">Hola, <em id="nombreMostrado">—</em> 👋</div>
     <div class="field">
@@ -248,6 +334,7 @@ input::placeholder { color:#3d4e66; }
     <button class="btn btn-ghost" type="button" onclick="volver()">← Cambiar usuario</button>
   </div>
 
+  <!-- ── STEP 2B: Primer acceso – crear contraseña ── -->
   <div class="step" id="step2registro">
     <div class="card-title">Bienvenido, <em id="nombreNuevo">—</em> 🎉</div>
     <p class="hint" style="text-align:left;">Es tu primer acceso. Crea una contraseña segura.</p>
@@ -281,64 +368,162 @@ input::placeholder { color:#3d4e66; }
     <button class="btn btn-ghost" type="button" onclick="volver()">← Volver</button>
   </div>
 
-</div>
+  <!-- ── STEP 3: Ofrecer activar biometría (tras login exitoso) ── -->
+  <div class="step" id="stepBiometria">
+    <div class="card-title">Acceso <em>rápido</em></div>
+    <div class="bio-illustration">
+      <span class="bio-big-icon">🔐</span>
+      <p>¿Quieres usar tu <strong>huella dactilar</strong> o <strong>Face ID</strong> para entrar directamente la próxima vez, sin escribir contraseña?</p>
+    </div>
+    <div class="msg show info" id="msgBioOffer">✅ Has entrado correctamente</div>
+    <button class="btn btn-bio" id="btnActivarBio" onclick="activarBiometria()">
+      <span class="bio-icon">🔐</span> Activar huella / Face ID
+    </button>
+    <button class="btn btn-ghost" type="button" onclick="saltarBiometria()">Ahora no → Entrar</button>
+  </div>
+
+</div><!-- /card -->
 
 <script>
+/* ════════════════════════════════════════════════════════════
+   CONFIGURACIÓN
+   ════════════════════════════════════════════════════════════ */
 const BACKEND_URL = "https://script.google.com/macros/s/AKfycbyrvwWEdjQs926K-njK7bmrUXxHF0bM4Atmdah1vXyCZEPJE14eFFvWA5jZ6BuFqVGh/exec";
 const PROXY       = "https://sad-proxy.colatino-ventas-enlinea.workers.dev/";
+const SESSION_KEY = 'sad_user';
+const BIO_KEY     = 'sad_bio';
+const SESSION_TTL = 6 * 60 * 60 * 1000; // 6 horas en ms
 
 let usuarioActual = null;
 let _busy = false;
 
+/* ════════════════════════════════════════════════════════════
+   UTILIDADES WebAuthn
+   ════════════════════════════════════════════════════════════ */
+function bufToBase64(buf) {
+  return btoa(Array.from(new Uint8Array(buf), b => String.fromCharCode(b)).join(''));
+}
+function base64ToBuf(b64) {
+  return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+}
+function getHostname() {
+  // Usar hostname real del dispositivo para WebAuthn rpId
+  return window.location.hostname;
+}
+async function isPlatformAuthAvailable() {
+  if (!window.PublicKeyCredential) return false;
+  try {
+    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  } catch { return false; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   SESIÓN (localStorage + 6 horas de expiración)
+   ════════════════════════════════════════════════════════════ */
+function guardarSesion(data) {
+  const sesion = {
+    usuario  : usuarioActual.usuario,
+    nombre   : usuarioActual.nombre   || usuarioActual.usuario,
+    nivel    : usuarioActual.nivel    || 'usuario 1',
+    tiendaPre: usuarioActual.tiendaPre || data.tiendaPre || '',
+    token    : data.token || Date.now().toString(36),
+    timestamp: Date.now(),
+    expiry   : Date.now() + SESSION_TTL   // ← expiración 6 h
+  };
+  // Guardar en localStorage (persistente 6h) y sessionStorage (compatibilidad con index.html)
+  localStorage.setItem(SESSION_KEY, JSON.stringify(sesion));
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(sesion));
+  return sesion;
+}
+
+function sesionValida(u) {
+  return u && u.usuario && u.token && u.expiry && Date.now() < u.expiry;
+}
+
+/* Comprueba sesión al cargar: si está vigente redirige a index.html */
 (function checkSession() {
   try {
-    const raw = sessionStorage.getItem('sad_user');
-    if (!raw) return;
-    const u = JSON.parse(raw);
-    if (u && u.usuario && u.token) {
-      window.location.replace('index.html');
+    // 1. Intentar desde localStorage (persiste entre pestañas/reinicios)
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (raw) {
+      const u = JSON.parse(raw);
+      if (sesionValida(u)) {
+        // Refrescar sessionStorage para que index.html lo encuentre
+        sessionStorage.setItem(SESSION_KEY, raw);
+        window.location.replace('index.html');
+        return;
+      } else {
+        localStorage.removeItem(SESSION_KEY); // expirada
+      }
     }
-  } catch(e) { sessionStorage.removeItem('sad_user'); }
+    // 2. Fallback a sessionStorage (compatibilidad)
+    const rawSS = sessionStorage.getItem(SESSION_KEY);
+    if (rawSS) {
+      const u = JSON.parse(rawSS);
+      if (u && u.usuario && u.token) {
+        window.location.replace('index.html');
+      }
+    }
+  } catch(e) {
+    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
+  }
 })();
 
+/* Inicializar botón biométrico si hay credencial guardada */
+(async function initBiometria() {
+  const bioRaw = localStorage.getItem(BIO_KEY);
+  if (!bioRaw) return;
+  const available = await isPlatformAuthAvailable();
+  if (!available) return;
+  // Mostrar botón biométrico y divisor
+  document.getElementById('btnBiometria').style.display  = 'flex';
+  document.getElementById('bioRemoveWrap').style.display = 'block';
+  document.getElementById('dividerOr').style.display     = 'flex';
+})();
+
+/* ════════════════════════════════════════════════════════════
+   PROXY / BACKEND
+   ════════════════════════════════════════════════════════════ */
 function proxyPost(body) {
   const url = PROXY + "?url=" + encodeURIComponent(BACKEND_URL);
   return fetch(url, {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(body)
+    method : "POST",
+    headers: {"Content-Type":"application/json"},
+    body   : JSON.stringify(body)
   }).then(r => {
     if (!r.ok) throw new Error("HTTP " + r.status);
     return r.text();
   }).then(text => {
-    try {
-      return JSON.parse(text);
-    } catch(e) {
-      // El Apps Script devolvió texto plano (error de script)
-      console.error('[Nexo] Respuesta no-JSON del servidor:', text);
+    try { return JSON.parse(text); }
+    catch(e) {
+      console.error('[Nexo] Respuesta no-JSON:', text);
       throw new Error('Error del servidor: ' + text.substring(0, 120));
     }
   });
 }
 
+/* ════════════════════════════════════════════════════════════
+   UTILIDADES UI
+   ════════════════════════════════════════════════════════════ */
 function showMsg(id, text, type) {
   const el = document.getElementById(id);
   el.textContent = text;
-  el.className = "msg show " + type;
+  el.className   = "msg show " + type;
 }
 function hideMsg(id) {
   const el = document.getElementById(id);
   el.textContent = "";
-  el.className = "msg";
+  el.className   = "msg";
 }
 function setLoading(btnEl, loading, text) {
   if (loading) {
     btnEl.dataset.orig = btnEl.innerHTML;
-    btnEl.innerHTML = '<span class="spinner"></span>' + (text || "Verificando...");
-    btnEl.disabled = true;
+    btnEl.innerHTML    = '<span class="spinner"></span>' + (text || "Verificando...");
+    btnEl.disabled     = true;
   } else {
     btnEl.innerHTML = btnEl.dataset.orig || btnEl.innerHTML;
-    btnEl.disabled = false;
+    btnEl.disabled  = false;
   }
 }
 function showStep(id) {
@@ -347,9 +532,13 @@ function showStep(id) {
 }
 function togglePwd(inputId, btn) {
   const inp = document.getElementById(inputId);
-  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
-  else { inp.type = 'password'; btn.textContent = '👁'; }
+  if (inp.type === 'password') { inp.type = 'text';     btn.textContent = '🙈'; }
+  else                         { inp.type = 'password'; btn.textContent = '👁'; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   FLUJO DE LOGIN
+   ════════════════════════════════════════════════════════════ */
 function volver() {
   _busy = false;
   showStep('step1');
@@ -357,25 +546,14 @@ function volver() {
   document.getElementById('inputUsuario').value = '';
   setTimeout(() => document.getElementById('inputUsuario').focus(), 80);
 }
-function guardarSesion(data) {
-  const sesion = {
-    usuario:   usuarioActual.usuario,
-    nombre:    usuarioActual.nombre    || usuarioActual.usuario,
-    nivel:     usuarioActual.nivel     || 'usuario 1',
-    tiendaPre: usuarioActual.tiendaPre || data.tiendaPre || '',
-    token:     data.token               || Date.now().toString(36),
-    timestamp: Date.now()
-  };
-  sessionStorage.setItem('sad_user', JSON.stringify(sesion));
-}
 
 function checkStrength() {
-  const val = document.getElementById('inputPwdNueva').value;
+  const val      = document.getElementById('inputPwdNueva').value;
   const hasLen   = val.length >= 6;
   const hasNum   = /\d/.test(val);
   const hasUpper = /[A-Z]/.test(val);
-  setReq('req-len', hasLen);
-  setReq('req-num', hasNum);
+  setReq('req-len',   hasLen);
+  setReq('req-num',   hasNum);
   setReq('req-upper', hasUpper);
   const score = [hasLen, hasNum, hasUpper].filter(Boolean).length;
   const fill  = document.getElementById('strengthFill');
@@ -392,15 +570,12 @@ async function verificarUsuario() {
   if (_busy) return;
   const usuario = document.getElementById('inputUsuario').value.trim();
   if (!usuario) { showMsg('msg1', 'Ingresa tu nombre de usuario', 'warn'); return; }
-
   _busy = true;
   const btn = document.getElementById('btnContinuar');
   setLoading(btn, true, 'Verificando...');
   hideMsg('msg1');
-
   try {
     const data = await proxyPost({ accion:'verificarUsuario', usuario: usuario.toLowerCase() });
-
     if (!data.encontrado) {
       showMsg('msg1', '❌ Usuario no encontrado. Contacta al administrador.', 'error');
       _busy = false; setLoading(btn, false); return;
@@ -409,18 +584,15 @@ async function verificarUsuario() {
       showMsg('msg1', '🚫 Tu acceso está desactivado. Contacta al administrador.', 'error');
       _busy = false; setLoading(btn, false); return;
     }
-
     usuarioActual = {
-      usuario:   usuario.toLowerCase(),
-      nombre:    data.nombre    || usuario,
-      activo:    data.activo,
-      nivel:     data.nivel     || 'usuario 1',
+      usuario  : usuario.toLowerCase(),
+      nombre   : data.nombre   || usuario,
+      activo   : data.activo,
+      nivel    : data.nivel    || 'usuario 1',
       tiendaPre: data.tiendaPre || '',
-      tienePwd:  data.tienePwd
+      tienePwd : data.tienePwd
     };
-
     setLoading(btn, false);
-
     if (data.tienePwd) {
       document.getElementById('nombreMostrado').textContent = usuarioActual.nombre;
       showStep('step2login');
@@ -442,22 +614,21 @@ async function hacerLogin() {
   if (_busy) return;
   const pwd = document.getElementById('inputPassword').value;
   if (!pwd) { showMsg('msg2', 'Ingresa tu contraseña', 'warn'); return; }
-
   _busy = true;
   const btn = document.getElementById('btnLogin');
   setLoading(btn, true, 'Entrando...');
   hideMsg('msg2');
-
   try {
     const data = await proxyPost({ accion:'login', usuario:usuarioActual.usuario, password:pwd });
-
     if (data.ok) {
-      usuarioActual.nivel     = data.nivel     || usuarioActual.nivel;
-      usuarioActual.nombre    = data.nombre    || usuarioActual.nombre;
+      usuarioActual.nivel    = data.nivel    || usuarioActual.nivel;
+      usuarioActual.nombre   = data.nombre   || usuarioActual.nombre;
       usuarioActual.tiendaPre = data.tiendaPre || usuarioActual.tiendaPre || '';
       guardarSesion(data);
-      showMsg('msg2', '✅ Acceso concedido. Entrando...', 'success');
-      setTimeout(() => window.location.replace('index.html'), 900);
+      showMsg('msg2', '✅ Acceso concedido.', 'success');
+      setLoading(btn, false);
+      // Ofrecer biometría si está disponible y no está registrada
+      await ofrecerBiometria();
     } else {
       showMsg('msg2', '❌ Contraseña incorrecta. Inténtalo de nuevo.', 'error');
       document.getElementById('inputPassword').value = '';
@@ -475,25 +646,22 @@ async function registrarPassword() {
   if (_busy) return;
   const pwd1 = document.getElementById('inputPwdNueva').value;
   const pwd2 = document.getElementById('inputPwdConfirm').value;
-
   if (pwd1.length < 6) { showMsg('msg3', '⚠️ La contraseña debe tener al menos 6 caracteres', 'warn'); return; }
   if (pwd1 !== pwd2)   { showMsg('msg3', '❌ Las contraseñas no coinciden', 'error'); return; }
-
   _busy = true;
   const btn = document.getElementById('btnRegistrar');
   setLoading(btn, true, 'Guardando...');
   hideMsg('msg3');
-
   try {
     const data = await proxyPost({ accion:'registrarPassword', usuario:usuarioActual.usuario, password:pwd1 });
-
     if (data.ok) {
-      usuarioActual.nivel     = data.nivel     || usuarioActual.nivel;
-      usuarioActual.nombre    = data.nombre    || usuarioActual.nombre;
+      usuarioActual.nivel    = data.nivel    || usuarioActual.nivel;
+      usuarioActual.nombre   = data.nombre   || usuarioActual.nombre;
       usuarioActual.tiendaPre = data.tiendaPre || usuarioActual.tiendaPre || '';
       guardarSesion(data);
-      showMsg('msg3', '✅ Contraseña creada. Entrando...', 'success');
-      setTimeout(() => window.location.replace('index.html'), 1000);
+      showMsg('msg3', '✅ Contraseña creada.', 'success');
+      setLoading(btn, false);
+      await ofrecerBiometria();
     } else {
       showMsg('msg3', '❌ ' + (data.error || 'Error al guardar. Inténtalo de nuevo.'), 'error');
       setLoading(btn, false); _busy = false;
@@ -505,6 +673,148 @@ async function registrarPassword() {
   }
 }
 
+/* ════════════════════════════════════════════════════════════
+   BIOMETRÍA — WebAuthn (huella / Face ID)
+   ════════════════════════════════════════════════════════════ */
+
+/* Tras login exitoso: ¿ofrecer activar biometría? */
+async function ofrecerBiometria() {
+  // Si ya tiene credencial registrada → ir directo
+  if (localStorage.getItem(BIO_KEY)) {
+    window.location.replace('index.html');
+    return;
+  }
+  const available = await isPlatformAuthAvailable();
+  if (!available) {
+    // Dispositivo sin biometría compatible → redirect normal
+    setTimeout(() => window.location.replace('index.html'), 600);
+    return;
+  }
+  // Mostrar pantalla de oferta biométrica
+  showStep('stepBiometria');
+  _busy = false;
+}
+
+/* Registrar credencial biométrica */
+async function activarBiometria() {
+  const btn = document.getElementById('btnActivarBio');
+  setLoading(btn, true, 'Activando...');
+  try {
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const userId    = new TextEncoder().encode(usuarioActual.usuario + '_nexo');
+
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: {
+          name: "Nexo · SAD Tickets",
+          id  : getHostname()
+        },
+        user: {
+          id         : userId,
+          name       : usuarioActual.usuario,
+          displayName: usuarioActual.nombre
+        },
+        pubKeyCredParams: [
+          { alg: -7,   type: "public-key" },  // ES256 (ECDSA)
+          { alg: -257, type: "public-key" }   // RS256 (RSA)
+        ],
+        authenticatorSelection: {
+          authenticatorAttachment: "platform",   // Solo biometría del dispositivo
+          userVerification       : "required",   // Verificación obligatoria
+          residentKey            : "preferred"
+        },
+        timeout    : 60000,
+        attestation: "none"
+      }
+    });
+
+    // Guardar template biométrico en localStorage
+    const bioData = {
+      usuario     : usuarioActual.usuario,
+      nombre      : usuarioActual.nombre,
+      nivel       : usuarioActual.nivel,
+      tiendaPre   : usuarioActual.tiendaPre || '',
+      credentialId: bufToBase64(credential.rawId),
+      registrado  : Date.now()
+    };
+    localStorage.setItem(BIO_KEY, JSON.stringify(bioData));
+    window.location.replace('index.html');
+
+  } catch(err) {
+    console.warn('[Nexo] Biometría registro:', err.name, err.message);
+    // Si el usuario cancela o hay error → ir igualmente
+    saltarBiometria();
+  }
+}
+
+/* Saltar activación → ir a index.html directamente */
+function saltarBiometria() {
+  window.location.replace('index.html');
+}
+
+/* Login biométrico: autenticar con credencial guardada */
+async function loginBiometrico() {
+  const btn    = document.getElementById('btnBiometria');
+  const bioRaw = localStorage.getItem(BIO_KEY);
+  if (!bioRaw) { btn.style.display = 'none'; return; }
+
+  let bio;
+  try { bio = JSON.parse(bioRaw); } catch { localStorage.removeItem(BIO_KEY); return; }
+
+  setLoading(btn, true, 'Verificando...');
+  hideMsg('msg1');
+
+  try {
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        allowCredentials: [{
+          type: "public-key",
+          id  : base64ToBuf(bio.credentialId)
+        }],
+        userVerification: "required",
+        timeout         : 60000,
+        rpId            : getHostname()
+      }
+    });
+
+    // Autenticación biométrica OK → restaurar sesión
+    usuarioActual = {
+      usuario  : bio.usuario,
+      nombre   : bio.nombre,
+      nivel    : bio.nivel,
+      tiendaPre: bio.tiendaPre || ''
+    };
+    guardarSesion({ token: Date.now().toString(36) });
+    showMsg('msg1', '✅ Biometría verificada. Entrando...', 'success');
+    setTimeout(() => window.location.replace('index.html'), 700);
+
+  } catch(err) {
+    console.warn('[Nexo] loginBiometrico:', err.name, err.message);
+    setLoading(btn, false);
+    if (err.name === 'NotAllowedError') {
+      showMsg('msg1', '⚠️ Autenticación cancelada.', 'warn');
+    } else {
+      showMsg('msg1', '❌ Error biométrico. Usa tu contraseña.', 'error');
+    }
+  }
+}
+
+/* Eliminar credencial biométrica guardada */
+function eliminarBiometria() {
+  if (!confirm('¿Quitar el acceso biométrico? Tendrás que usar tu contraseña.')) return;
+  localStorage.removeItem(BIO_KEY);
+  document.getElementById('btnBiometria').style.display  = 'none';
+  document.getElementById('bioRemoveWrap').style.display = 'none';
+  document.getElementById('dividerOr').style.display     = 'none';
+}
+
+/* ════════════════════════════════════════════════════════════
+   EVENTOS DE TECLADO
+   ════════════════════════════════════════════════════════════ */
 document.getElementById('inputUsuario').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); verificarUsuario(); }
 });
