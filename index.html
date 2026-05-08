@@ -346,6 +346,7 @@ if (ES_ADMIN) nivelTag.classList.add('admin');
 function cerrarSesion() {
   if (confirm('¿Cerrar sesión?')) {
     sessionStorage.removeItem('sad_user');
+    localStorage.removeItem('sad_user');
     window.location.replace('login.html');
   }
 }
