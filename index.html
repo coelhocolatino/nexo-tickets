@@ -13,7 +13,6 @@
 <link rel="icon" href="nexo-icon-192.png">
 <link rel="apple-touch-icon" href="nexo-icon-192.png">
 <title>Nexo · SAD Tickets</title>
-
 <style>
 :root {
   --bg1:#003366; --bg2:#0077cc;
@@ -30,7 +29,6 @@ body {
   display:flex; justify-content:center; align-items:flex-start;
   padding:24px 16px 56px;
 }
-
 .card {
   width:100%; max-width:420px;
   background:var(--card-bg);
@@ -39,7 +37,6 @@ body {
   padding:20px 16px 28px;
   backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
 }
-
 .header { text-align:center; margin-bottom:18px; }
 .logo {
   width:170px; max-width:65%;
@@ -75,14 +72,12 @@ body {
 }
 .nivel-tag.admin { background:rgba(251,146,60,.25); color:#fed7aa; }
 .app-version { font-size:.78rem; font-weight:600; color:rgba(255,255,255,.45); }
-
 form { display:flex; flex-direction:column; gap:12px; }
 label {
   font-size:.88rem; font-weight:600;
   color:var(--text-main);
   margin-bottom:3px; display:block;
 }
-
 .control {
   width:100%; border:none; border-radius:var(--radius-field);
   background:#fff; color:var(--text-dark);
@@ -91,8 +86,6 @@ label {
   outline:none;
 }
 select.control { -webkit-appearance:none; appearance:none; }
-
-/* Campos bloqueados (lock visual) */
 .control.locked, .control:disabled {
   background:#e5e7eb !important;
   color:#475569 !important;
@@ -106,13 +99,11 @@ select.control { -webkit-appearance:none; appearance:none; }
   margin-top:-8px;
   display:flex; align-items:center; gap:4px;
 }
-
 .row-2 { display:flex; gap:12px; }
 .row-2 .group { flex:1; min-width:0; }
 .row-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
 .row-3 .group label { font-size:.82rem; text-align:center; }
 .row-3 .control { text-align:center; padding:12px 4px; }
-
 button {
   width:100%; border:none;
   border-radius:var(--radius-field);
@@ -124,10 +115,8 @@ button {
   transition:transform .12s, box-shadow .18s;
 }
 button:active { transform:scale(.97); }
-
 .btn-foto-wrap { display:flex; gap:10px; }
 .btn-foto-wrap button { flex:1; }
-
 #fotoPreview {
   width:100%; border-radius:12px;
   max-height:220px; object-fit:contain;
@@ -140,7 +129,6 @@ button:active { transform:scale(.97); }
   color:rgba(255,255,255,.55);
   text-align:center; display:none;
 }
-
 #msg {
   text-align:center; min-height:1.3em;
   font-size:.93rem; font-weight:700;
@@ -148,7 +136,6 @@ button:active { transform:scale(.97); }
   border-radius:10px;
   transition:opacity .4s;
 }
-
 @keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
 #spinner {
   position:fixed; inset:0;
@@ -167,11 +154,7 @@ button:active { transform:scale(.97); }
   border-radius:50%;
   animation:spin 1s linear infinite;
 }
-#spinner-text {
-  color:rgba(255,255,255,.8);
-  font-size:.9rem; font-weight:700;
-}
-
+#spinner-text { color:rgba(255,255,255,.8); font-size:.9rem; font-weight:700; }
 .offline-alert {
   position:fixed; top:12px; left:50%;
   transform:translateX(-50%);
@@ -195,7 +178,6 @@ button:active { transform:scale(.97); }
       window.location.replace('login.html');
       return;
     }
-    // Si la sesión no tiene tiendaPre (sesión antigua), forzar re-login
     if (typeof u.tiendaPre === 'undefined') {
       sessionStorage.removeItem('sad_user');
       window.location.replace('login.html');
@@ -222,14 +204,13 @@ button:active { transform:scale(.97); }
         var proxied = PROXY + "?url=" + encodeURIComponent(BACKEND);
         return _fetch(proxied, init);
       }
-    } catch(e) { /* sin proxy si falla */ }
+    } catch(e) {}
     return _fetch(input, init);
   };
 })();
 </script>
 </head>
 <body>
-
 <div class="offline-alert" id="offline-alert">⚠️ Sin conexión a internet</div>
 
 <div id="spinner" role="status" aria-live="polite">
@@ -238,7 +219,6 @@ button:active { transform:scale(.97); }
 </div>
 
 <div class="card">
-
   <div class="header">
     <img class="logo" src="nexo-logo-full.png" alt="Nexo · Distribución Inteligente" />
     <div class="user-badge" id="userBadge" onclick="cerrarSesion()" title="Pulsa para cerrar sesión">
@@ -250,7 +230,6 @@ button:active { transform:scale(.97); }
   </div>
 
   <form id="ticketForm" novalidate>
-
     <div>
       <label for="fecha">Fecha</label>
       <input class="control" type="date" name="fecha" id="fecha" required />
@@ -282,26 +261,33 @@ button:active { transform:scale(.97); }
     <div class="row-2">
       <div class="group">
         <label for="pedidos">Pedidos (P)</label>
-        <input class="control" type="number" name="pedidos" id="pedidos" min="-40" max="40" placeholder="0" required />
+        <!-- ✅ FIX BUG 1: añadido value="0" — sin esto el campo parece relleno
+             (placeholder "0") pero su valor real es "" y la validación falla -->
+        <input class="control" type="number" name="pedidos" id="pedidos"
+               min="-40" max="40" value="0" placeholder="0" required />
       </div>
       <div class="group">
         <label for="dobles">Dobles (D)</label>
-        <input class="control" type="number" name="dobles" id="dobles" min="-16" max="16" value="0" required />
+        <input class="control" type="number" name="dobles" id="dobles"
+               min="-16" max="16" value="0" />
       </div>
     </div>
 
     <div class="row-3">
       <div class="group">
         <label for="xr">XR</label>
-        <input class="control" type="number" name="xr" id="xr" min="-12" max="12" value="0" required />
+        <input class="control" type="number" name="xr" id="xr"
+               min="-12" max="12" value="0" />
       </div>
       <div class="group">
         <label for="km">Km</label>
-        <input class="control" type="number" name="km" id="km" min="-200" max="200" value="0" required />
+        <input class="control" type="number" name="km" id="km"
+               min="-200" max="200" value="0" />
       </div>
       <div class="group">
         <label for="obs">Obs</label>
-        <input class="control" type="text" name="obs" id="obs" maxlength="20" placeholder="Opcional" />
+        <input class="control" type="text" name="obs" id="obs"
+               maxlength="20" placeholder="Opcional" />
       </div>
     </div>
 
@@ -311,7 +297,12 @@ button:active { transform:scale(.97); }
         <button type="button" id="btnCamara">📷 Sacar foto</button>
         <button type="button" id="btnArchivo">🖼️ Galería</button>
       </div>
-      <button type="button" id="btnGirar" style="display:none; margin-top:8px; background:rgba(255,255,255,0.2); color:#fff; border:1px solid rgba(255,255,255,0.3); box-shadow:none; padding:10px; font-size:0.9rem;">🔄 Girar foto</button>
+      <button type="button" id="btnGirar"
+        style="display:none; margin-top:8px; background:rgba(255,255,255,0.2);
+               color:#fff; border:1px solid rgba(255,255,255,0.3);
+               box-shadow:none; padding:10px; font-size:0.9rem;">
+        🔄 Girar foto
+      </button>
       <input type="file" id="foto" name="foto" accept="image/*" style="display:none;" />
     </div>
 
@@ -319,16 +310,14 @@ button:active { transform:scale(.97); }
     <div id="fotoInfo"></div>
 
     <button type="submit" id="btnSubir">⬆️ Subir ticket</button>
-
     <div id="msg" role="alert" aria-live="polite"></div>
-
   </form>
 </div>
 
 <script>
 /* ============================================================
    REFERENCIAS DOM
-   ============================================================ */
+============================================================ */
 const msgEl       = document.getElementById('msg');
 const spinnerEl   = document.getElementById('spinner');
 const spinnerTxt  = document.getElementById('spinner-text');
@@ -340,11 +329,11 @@ const repartSel   = document.getElementById('repartidor');
 
 /* ============================================================
    SESIÓN — niveles: admin / usuario 1 / usuario 2
-   ============================================================ */
+============================================================ */
 let sesion = null;
 try { sesion = JSON.parse(sessionStorage.getItem('sad_user')); } catch(e) {}
 
-const NIVEL = (sesion && sesion.nivel ? String(sesion.nivel).toLowerCase().trim() : 'usuario 1');
+const NIVEL        = (sesion && sesion.nivel ? String(sesion.nivel).toLowerCase().trim() : 'usuario 1');
 const ES_ADMIN     = NIVEL === 'admin';
 const ES_USUARIO_1 = NIVEL === 'usuario 1' || NIVEL === 'usuario1';
 const ES_USUARIO_2 = NIVEL === 'usuario 2' || NIVEL === 'usuario2';
@@ -363,12 +352,13 @@ function cerrarSesion() {
 
 /* ============================================================
    SPINNER / MENSAJES
-   ============================================================ */
+============================================================ */
 function showSpinner(t) { spinnerTxt.textContent = t || 'Procesando...'; spinnerEl.classList.add('visible'); }
-function hideSpinner() { spinnerEl.classList.remove('visible'); }
+function hideSpinner()  { spinnerEl.classList.remove('visible'); }
+
 function setMsg(text, color) {
   msgEl.textContent = text;
-  msgEl.style.color      = color || '#fff';
+  msgEl.style.color = color || '#fff';
   msgEl.style.background = color
     ? (color === '#9dffb0' ? 'rgba(34,197,94,.12)' :
        color === '#ffcc00' ? 'rgba(251,191,36,.12)' : 'rgba(239,68,68,.12)')
@@ -377,7 +367,7 @@ function setMsg(text, color) {
 }
 function clearMsg() {
   msgEl.style.transition = 'opacity .5s';
-  msgEl.style.opacity    = '0';
+  msgEl.style.opacity = '0';
   setTimeout(() => { msgEl.textContent = ''; msgEl.style.background = 'transparent'; }, 520);
 }
 function showOfflineAlert() {
@@ -388,53 +378,45 @@ function showOfflineAlert() {
 
 /* ============================================================
    FECHA POR DEFECTO Y BLOQUEO
-   ============================================================ */
+============================================================ */
 const HOY = new Date().toISOString().split('T')[0];
 fechaInput.value = HOY;
 
 if (!ES_ADMIN) {
-  // usuario 1 y usuario 2: fecha bloqueada a hoy
-  fechaInput.min = HOY;
-  fechaInput.max = HOY;
+  fechaInput.min      = HOY;
+  fechaInput.max      = HOY;
   fechaInput.readOnly = true;
   fechaInput.classList.add('locked');
   document.getElementById('hintFecha').style.display = 'flex';
-
-  // Forzar reset si alguien intenta cambiarla por DevTools
   fechaInput.addEventListener('change', () => {
     if (fechaInput.value !== HOY) fechaInput.value = HOY;
   });
 }
 
 /* ============================================================
-   CARGAR LISTAS — llama directamente al proxy (evita cache SW)
-   ============================================================ */
-const PROXY_URL = "https://sad-proxy.colatino-ventas-enlinea.workers.dev/";
+   CARGAR LISTAS
+============================================================ */
+const PROXY_URL   = "https://sad-proxy.colatino-ventas-enlinea.workers.dev/";
 const BACKEND_GET = PROXY_URL + "?url=" + encodeURIComponent(
   "https://script.google.com/macros/s/AKfycbwTwp6Cc35zWr18MeSc9hkE18m0j_Km6S9mOv5kY-2AFrHnFivLLiplQTyQRL9ysg7R/exec"
-) + "&t=" + Date.now(); // timestamp anti-cache
+) + "&t=" + Date.now();
 
 let listasCargadas = false;
+
 (async function cargarListas() {
   try {
     const r = await fetch(BACKEND_GET, { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
-
     if (!data.tiendas || !data.repartidores || !data.franjas) {
       throw new Error('Respuesta incompleta: ' + JSON.stringify(data));
     }
-
-    fillSelect('tienda',     data.tiendas,      'Seleccione tienda...');
+    fillSelect('tienda',     data.tiendas,     'Seleccione tienda...');
     fillSelect('repartidor', data.repartidores, 'Seleccione repartidor...');
     fillSelect('franja',     data.franjas,      'Seleccione franja horaria...');
-
     listasCargadas = true;
-
-    // Debug: mostrar sesión en consola para verificar tiendaPre
     console.log('[Nexo] sesion:', JSON.stringify(sesion));
     console.log('[Nexo] tiendaPre:', sesion && sesion.tiendaPre);
-
     aplicarReglasRepartidor();
     aplicarReglasTienda();
     aplicarReglasFranja();
@@ -459,18 +441,14 @@ function fillSelect(id, arr, placeholder) {
 }
 
 /* ============================================================
-   REGLAS PARA REPARTIDOR SEGÚN NIVEL
-   - admin     : selector libre
-   - usuario 1 : repartidor = nombre login (bloqueado)
-   - usuario 2 : selector libre
-   ============================================================ */
+   REGLAS REPARTIDOR
+============================================================ */
 function aplicarReglasRepartidor() {
   if (!listasCargadas || !sesion) return;
-
   if (ES_USUARIO_1) {
     const opciones = Array.from(repartSel.options).map(o => o.value);
     const miNombre = sesion.nombre || sesion.usuario;
-    const match = opciones.find(o =>
+    const match    = opciones.find(o =>
       o.toLowerCase().trim() === miNombre.toLowerCase().trim()
     );
     if (match) {
@@ -488,105 +466,69 @@ function aplicarReglasRepartidor() {
 }
 
 /* ============================================================
-   TIENDA PREDEFINIDA (columna U = TIENDA_PRE en tabla USUARIOS)
-   Todos los niveles pueden cambiarla, pero aparece preseleccionada
-   ============================================================ */
+   TIENDA PREDEFINIDA
+============================================================ */
 function aplicarReglasTienda() {
   const tiendaPre = sesion && sesion.tiendaPre ? sesion.tiendaPre.trim() : '';
   if (!tiendaPre) return;
-
   const tiendaSel = document.getElementById('tienda');
   const opciones  = Array.from(tiendaSel.options).map(o => o.value);
-
-  // Buscar coincidencia exacta (case-insensitive)
-  const match = opciones.find(o =>
+  const match     = opciones.find(o =>
     o.toLowerCase().trim() === tiendaPre.toLowerCase()
   );
-
   if (match) {
     tiendaSel.value = match;
   } else {
-    // Si la tienda predefinida no está en la lista (aún no cargada o no existe),
-    // añadirla temporalmente
     const op = document.createElement('option');
-    op.value = tiendaPre;
-    op.textContent = tiendaPre;
-    op.selected = true;
+    op.value = tiendaPre; op.textContent = tiendaPre; op.selected = true;
     tiendaSel.appendChild(op);
     tiendaSel.value = tiendaPre;
   }
 }
 
 /* ============================================================
-   FRANJA HORARIA — bloqueada para USUARIO 2 según hora actual
-   Reglas:
-     09:00-11:00 → solo 10-13H
-     11:00-14:30 → solo 12-14H, 13-16H
-     15:00-16:30 → solo 16-19H
-     16:30-19:00 → solo 17-19H
-     18:00-19:30 → solo 17-19H, 19-22H
-   Admin y usuario 1: libre
-   ============================================================ */
+   FRANJA HORARIA (solo usuario 2)
+============================================================ */
 function getFranjasPermitidas() {
   const ahora = new Date();
   const mins  = ahora.getHours() * 60 + ahora.getMinutes();
   const t = (hh, mm) => hh * 60 + mm;
-
-  // Reglas en orden de prioridad — la última que aplique gana
-  // (los rangos solapados 18:00-19:30 y 16:30-19:00 se manejan con acumulación)
   let franjas = [];
-  if (mins >= t(9,0)   && mins < t(11,0))  franjas = ['10-13H'];
-  if (mins >= t(11,0)  && mins < t(14,30)) franjas = ['12-14H','13-16H'];
-  if (mins >= t(15,0)  && mins < t(16,30)) franjas = ['16-19H'];
-  if (mins >= t(16,30) && mins < t(19,0))  franjas = ['17-19H'];
-  if (mins >= t(18,0)  && mins < t(19,30)) franjas = ['17-19H','19-22H'];
+  if (mins >= t(9,0)  && mins < t(11,0))  franjas = ['10-13H'];
+  if (mins >= t(11,0) && mins < t(14,30)) franjas = ['12-14H','13-16H'];
+  if (mins >= t(15,0) && mins < t(16,30)) franjas = ['16-19H'];
+  if (mins >= t(16,30)&& mins < t(19,0))  franjas = ['17-19H'];
+  if (mins >= t(18,0) && mins < t(19,30)) franjas = ['17-19H','19-22H'];
   return franjas;
 }
 
 function aplicarReglasFranja() {
   if (!ES_USUARIO_2) return;
-
-  const franjaSel  = document.getElementById('franja');
+  const franjaSel = document.getElementById('franja');
   const permitidas = getFranjasPermitidas();
-
-  // Guardar SIEMPRE las opciones actuales no-vacías como referencia maestra
-  // (no usar caché porque el select puede haberse reconstruido)
   const opcionesActuales = Array.from(franjaSel.options)
     .filter(o => o.value !== '')
     .map(o => ({ value: o.value, text: o.textContent }));
-
-  // Si el select aún no tiene opciones (listas no cargadas), salir
   if (opcionesActuales.length === 0) return;
-
-  // Actualizar el maestre con las opciones actuales (para el reset)
   franjaSel._allOptions = opcionesActuales;
-
   if (permitidas.length === 0) {
     setMsg('⚠️ Fuera del horario de reparto', '#ffcc00');
     return;
   }
-
-  // Reconstruir el select con SOLO las opciones permitidas
   const placeholder = franjaSel.options[0].cloneNode(true);
   franjaSel.innerHTML = '';
   franjaSel.appendChild(placeholder);
-
   let primeraPermitida = null;
   opcionesActuales.forEach(op => {
     const permitida = permitidas.some(p => p.toLowerCase() === op.value.toLowerCase());
     if (permitida) {
       const el = document.createElement('option');
-      el.value = op.value;
-      el.textContent = op.text;
+      el.value = op.value; el.textContent = op.text;
       franjaSel.appendChild(el);
       if (!primeraPermitida) primeraPermitida = op.value;
     }
   });
-
-  // Preseleccionar la primera permitida
   if (primeraPermitida) franjaSel.value = primeraPermitida;
-
-  // Bloquear si solo hay una opción posible
   if (permitidas.length === 1) {
     franjaSel.disabled = true;
     franjaSel.classList.add('locked');
@@ -598,7 +540,7 @@ function aplicarReglasFranja() {
 
 /* ============================================================
    BOTONES FOTO
-   ============================================================ */
+============================================================ */
 document.getElementById('btnCamara').addEventListener('click', () => {
   fotoInput.removeAttribute('capture');
   fotoInput.setAttribute('capture', 'environment');
@@ -609,15 +551,12 @@ document.getElementById('btnArchivo').addEventListener('click', () => {
   fotoInput.click();
 });
 
-// Rotación manual acumulada (en grados: 0, 90, 180, 270)
 let rotacionManual = 0;
 
 fotoInput.addEventListener('change', async () => {
   const file = fotoInput.files[0];
   if (!file) return;
-
-  rotacionManual = 0; // resetear rotación al seleccionar nueva foto
-
+  rotacionManual = 0;
   const urlOrig = URL.createObjectURL(file);
   fotoPreview.onload = () => URL.revokeObjectURL(urlOrig);
   fotoPreview.src = urlOrig;
@@ -625,10 +564,7 @@ fotoInput.addEventListener('change', async () => {
   const kb = (file.size / 1024).toFixed(0);
   fotoInfo.textContent = `Original: ${kb} KB · Comprimiendo...`;
   fotoInfo.style.display = 'block';
-
-  // Mostrar botón de girar
   document.getElementById('btnGirar').style.display = 'block';
-
   try {
     const comprimida = await optimizarFoto(file, 0);
     const urlComp = URL.createObjectURL(comprimida);
@@ -644,16 +580,12 @@ fotoInput.addEventListener('change', async () => {
   }
 });
 
-// Botón girar: rota +90° cada vez
 document.getElementById('btnGirar').addEventListener('click', async () => {
   const file = fotoInput.files[0];
   if (!file) return;
-
   rotacionManual = (rotacionManual + 90) % 360;
-
   const kb = (file.size / 1024).toFixed(0);
   fotoInfo.textContent = `Girando... (${rotacionManual}°)`;
-
   try {
     const comprimida = await optimizarFoto(file, rotacionManual);
     const urlComp = URL.createObjectURL(comprimida);
@@ -670,12 +602,22 @@ document.getElementById('btnGirar').addEventListener('click', async () => {
 
 /* ============================================================
    OPTIMIZACIÓN DE FOTO — EN COLOR, SIN FILTROS, SIN RECORTE
-   - Corrige orientación EXIF (la que guarda la cámara)
-   - Aplica rotación manual adicional si el usuario la pidió
-   - Comprime JPG calidad 0.82
-   - NO fuerza portrait, NO recorta
-   ============================================================ */
 
+   ✅ FIX BUG 2: casos 6, 7 y 8 del switch EXIF corregidos.
+   El error original era que visW y visH estaban intercambiados
+   como parámetros de traslación en esos tres casos, haciendo
+   que la imagen se dibujase parcialmente fuera del canvas y
+   apareciera una franja blanca en el JPEG resultante.
+
+   Para orientaciones 5-8 (fotos con ejes intercambiados):
+     visW = img.naturalHeight  (dimension larga → nuevo ancho)
+     visH = img.naturalWidth   (dimension corta → nuevo alto)
+
+   Transforms correctos (canvas.translate + canvas.rotate en forma matricial):
+     case 6 (+90° CW): translate(visW, 0)    → transform(0,1,-1,0,visW,0)
+     case 7 (−90°+HF): translate(visW, visH) → transform(0,-1,-1,0,visW,visH)
+     case 8 (−90° CW): translate(0, visH)    → transform(0,-1,1,0,0,visH)
+============================================================ */
 function getExifOrientation(dataURL) {
   try {
     const b64 = dataURL.split(',')[1];
@@ -713,67 +655,68 @@ function optimizarFoto(file, rotacionExtra) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
-    reader.onload = function(ev) {
+    reader.onload  = function(ev) {
       const dataURL = ev.target.result;
-      const img = new Image();
-      img.onerror = () => reject(new Error('Imagen no válida'));
-      img.onload = function() {
+      const img     = new Image();
+      img.onerror   = () => reject(new Error('Imagen no válida'));
+      img.onload    = function() {
         try {
           const orientation = getExifOrientation(dataURL);
 
-          // Paso 1: crear canvas con corrección EXIF aplicada
-          // (la imagen queda en su orientación visual correcta)
+          /* Paso 1: canvas con corrección EXIF → imagen en orientación visual correcta */
           const swapExif = [5, 6, 7, 8].includes(orientation);
           const visW = swapExif ? img.naturalHeight : img.naturalWidth;
           const visH = swapExif ? img.naturalWidth  : img.naturalHeight;
 
-          // Canvas intermedio con solo corrección EXIF
-          const c1 = document.createElement('canvas');
-          c1.width  = visW;
-          c1.height = visH;
+          const c1   = document.createElement('canvas');
+          c1.width   = visW;
+          c1.height  = visH;
           const ctx1 = c1.getContext('2d');
           ctx1.save();
+
           switch (orientation) {
-            case 2: ctx1.transform(-1,0,0,1,visW,0); break;
-            case 3: ctx1.transform(-1,0,0,-1,visW,visH); break;
-            case 4: ctx1.transform(1,0,0,-1,0,visH); break;
-            case 5: ctx1.transform(0,1,1,0,0,0); break;
-            case 6: ctx1.transform(0,1,-1,0,visH,0); break;
-            case 7: ctx1.transform(0,-1,-1,0,visH,visW); break;
-            case 8: ctx1.transform(0,-1,1,0,0,visW); break;
+            case 2: ctx1.transform(-1, 0, 0,  1, visW, 0);    break; // flip H
+            case 3: ctx1.transform(-1, 0, 0, -1, visW, visH); break; // rot 180°
+            case 4: ctx1.transform( 1, 0, 0, -1, 0,    visH); break; // flip V
+            case 5: ctx1.transform( 0, 1, 1,  0, 0,    0);    break; // transponer
+            // ✅ FIXED: los 3 casos siguientes usaban visH donde va visW y viceversa
+            case 6: ctx1.transform( 0, 1,-1,  0, visW, 0);    break; // +90° CW
+            case 7: ctx1.transform( 0,-1,-1,  0, visW, visH); break; // −90° + flip H
+            case 8: ctx1.transform( 0,-1, 1,  0, 0,    visH); break; // −90° CW
             default: break;
           }
           ctx1.drawImage(img, 0, 0);
           ctx1.restore();
 
-          // Paso 2: aplicar rotación manual adicional (0, 90, 180, 270)
-          const swap2 = rotacionExtra === 90 || rotacionExtra === 270;
+          /* Paso 2: rotación manual adicional (0 / 90 / 180 / 270) */
+          const swap2  = rotacionExtra === 90 || rotacionExtra === 270;
           const finalW = swap2 ? visH : visW;
           const finalH = swap2 ? visW : visH;
 
-          // Escalar: máx 1800px en el lado más largo, sin upscaling
-          const MAX = 1800;
+          const MAX   = 1800;
           const scale = Math.min(MAX / Math.max(finalW, finalH), 1);
-          const dstW = Math.round(finalW * scale);
-          const dstH = Math.round(finalH * scale);
+          const dstW  = Math.round(finalW * scale);
+          const dstH  = Math.round(finalH * scale);
 
-          const c2 = document.createElement('canvas');
-          c2.width  = dstW;
-          c2.height = dstH;
+          const c2   = document.createElement('canvas');
+          c2.width   = dstW;
+          c2.height  = dstH;
           const ctx2 = c2.getContext('2d');
+
+          // Fondo blanco (necesario para JPEG; invisible si la imagen llena el canvas)
           ctx2.fillStyle = '#fff';
           ctx2.fillRect(0, 0, dstW, dstH);
+
           ctx2.save();
           ctx2.translate(dstW / 2, dstH / 2);
           ctx2.rotate(rotacionExtra * Math.PI / 180);
-          // Al rotar 90/270°, dstW y dstH están intercambiados respecto a c1
-          // c1 tiene visW × visH; tras escalar: visW*scale × visH*scale
+
           const sw = Math.round(visW * scale);
           const sh = Math.round(visH * scale);
           ctx2.drawImage(c1, -sw / 2, -sh / 2, sw, sh);
           ctx2.restore();
 
-          // Exportar en COLOR, JPG calidad 0.82
+          /* Exportar EN COLOR, JPG calidad 0.82 */
           c2.toBlob(blob => {
             if (!blob) return reject(new Error('Error al exportar'));
             resolve(new File([blob], 'ticket.jpg', { type: 'image/jpeg' }));
@@ -787,12 +730,9 @@ function optimizarFoto(file, rotacionExtra) {
   });
 }
 
-
 /* ============================================================
    COLA OFFLINE — IndexedDB
-   Guarda tickets pendientes cuando no hay conexión y los sube
-   automáticamente cuando se recupera.
-   ============================================================ */
+============================================================ */
 const DB_NAME    = 'nexo-tickets-queue';
 const DB_VERSION = 1;
 const STORE_NAME = 'pendientes';
@@ -818,8 +758,8 @@ async function guardarEnCola(datos) {
   const item  = { ...datos, _ts: Date.now(), _intentos: 0 };
   return new Promise((resolve, reject) => {
     const req = store.add(item);
-    req.onsuccess = () => resolve(req.result); // devuelve el id
-    req.onerror   = e => reject(e.target.error);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = e  => reject(e.target.error);
   });
 }
 
@@ -830,7 +770,7 @@ async function obtenerPendientes() {
   return new Promise((resolve, reject) => {
     const req = store.getAll();
     req.onsuccess = () => resolve(req.result);
-    req.onerror   = e => reject(e.target.error);
+    req.onerror   = e  => reject(e.target.error);
   });
 }
 
@@ -841,7 +781,7 @@ async function eliminarDeCola(id) {
   return new Promise((resolve, reject) => {
     const req = store.delete(id);
     req.onsuccess = () => resolve();
-    req.onerror   = e => reject(e.target.error);
+    req.onerror   = e  => reject(e.target.error);
   });
 }
 
@@ -852,11 +792,10 @@ async function contarPendientes() {
   return new Promise((resolve, reject) => {
     const req = store.count();
     req.onsuccess = () => resolve(req.result);
-    req.onerror   = () => resolve(0);
+    req.onerror   = ()  => resolve(0);
   });
 }
 
-/* Badge de pendientes en el header */
 async function actualizarBadgePendientes() {
   try {
     const n = await contarPendientes();
@@ -871,7 +810,7 @@ async function actualizarBadgePendientes() {
           border-radius:20px; padding:4px 12px; font-size:.78rem; font-weight:700;
           color:#fde68a; margin-bottom:6px; cursor:pointer;
         `;
-        badge.title = 'Tickets pendientes de subir';
+        badge.title   = 'Tickets pendientes de subir';
         badge.onclick = () => procesarCola(true);
         document.getElementById('userBadge').insertAdjacentElement('afterend', badge);
       }
@@ -879,34 +818,30 @@ async function actualizarBadgePendientes() {
     } else if (badge) {
       badge.remove();
     }
-  } catch(e) { /* ignorar */ }
+  } catch(e) {}
 }
 
-/* Enviar un ticket de la cola al servidor */
 async function enviarTicketDeCola(item) {
   const { id, ...datos } = item;
   const resp = await fetch(window.BACKEND_URL, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(datos)
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(datos)
   });
   const text = await resp.text();
   if (!resp.ok || text.includes('ERROR')) throw new Error(text);
   return text;
 }
 
-/* Procesar toda la cola — llamado al recuperar conexión */
 let _procesandoCola = false;
+
 async function procesarCola(mostrarMsg) {
   if (_procesandoCola || !navigator.onLine) return;
   _procesandoCola = true;
-
   try {
     const pendientes = await obtenerPendientes();
     if (pendientes.length === 0) { _procesandoCola = false; return; }
-
     if (mostrarMsg) setMsg(`⏳ Subiendo ${pendientes.length} ticket(s) pendiente(s)...`, '#ffcc00');
-
     let ok = 0, fail = 0;
     for (const item of pendientes) {
       try {
@@ -918,9 +853,7 @@ async function procesarCola(mostrarMsg) {
         fail++;
       }
     }
-
     await actualizarBadgePendientes();
-
     if (mostrarMsg) {
       if (fail === 0) {
         setMsg(`✅ ${ok} ticket(s) subido(s) correctamente`, '#9dffb0');
@@ -935,13 +868,11 @@ async function procesarCola(mostrarMsg) {
   _procesandoCola = false;
 }
 
-/* Detectar recuperación de conexión → procesar cola automáticamente */
 window.addEventListener('online', () => {
   console.log('[Nexo] Conexión recuperada — procesando cola');
-  setTimeout(() => procesarCola(true), 1500); // pequeño delay para que la conexión se estabilice
+  setTimeout(() => procesarCola(true), 1500);
 });
 
-/* Al cargar: mostrar badge y procesar si hay pendientes + hay conexión */
 window.addEventListener('load', async () => {
   await actualizarBadgePendientes();
   if (navigator.onLine) {
@@ -952,7 +883,7 @@ window.addEventListener('load', async () => {
 
 /* ============================================================
    ENVÍO DEL TICKET
-   ============================================================ */
+============================================================ */
 let _submitting = false;
 
 document.getElementById('ticketForm').addEventListener('submit', async function(e) {
@@ -969,11 +900,12 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
   if (ES_USUARIO_1 && sesion) {
     const miNombre = sesion.nombre || sesion.usuario;
     const opciones = Array.from(repartSel.options).map(o => o.value);
-    const match = opciones.find(o => o.toLowerCase().trim() === miNombre.toLowerCase().trim());
+    const match    = opciones.find(o => o.toLowerCase().trim() === miNombre.toLowerCase().trim());
     repartSel.value = match || miNombre;
   }
 
-  const campos = ['fecha','tienda','repartidor','franja','pedidos'];
+  // Validar campos obligatorios
+  const campos = ['fecha', 'tienda', 'repartidor', 'franja', 'pedidos'];
   for (const c of campos) {
     if (!document.getElementById(c).value) {
       alert('Por favor, completa todos los campos obligatorios.');
@@ -999,123 +931,133 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
       }
     }
 
+    showSpinner('Subiendo ticket...');
+
     // Convertir a base64
     const base64 = await new Promise((res, rej) => {
       const r = new FileReader();
-      r.onload  = () => res(r.result);
       r.onerror = () => rej(new Error('Error leyendo foto'));
+      r.onload  = ev => res(ev.target.result);
       r.readAsDataURL(fotoOpt);
     });
 
-    // Construir payload
-    const fd = new FormData(document.getElementById('ticketForm'));
-    const datos = {};
-    fd.forEach((v, k) => { if (k !== 'foto') datos[k] = v; });
-    datos.imagenBase64  = base64;
-    datos.usuarioSesion = sesion ? sesion.usuario : '';
-    datos.nivelSesion   = NIVEL;
+    const payload = {
+      fecha:         fechaInput.value,
+      tienda:        document.getElementById('tienda').value,
+      repartidor:    document.getElementById('repartidor').value,
+      franja:        document.getElementById('franja').value,
+      pedidos:       document.getElementById('pedidos').value,
+      dobles:        document.getElementById('dobles').value,
+      xr:            document.getElementById('xr').value,
+      km:            document.getElementById('km').value,
+      obs:           document.getElementById('obs').value,
+      imagenBase64:  base64,
+      usuarioSesion: sesion?.usuario || '',
+      nivelSesion:   NIVEL
+    };
 
-    // --- SIN CONEXIÓN: guardar en cola ---
     if (!navigator.onLine) {
-      spinnerTxt.textContent = 'Guardando en cola...';
-      const id = await guardarEnCola(datos);
+      await guardarEnCola(payload);
       await actualizarBadgePendientes();
-      setMsg('📦 Sin conexión — ticket guardado. Se subirá automáticamente.', '#ffcc00');
-      resetFormulario(true);
+      setMsg('📥 Sin conexión — ticket guardado, se subirá al recuperar red', '#ffcc00');
+      resetFormulario();
+      showOfflineAlert();
       return;
     }
 
-    // --- CON CONEXIÓN: enviar directamente ---
-    spinnerTxt.textContent = 'Subiendo ticket...';
-    let text;
-    try {
-      const resp = await fetch(window.BACKEND_URL, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(datos)
-      });
-      text = await resp.text();
-    } catch(netErr) {
-      // Error de red aunque onLine dijera true → guardar en cola
-      const id = await guardarEnCola(datos);
-      await actualizarBadgePendientes();
-      setMsg('📦 Error de red — ticket guardado. Se subirá cuando haya conexión.', '#ffcc00');
-      resetFormulario(true);
-      return;
-    }
+    // Envío online
+    const resp = await fetch(window.BACKEND_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload)
+    });
+    const text = await resp.text();
 
-    if (text.includes('OK')) {
-      setMsg('✅ ' + text, '#9dffb0');
-    } else if (text.includes('NO_DETECTADO')) {
-      setMsg('⚠️ Ticket subido (número no detectado).', '#ffcc00');
-    } else {
-      setMsg(text, text.includes('ERROR') ? '#fca5a5' : '#9dffb0');
-    }
+    if (!resp.ok || text.startsWith('ERROR')) throw new Error(text);
 
-    resetFormulario(false);
+    setMsg('✅ Ticket subido correctamente', '#9dffb0');
+    setTimeout(clearMsg, 5000);
+    resetFormulario();
 
-  } catch (err) {
-    setMsg('❌ Error: ' + err.message, '#fca5a5');
+  } catch(err) {
     console.error('[Nexo] submit:', err);
-    _submitting = false;
+    if (!navigator.onLine || err.name === 'TypeError') {
+      // Intentar guardar en cola aunque falle el fetch
+      try {
+        const base64Retry = await new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onerror = () => rej();
+          r.onload  = ev => res(ev.target.result);
+          r.readAsDataURL(fotoInput._procesada || fotoInput.files[0]);
+        });
+        const payloadRetry = {
+          fecha:         fechaInput.value,
+          tienda:        document.getElementById('tienda').value,
+          repartidor:    document.getElementById('repartidor').value,
+          franja:        document.getElementById('franja').value,
+          pedidos:       document.getElementById('pedidos').value,
+          dobles:        document.getElementById('dobles').value,
+          xr:            document.getElementById('xr').value,
+          km:            document.getElementById('km').value,
+          obs:           document.getElementById('obs').value,
+          imagenBase64:  base64Retry,
+          usuarioSesion: sesion?.usuario || '',
+          nivelSesion:   NIVEL
+        };
+        await guardarEnCola(payloadRetry);
+        await actualizarBadgePendientes();
+        setMsg('📥 Sin conexión — ticket guardado, se subirá al recuperar red', '#ffcc00');
+        resetFormulario();
+      } catch(qErr) {
+        setMsg('❌ Error: ' + err.message, '#ff6b6b');
+      }
+    } else {
+      setMsg('❌ Error: ' + err.message, '#ff6b6b');
+    }
   } finally {
     hideSpinner();
+    _submitting = false;
   }
 });
 
-/* Reset del formulario tras envío exitoso */
-function resetFormulario(inmediato) {
-  const delay = inmediato ? 3000 : 5000;
-  setTimeout(() => {
-    const form = document.getElementById('ticketForm');
-    form.reset();
-    fechaInput.value = HOY;
+/* ============================================================
+   RESET FORMULARIO
+============================================================ */
+function resetFormulario() {
+  fotoInput.value      = '';
+  fotoInput._procesada = null;
+  fotoPreview.style.display = 'none';
+  fotoPreview.src      = '';
+  fotoInfo.style.display = 'none';
+  fotoInfo.textContent = '';
+  document.getElementById('btnGirar').style.display = 'none';
+  rotacionManual = 0;
 
+  document.getElementById('pedidos').value = '0';
+  document.getElementById('dobles').value  = '0';
+  document.getElementById('xr').value      = '0';
+  document.getElementById('km').value      = '0';
+  document.getElementById('obs').value     = '';
+
+  if (ES_ADMIN) {
+    document.getElementById('tienda').selectedIndex = 0;
+    repartSel.selectedIndex = 0;
+    document.getElementById('franja').selectedIndex = 0;
+  } else {
     aplicarReglasTienda();
-
-    if (ES_USUARIO_2) {
-      const franjaSel = document.getElementById('franja');
-      const maestras  = franjaSel._allOptions;
-      if (maestras && maestras.length > 0) {
-        const ph = document.createElement('option');
-        ph.value = ''; ph.textContent = 'Seleccione franja horaria...';
-        ph.disabled = true; ph.selected = true;
-        franjaSel.innerHTML = '';
-        franjaSel.appendChild(ph);
-        maestras.forEach(op => {
-          const el = document.createElement('option');
-          el.value = op.value; el.textContent = op.text;
-          franjaSel.appendChild(el);
-        });
-      }
-      aplicarReglasFranja();
-    }
-
-    if (ES_USUARIO_1) {
-      aplicarReglasRepartidor();
-    } else {
-      repartSel.selectedIndex = 0;
-    }
-
-    fotoPreview.style.display = 'none';
-    fotoPreview.src = '';
-    fotoInfo.style.display = 'none';
-    fotoInput._procesada = null;
-    rotacionManual = 0;
-    document.getElementById('btnGirar').style.display = 'none';
-    clearMsg();
-    _submitting = false;
-  }, delay);
+    if (ES_USUARIO_1) aplicarReglasRepartidor();
+    aplicarReglasFranja();
+  }
 }
 
 /* ============================================================
-   REGISTRAR SERVICE WORKER
-   ============================================================ */
+   SERVICE WORKER
+============================================================ */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js').catch(e => {
-      console.warn('[Nexo] SW register failed:', e);
-    });
+    navigator.serviceWorker.register('service-worker.js?v=5')
+      .then(reg => console.log('[SW] Registrado:', reg.scope))
+      .catch(err => console.warn('[SW] Error:', err));
   });
 }
 </script>
