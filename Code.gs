@@ -285,7 +285,6 @@ function sha256(text) {
 
 /* =============================================================
    PROCESAMIENTO DE TICKET
-   ⚠️  REEMPLAZA EL CUERPO DE ESTA FUNCIÓN POR TU LÓGICA ACTUAL
    (la que tienes en tu Apps Script subiendo fotos a Drive y
     guardando filas en la hoja de tickets).
    ============================================================= */
