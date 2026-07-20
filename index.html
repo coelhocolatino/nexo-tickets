@@ -925,7 +925,7 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
       fotoOpt = fotoInput._procesada;
     } else {
       try {
-        fotoOpt = await optimizarFoto(foto, 270);
+        fotoOpt = await optimizarFoto(foto, rotacionManual);
       } catch(optErr) {
         console.warn('[Nexo] Optimización falló, usando original:', optErr);
         fotoOpt = foto;
