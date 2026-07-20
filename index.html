@@ -552,7 +552,7 @@ document.getElementById('btnArchivo').addEventListener('click', () => {
   fotoInput.click();
 });
 
-let rotacionManual = (rotacionManual + 270) % 360;
+let rotacionManual = (rotacionManual + 90) % 360;
 
 fotoInput.addEventListener('change', async () => {
   const file = fotoInput.files[0];
