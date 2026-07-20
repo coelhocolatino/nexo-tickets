@@ -300,58 +300,50 @@ function procesarTicket(body) {
     var ss     = getSpreadsheet();
     var sheet  = ss.getSheetByName('tickets') || ss.getSheets()[0];
 
-    var fecha       = body.fecha       || '';
-    var tienda      = body.tienda      || '';
-    var repartidor  = body.repartidor  || '';
-    var franja      = body.franja      || '';
-    var pedidos     = body.pedidos     || 0;
-    var dobles      = body.dobles      || 0;
-    var xr          = body.xr          || 0;
-    var km          = body.km          || 0;
-    var obs         = body.obs         || '';
-    var imagen      = body.imagenBase64|| '';
+    var fecha       = String(body.fecha      || '').trim();
+    var tienda      = String(body.tienda     || '').trim();
+    var repartidor  = String(body.repartidor || '').trim().toUpperCase();
+    var franja      = String(body.franja     || '').trim();
+    var pedidos     = Number(body.pedidos)   || 0;
+    var dobles      = Number(body.dobles)    || 0;
+    var xr          = Number(body.xr)        || 0;
+    var km          = Number(body.km)        || 0;
+    var imagen      = body.imagenBase64      || '';
     var usuarioLogin= body.usuarioSesion || '';
     var timestamp   = new Date();
 
     // Subir imagen a Drive (REEMPLAZA con tu lógica real)
-    var imageUrl = '';
-    if (imagen) {
-      try {
-        var base64Data = imagen.split(',')[1] || imagen;
-        var blob = Utilities.newBlob(
-          Utilities.base64Decode(base64Data),
-          'image/jpeg',
-          'ticket_' + fecha + '_' + repartidor + '_' + Date.now() + '.jpg'
-        );
-        var folderId = 'TU_FOLDER_ID_AQUI'; // ← CAMBIAR por tu folder real
-        var folder = DriveApp.getFolderById(folderId);
-        var file = folder.createFile(blob);
-        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        imageUrl = file.getUrl();
-      } catch (driveErr) {
-        Logger.log('Drive error: ' + driveErr.message);
-      }
+ if (!imagen) {
+      return 'ERROR: imagen vacía';
     }
 
-    sheet.appendRow([
-      timestamp,
-      fecha,
-      tienda,
-      repartidor,
-      franja,
-      Number(pedidos),
-      Number(dobles),
-      Number(xr),
-      Number(km),
-      obs,
-      imageUrl,
-      usuarioLogin
-    ]);
+    // 1. Calcular el nombre de la carpeta del periodo (ej: 2026.MAY)
+    var mesInfo = calcularMesOperativo(fecha, tienda);
+    Logger.log('Periodo: ' + mesInfo.nombreCarpeta);
 
+    // 2. Generar nombre del archivo
+    var nombreArchivo = generarNombreArchivo(body);
+
+    // 3. Decodificar imagen
+    var base64Data = imagen.indexOf(',') !== -1 ? imagen.split(',')[1] : imagen;
+    var blob = Utilities.newBlob(
+      Utilities.base64Decode(base64Data),
+      'image/jpeg',
+      nombreArchivo
+    );
+
+    // 4. Subir a Drive — Raíz → Periodo → Repartidor
+    var carpetaPeriodo    = obtenerOCrearCarpeta(DRIVE_ROOT_ID, mesInfo.nombreCarpeta);
+    var carpetaRepartidor = obtenerOCrearCarpeta(carpetaPeriodo.getId(), repartidor);
+
+    var file = carpetaRepartidor.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    Logger.log('Subido: ' + nombreArchivo);
     return 'OK | ' + tienda + ' | ' + repartidor + ' | P:' + pedidos;
 
   } catch (err) {
-    Logger.log('procesarTicket ERROR: ' + err.message);
+    Logger.log('procesarTicket ERROR: ' + err.message + '\n' + err.stack);
     return 'ERROR: ' + err.message;
   }
 }
