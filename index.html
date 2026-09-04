@@ -504,7 +504,7 @@ function getFranjasPermitidas() {
 }
 
 function aplicarReglasFranja() {
-  if (!ES_USUARIO_2) return;
+  if (!ES_USUARIO_1 && !ES_USUARIO_2) return;
   const franjaSel = document.getElementById('franja');
   const permitidas = getFranjasPermitidas();
   const opcionesActuales = Array.from(franjaSel.options)
