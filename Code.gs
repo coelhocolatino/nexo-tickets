@@ -6,7 +6,7 @@
 // La tabla USUARIOS empieza en la columna P (columna 16) de la fila 1:
 //   P1: USUARIO | Q1: NOMBRE | R1: ACTIVO | S1: PASSWORD_HASH | T1: NIVEL
 //
-// Valores de NIVEL:  "admin" | "usuario 1" | "usuario 2"
+// Valores de NIVEL: "admin" | "usuario 1" | "usuario 2" | "usuario 3"
 // Valores de ACTIVO: "SI" o "NO"
 // PASSWORD_HASH:     vacío = usuario nuevo (crea contraseña en primer acceso)
 //
