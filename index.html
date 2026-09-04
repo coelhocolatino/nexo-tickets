@@ -337,6 +337,7 @@ const NIVEL        = (sesion && sesion.nivel ? String(sesion.nivel).toLowerCase(
 const ES_ADMIN     = NIVEL === 'admin';
 const ES_USUARIO_1 = NIVEL === 'usuario 1' || NIVEL === 'usuario1';
 const ES_USUARIO_2 = NIVEL === 'usuario 2' || NIVEL === 'usuario2';
+const ES_USUARIO_3 = NIVEL === 'usuario 3' || NIVEL === 'usuario3';
 
 document.getElementById('badgeNombre').textContent = sesion?.nombre || '—';
 const nivelTag = document.getElementById('nivelTag');
@@ -446,7 +447,7 @@ function fillSelect(id, arr, placeholder) {
 ============================================================ */
 function aplicarReglasRepartidor() {
   if (!listasCargadas || !sesion) return;
-  if (ES_USUARIO_1) {
+  if (ES_USUARIO_1 || ES_USUARIO_3) {
     const opciones = Array.from(repartSel.options).map(o => o.value);
     const miNombre = sesion.nombre || sesion.usuario;
     const match    = opciones.find(o =>
