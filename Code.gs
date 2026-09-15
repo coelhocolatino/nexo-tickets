@@ -307,6 +307,7 @@ function procesarTicket(body) {
     var dobles      = Number(body.dobles)    || 0;
     var xr          = Number(body.xr)        || 0;
     var km          = Number(body.km)        || 0;
+    var obs         = String(body.obs        || '').trim();
     var imagen      = body.imagenBase64      || '';
     var usuarioLogin= body.usuarioSesion || '';
     var timestamp   = new Date();
