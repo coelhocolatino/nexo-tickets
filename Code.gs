@@ -31,39 +31,6 @@ function doGet(e) {
   }
 }
 
-/* ========================= doPost ======================== */
-function doPost(e) {
-  try {
-    var body = JSON.parse(e.postData.contents);
-
-    // Rutas de autenticación — siempre devuelven JSON
-    if (body.accion === 'verificarUsuario') {
-      try { return buildJSON(verificarUsuario(body)); }
-      catch(err) { return buildJSON({ error: err.message }); }
-    }
-    if (body.accion === 'login') {
-      try { return buildJSON(hacerLogin(body)); }
-      catch(err) { return buildJSON({ ok: false, error: err.message }); }
-    }
-    if (body.accion === 'registrarPassword') {
-      try { return buildJSON(registrarPassword(body)); }
-      catch(err) { return buildJSON({ ok: false, error: err.message }); }
-    }
-
-    // Subida de ticket (comportamiento original)
-    return buildText(procesarTicket(body));
-
-  } catch (err) {
-    Logger.log('doPost ERROR: ' + err.message + '\n' + err.stack);
-    // Si el body tenía accion, devolver JSON de error
-    try {
-      var b = JSON.parse(e.postData.contents);
-      if (b.accion) return buildJSON({ error: err.message });
-    } catch(e2) {}
-    return buildText('ERROR: ' + err.message);
-  }
-}
-
 /* ========================= helpers de respuesta ========== */
 function buildJSON(obj) {
   return ContentService
@@ -281,71 +248,6 @@ function sha256(text) {
   return bytes.map(function(b) {
     return ('0' + (b & 0xFF).toString(16)).slice(-2);
   }).join('');
-}
-
-/* =============================================================
-   PROCESAMIENTO DE TICKET
-   (la que tienes en tu Apps Script subiendo fotos a Drive y
-    guardando filas en la hoja de tickets).
-   ============================================================= */
-function procesarTicket(body) {
-  try {
-    // ---- AQUÍ VA TU CÓDIGO ORIGINAL DE TICKETS ----
-    // Datos disponibles en `body`:
-    //   body.fecha, body.tienda, body.repartidor, body.franja
-    //   body.pedidos, body.dobles, body.xr, body.km, body.obs
-    //   body.imagenBase64, body.usuarioSesion, body.nivelSesion
-
-    var ss     = getSpreadsheet();
-    var sheet  = ss.getSheetByName('tickets') || ss.getSheets()[0];
-
-    var fecha       = String(body.fecha      || '').trim();
-    var tienda      = String(body.tienda     || '').trim();
-    var repartidor  = String(body.repartidor || '').trim().toUpperCase();
-    var franja      = String(body.franja     || '').trim();
-    var pedidos     = Number(body.pedidos)   || 0;
-    var dobles      = Number(body.dobles)    || 0;
-    var xr          = Number(body.xr)        || 0;
-    var km          = Number(body.km)        || 0;
-    var obs         = String(body.obs        || '').trim();
-    var imagen      = body.imagenBase64      || '';
-    var usuarioLogin= body.usuarioSesion || '';
-    var timestamp   = new Date();
-
-    // Subir imagen a Drive (REEMPLAZA con tu lógica real)
- if (!imagen) {
-      return 'ERROR: imagen vacía';
-    }
-
-    // 1. Calcular el nombre de la carpeta del periodo (ej: 2026.MAY)
-    var mesInfo = calcularMesOperativo(fecha, tienda);
-    Logger.log('Periodo: ' + mesInfo.nombreCarpeta);
-
-    // 2. Generar nombre del archivo
-    var nombreArchivo = generarNombreArchivo(body);
-
-    // 3. Decodificar imagen
-    var base64Data = imagen.indexOf(',') !== -1 ? imagen.split(',')[1] : imagen;
-    var blob = Utilities.newBlob(
-      Utilities.base64Decode(base64Data),
-      'image/jpeg',
-      nombreArchivo
-    );
-
-    // 4. Subir a Drive — Raíz → Periodo → Repartidor
-    var carpetaPeriodo    = obtenerOCrearCarpeta(DRIVE_ROOT_ID, mesInfo.nombreCarpeta);
-    var carpetaRepartidor = obtenerOCrearCarpeta(carpetaPeriodo.getId(), repartidor);
-
-    var file = carpetaRepartidor.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    Logger.log('Subido: ' + nombreArchivo);
-    return 'OK | ' + tienda + ' | ' + repartidor + ' | P:' + pedidos;
-
-  } catch (err) {
-    Logger.log('procesarTicket ERROR: ' + err.message + '\n' + err.stack);
-    return 'ERROR: ' + err.message;
-  }
 }
 
 /* =============================================================
