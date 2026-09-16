@@ -427,36 +427,6 @@ let listasCargadas = false;
     console.error('[Nexo] cargarListas:', err);
   }
 })();
-
-(async function cargarListas() {
-  try {
-    console.time('[Nexo] CARGA LISTAS');
-
-    console.time('[Nexo] FETCH');
-    const r = await fetch(BACKEND_GET, { cache: 'no-store' });
-    console.timeEnd('[Nexo] FETCH');
-
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-
-    console.time('[Nexo] JSON');
-    const data = await r.json();
-    console.timeEnd('[Nexo] JSON');
-
-    console.time('[Nexo] DOM');
-    fillSelect('tienda',     data.tiendas,     'Seleccione tienda...');
-    fillSelect('repartidor', data.repartidores, 'Seleccione repartidor...');
-    fillSelect('franja',     data.franjas,      'Seleccione franja horaria...');
-    aplicarReglasRepartidor();
-    aplicarReglasTienda();
-    aplicarReglasFranja();
-    console.timeEnd('[Nexo] DOM');
-
-    console.timeEnd('[Nexo] CARGA LISTAS');
-
-  } catch (err) {
-    ...
-  }
-})();
   
 function fillSelect(id, arr, placeholder) {
   const el = document.getElementById(id);
