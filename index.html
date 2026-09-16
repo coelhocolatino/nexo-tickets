@@ -407,21 +407,34 @@ let listasCargadas = false;
 
 (async function cargarListas() {
   try {
+
+    console.time('[Nexo] FETCH tiendas/repartidores/franjas');
+
     const r = await fetch(BACKEND_GET, { cache: 'no-store' });
+
+    console.timeEnd('[Nexo] FETCH tiendas/repartidores/franjas');
+
     if (!r.ok) throw new Error('HTTP ' + r.status);
+
     const data = await r.json();
+
     if (!data.tiendas || !data.repartidores || !data.franjas) {
       throw new Error('Respuesta incompleta: ' + JSON.stringify(data));
     }
+
     fillSelect('tienda',     data.tiendas,     'Seleccione tienda...');
     fillSelect('repartidor', data.repartidores, 'Seleccione repartidor...');
     fillSelect('franja',     data.franjas,      'Seleccione franja horaria...');
+
     listasCargadas = true;
+
     console.log('[Nexo] sesion:', JSON.stringify(sesion));
     console.log('[Nexo] tiendaPre:', sesion && sesion.tiendaPre);
+
     aplicarReglasRepartidor();
     aplicarReglasTienda();
     aplicarReglasFranja();
+
   } catch (err) {
     setMsg('⚠️ Error cargando listas: ' + err.message, '#ffcc00');
     console.error('[Nexo] cargarListas:', err);
