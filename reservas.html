@@ -1,1 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#07080f" />
+<title>Nexo · Reservas</title>
+<link rel="icon" href="nexo-icon-192.png">
+<style>
+:root {
+  --blue:#2563eb; --blue-light:#3b82f6;
+  --orange:#f97316; --orange-light:#fb923c;
+  --bg:#07080f; --text:#f1f5f9; --muted:#94a3b8;
+  --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+}
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+body {
+  font-family:var(--font); background:var(--bg); color:var(--text);
+  min-height:100vh; min-height:100dvh;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:18px; padding:24px; text-align:center;
+}
+.logo { width:180px; max-width:60vw; background:#fff; border-radius:20px; padding:12px 18px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.ring { width:40px; height:40px; border:4px solid rgba(255,255,255,.25); border-top-color:var(--blue-light);
+  border-radius:50%; animation:spin .8s linear infinite; }
+p { color:var(--muted); font-size:.9rem; }
+a.manual { color:var(--blue-light); font-weight:700; text-decoration:none; font-size:.85rem; }
+</style>
+</head>
+<body>
+<img class="logo" src="nexo-logo-full.png" alt="Nexo" />
+<div class="ring"></div>
+<p>Abriendo el Módulo de Reservas…</p>
+<a class="manual" id="linkManual" href="#">Si no redirige automáticamente, toca aquí</a>
 
+<script>
+// ⚠️ Pega aquí la URL ".../exec" que te da "Implementar → Nueva implementación"
+// del proyecto de Apps Script del Módulo de Reservas (ver LEEME.md).
+var RESERVAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbxzbzuDkqQDECh2mn3Hmvg5GAPvtLjshYMnPTlQLSHHO8Y-4SqePrKfo0rzyyorfp19/exec";
+
+document.getElementById('linkManual').href = RESERVAS_EXEC_URL;
+
+if (RESERVAS_EXEC_URL.indexOf('PEGA_AQUI') === -1) {
+  window.location.replace(RESERVAS_EXEC_URL);
+} else {
+  document.querySelector('p').textContent = 'Falta configurar la URL del módulo (ver comentario en este archivo).';
+}
+</script>
+</body>
+</html>
