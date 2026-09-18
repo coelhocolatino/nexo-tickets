@@ -39,10 +39,18 @@ a.manual { color:var(--blue-light); font-weight:700; text-decoration:none; font-
 // del proyecto de Apps Script del Módulo de Reservas (ver LEEME.md).
 var RESERVAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbwXkz9LoSa2ucdz9x1_wD9Z0BMsRe9R2vrnZ_MZEeKGSpKN55EQM3cVQLYtdeOL9JwP/exec";
 
-document.getElementById('linkManual').href = RESERVAS_EXEC_URL;
+// Reenvía el usuario ya logueado en Nexo Tickets (?u=usuario) al módulo,
+// para que entre directo sin pedir contraseña otra vez.
+var usuario = new URLSearchParams(window.location.search).get('u') || '';
+var urlFinal = RESERVAS_EXEC_URL;
+if (RESERVAS_EXEC_URL.indexOf('PEGA_AQUI') === -1 && usuario) {
+  urlFinal += (RESERVAS_EXEC_URL.indexOf('?') === -1 ? '?' : '&') + 'u=' + encodeURIComponent(usuario);
+}
+
+document.getElementById('linkManual').href = urlFinal;
 
 if (RESERVAS_EXEC_URL.indexOf('PEGA_AQUI') === -1) {
-  window.location.replace(RESERVAS_EXEC_URL);
+  window.location.replace(urlFinal);
 } else {
   document.querySelector('p').textContent = 'Falta configurar la URL del módulo (ver comentario en este archivo).';
 }
