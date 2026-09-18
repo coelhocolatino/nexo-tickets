@@ -1,16 +1,20 @@
 // =============================================================================
 // NEXO · SAD TICKETS — Code.gs
 // =============================================================================
-// HOJA: "database" → tabla USUARIOS
-//
-// La tabla USUARIOS empieza en la columna P (columna 16) de la fila 1:
-//   P1: USUARIO | Q1: NOMBRE | R1: ACTIVO | S1: PASSWORD_HASH | T1: NIVEL
+// SPREADSHEET DE DATOS: SS_ID (ver más abajo, junto a getSpreadsheet())
+//   → HOJA "USUARIOS": tabla de usuarios, empieza en columna A, fila 1 = encabezados
+//       A1: USUARIO | B1: NOMBRE | C1: ACTIVO | D1: PASSWORD_HASH | E1: NIVEL |
+//       F1: TIENDA_PRE | G1: MODULO RESERVAS | H1: DEPARTAMENTO | I1: CORREO |
+//       J1: TELEFONO | K1: MATRICULA_PRE
+//   → HOJA "TIENDAS": tabla de tiendas, empieza en columna A, fila 1 = encabezados
+//       A1: TIENDAS | B1: FECHA INICIO | C1: FECHA FIN | D1..: FRANJAS HORARIAS
+//       (hasta 4 franjas por tienda, una por columna; celdas vacías se ignoran)
 //
 // Valores de NIVEL: "admin" | "usuario 1" | "usuario 2" | "usuario 3"
 // Valores de ACTIVO: "SI" o "NO"
 // PASSWORD_HASH:     vacío = usuario nuevo (crea contraseña en primer acceso)
 //
-// COL_USUARIOS_START = 16  ← columna P (1-indexed, como en getRange)
+// COL_USUARIOS_START = 1  ← columna A (1-indexed, como en getRange)
 // =============================================================================
 //
 // IMPORTANTE: Esta versión INTEGRA la autenticación al Apps Script existente.
@@ -18,9 +22,9 @@
 // de procesarTicket() abajo por esa lógica.
 // =============================================================================
 
-// Columna de inicio de la tabla USUARIOS en la hoja "database" (1-indexed)
-// P = 16. Cambia este valor si mueves la tabla a otra columna.
-var COL_USUARIOS_START = 16;
+// Columna de inicio de la tabla USUARIOS en la hoja "USUARIOS" (1-indexed)
+// A = 1. Cambia este valor si mueves la tabla a otra columna.
+var COL_USUARIOS_START = 1;
 
 /* ========================= doGet ========================= */
 function doGet(e) {
@@ -131,8 +135,8 @@ function registrarPassword(body) {
   if (pwd.length < 6)   return { ok: false, error: 'Contraseña demasiado corta' };
 
   var ss    = getSpreadsheet();
-  var sheet = ss.getSheetByName('database');
-  if (!sheet) return { ok: false, error: 'Hoja database no encontrada' };
+  var sheet = ss.getSheetByName('USUARIOS');
+  if (!sheet) return { ok: false, error: 'Hoja USUARIOS no encontrada' };
 
   // Leer encabezados para saber en qué offset está PASSWORD_HASH
   var data   = leerTablaUsuarios(sheet);
@@ -141,7 +145,7 @@ function registrarPassword(body) {
 
   var colUsuario = header.indexOf('USUARIO');
   var colActivo  = header.indexOf('ACTIVO');
-  var colPwd     = header.indexOf('PASSWORD_HASH');  // índice 0-based dentro del rango P..
+  var colPwd     = header.indexOf('PASSWORD_HASH');  // índice 0-based dentro del rango leído
   var colNombre  = header.indexOf('NOMBRE');
   var colNivel   = header.indexOf('NIVEL');
 
@@ -189,23 +193,39 @@ function leerTablaUsuarios(sheet) {
 
   if (numCols <= 0 || lastRow < 1) return [];
 
-  // Leer desde P1 hasta el final de los datos
+  // Leer desde la columna de inicio hasta el final de los datos
   var range = sheet.getRange(1, COL_USUARIOS_START, lastRow, numCols);
   return range.getValues();
 }
 
+/* =============================================================
+   SPREADSHEET DE DATOS
+   Contiene las hojas "USUARIOS" y "TIENDAS".
+   ============================================================= */
+var SS_ID = '1n22xieMU7usBigmDwN4i5agSpDM-eCmCRlj6pj68Zx4';
+
+function getSpreadsheet() {
+  // Intenta por ID primero, luego getActive como fallback
+  try {
+    return SpreadsheetApp.openById(SS_ID);
+  } catch(e) {
+    Logger.log('openById falló: ' + e.message + ' — usando getActiveSpreadsheet');
+    return SpreadsheetApp.getActiveSpreadsheet();
+  }
+}
+
 /**
- * Busca un usuario en la tabla USUARIOS (columna P en adelante).
+ * Busca un usuario en la tabla USUARIOS (columna A en adelante).
  * Devuelve { COLUMNA: valor, _fila: N, _colOffset: N } o null.
  *   _fila      = número de fila en la hoja (1-indexed) → para getRange al escribir
- *   _colOffset = índice 0-based dentro del rango (P=0, Q=1, R=2...)
+ *   _colOffset = índice 0-based dentro del rango (A=0, B=1, C=2...)
  */
 function encontrarFilaUsuario(usuario) {
   try {
     var ss    = getSpreadsheet();
-    var sheet = ss.getSheetByName('database');
+    var sheet = ss.getSheetByName('USUARIOS');
     if (!sheet) {
-      Logger.log('encontrarFilaUsuario: hoja database no encontrada');
+      Logger.log('encontrarFilaUsuario: hoja USUARIOS no encontrada');
       return null;
     }
 
@@ -257,7 +277,7 @@ function sha256(text) {
    ============================================================= */
 function diagnosticarUsuarios() {
   var ss    = getSpreadsheet();
-  var sheet = ss.getSheetByName('database');
+  var sheet = ss.getSheetByName('USUARIOS');
 
   Logger.log('=== DIAGNÓSTICO TABLA USUARIOS ===');
   Logger.log('COL_USUARIOS_START = ' + COL_USUARIOS_START + ' (columna ' + columnLetter(COL_USUARIOS_START) + ')');
@@ -340,74 +360,120 @@ function columnLetter(col) {
 }
 
 /* =============================================================
-   LISTAS — leen de database!A3, E3, G3
-   Columnas:
-     A (col 1) = Tiendas
-     E (col 5) = Repartidores
-     G (col 7) = Franja Horaria
-   Las listas empiezan en la fila 4 (fila 3 = encabezados: TIENDAS, REPARTIDORES, FRANJA HORARIA).
-   ============================================================= */
-var SS_ID = '19bqTde5-Yf6P7B6IkcJ2tkb_xM9lH9hvSlR6LFvm_TY';
+   LISTAS — leen de la hoja "TIENDAS" (tiendas + sus franjas) y
+   de la hoja "USUARIOS" (repartidores activos, depto. REPARTO).
 
-function getSpreadsheet() {
-  // Intenta por ID primero, luego getActive como fallback
-  try {
-    return SpreadsheetApp.openById(SS_ID);
-  } catch(e) {
-    Logger.log('openById falló: ' + e.message + ' — usando getActiveSpreadsheet');
-    return SpreadsheetApp.getActiveSpreadsheet();
-  }
-}
+   Hoja "TIENDAS" (fila 1 = encabezados, datos desde la fila 2):
+     A = TIENDAS | B = FECHA INICIO | C = FECHA FIN | D..= FRANJAS HORARIAS
+   (hasta 4 franjas por tienda; columnas vacías se ignoran)
+
+   NOTA: FECHA INICIO / FECHA FIN se leen aquí solo para referencia futura;
+   no se usan para restringir franjas (esa lógica va por hora, ver index.html).
+   Si en el futuro hacen falta para otra cosa (p.ej. el mes operativo),
+   se pueden añadir a la respuesta sin tocar el resto de esta función.
+   ============================================================= */
+
+// Resultado cacheado 5 minutos: las tiendas/franjas/repartidores casi nunca
+// cambian de un minuto a otro, y así evitamos reabrir la hoja en cada carga.
+var LISTAS_CACHE_KEY = 'nexo_listas_v2';
+var LISTAS_CACHE_TTL_SEG = 300; // 5 minutos
 
 function getListas() {
   try {
+    var cache = CacheService.getScriptCache();
+    var cacheado = cache.get(LISTAS_CACHE_KEY);
+    if (cacheado) return JSON.parse(cacheado);
+
     var ss    = getSpreadsheet();
-    var sheet = ss.getSheetByName('database');
+    var sheet = ss.getSheetByName('TIENDAS');
 
     if (!sheet) {
-      Logger.log('ERROR getListas: hoja "database" no encontrada. Hojas disponibles: ' +
+      Logger.log('ERROR getListas: hoja "TIENDAS" no encontrada. Hojas disponibles: ' +
         ss.getSheets().map(function(s){ return s.getName(); }).join(', '));
-      return { tiendas: [], repartidores: [], franjas: [] };
+      return { tiendas: [], repartidores: [], franjasPorTienda: {} };
     }
 
     var lastRow = sheet.getLastRow();
-    Logger.log('getListas: lastRow=' + lastRow);
-    if (lastRow < 3) {
-      Logger.log('getListas: lastRow < 4, no hay datos');
-      return { tiendas: [], repartidores: [], franjas: [] };
+    var lastCol = sheet.getLastColumn();
+    if (lastRow < 2) {
+      Logger.log('getListas: hoja TIENDAS sin datos (lastRow=' + lastRow + ')');
+      return { tiendas: [], repartidores: [], franjasPorTienda: {} };
     }
 
-    var numRows = lastRow - 3; // filas desde la 4 hasta el final (fila 3 = encabezados)
-    if (numRows < 1) {
-      Logger.log('getListas: no hay datos desde fila 4');
-      return { tiendas: [], repartidores: [], franjas: [] };
-    }
+    var numRows = lastRow - 1; // datos desde la fila 2 (fila 1 = encabezados)
+    var data    = sheet.getRange(2, 1, numRows, lastCol).getValues();
 
-    var colTiendas      = sheet.getRange(4, 1, numRows, 1).getValues(); // A4:A
-    var colRepartidores = sheet.getRange(4, 5, numRows, 1).getValues(); // E4:E
-    var colFranjas      = sheet.getRange(4, 7, numRows, 1).getValues(); // G4:G
-
-    function extraer(col) {
-      return col.map(function(r) { return String(r[0] || '').trim(); })
-                .filter(function(v) { return v.length > 0; });
-    }
+    var tiendas = [];
+    var franjasPorTienda = {};
+    data.forEach(function(row) {
+      var nombre = String(row[0] || '').trim();
+      if (!nombre) return;
+      tiendas.push(nombre);
+      var franjas = [];
+      for (var c = 3; c < row.length; c++) { // columna D (idx 3) en adelante
+        var v = String(row[c] || '').trim();
+        if (v) franjas.push(v);
+      }
+      franjasPorTienda[nombre] = franjas;
+    });
 
     var resultado = {
-      tiendas:      extraer(colTiendas),
-      repartidores: extraer(colRepartidores),
-      franjas:      extraer(colFranjas)
+      tiendas:          tiendas,
+      repartidores:     getRepartidoresActivos(),
+      franjasPorTienda: franjasPorTienda
     };
 
     Logger.log('getListas OK: tiendas=' + resultado.tiendas.length +
-      ' repartidores=' + resultado.repartidores.length +
-      ' franjas=' + resultado.franjas.length);
+      ' repartidores=' + resultado.repartidores.length);
 
+    cache.put(LISTAS_CACHE_KEY, JSON.stringify(resultado), LISTAS_CACHE_TTL_SEG);
     return resultado;
 
   } catch(err) {
     Logger.log('getListas EXCEPCION: ' + err.message);
-    return { tiendas: [], repartidores: [], franjas: [] };
+    return { tiendas: [], repartidores: [], franjasPorTienda: {} };
   }
+}
+
+/**
+ * Repartidores = usuarios activos de la hoja USUARIOS con DEPARTAMENTO = REPARTO.
+ * Devuelve sus NOMBRE (o USUARIO si NOMBRE está vacío).
+ */
+function getRepartidoresActivos() {
+  try {
+    var ss    = getSpreadsheet();
+    var sheet = ss.getSheetByName('USUARIOS');
+    if (!sheet) return [];
+
+    var data = leerTablaUsuarios(sheet);
+    if (data.length === 0) return [];
+
+    var header     = data[0].map(function(h) { return String(h).trim().toUpperCase(); });
+    var colUsuario = header.indexOf('USUARIO');
+    var colNombre  = header.indexOf('NOMBRE');
+    var colActivo  = header.indexOf('ACTIVO');
+    var colDepto   = header.indexOf('DEPARTAMENTO');
+
+    var out = [];
+    for (var i = 1; i < data.length; i++) {
+      if (!esActivo(data[i][colActivo])) continue;
+      var depto = String(colDepto !== -1 ? data[i][colDepto] : '').trim().toUpperCase();
+      if (depto !== 'REPARTO') continue;
+      var nombre = String((colNombre !== -1 ? data[i][colNombre] : '') || data[i][colUsuario] || '').trim();
+      if (nombre) out.push(nombre);
+    }
+    return out;
+  } catch(err) {
+    Logger.log('getRepartidoresActivos EXCEPCION: ' + err.message);
+    return [];
+  }
+}
+
+/* Invalida la caché de listas — ejecutar manualmente si acabas de editar
+   la hoja TIENDAS o USUARIOS y no quieres esperar a que caduque sola (5 min). */
+function limpiarCacheListas() {
+  CacheService.getScriptCache().remove(LISTAS_CACHE_KEY);
+  Logger.log('Caché de listas eliminada.');
 }
 
 /* Diagnóstico de listas — ejecutar manualmente en Apps Script Editor */
@@ -420,8 +486,8 @@ function diagnosticarListas() {
     Logger.log('Spreadsheet nombre: ' + ss.getName());
     Logger.log('Hojas: ' + ss.getSheets().map(function(s){ return '"' + s.getName() + '"'; }).join(', '));
 
-    var sheet = ss.getSheetByName('database');
-    if (!sheet) { Logger.log('ERROR: hoja "database" no encontrada'); return; }
+    var sheet = ss.getSheetByName('TIENDAS');
+    if (!sheet) { Logger.log('ERROR: hoja "TIENDAS" no encontrada'); return; }
 
     Logger.log('lastRow: ' + sheet.getLastRow() + ' | lastCol: ' + sheet.getLastColumn());
 
@@ -431,11 +497,14 @@ function diagnosticarListas() {
       Logger.log('Fila ' + r + ': ' + JSON.stringify(row));
     }
 
+    limpiarCacheListas(); // para que el diagnóstico siempre lea datos frescos
     var listas = getListas();
     Logger.log('--- RESULTADO ---');
     Logger.log('Tiendas (' + listas.tiendas.length + '): ' + JSON.stringify(listas.tiendas.slice(0,5)));
     Logger.log('Repartidores (' + listas.repartidores.length + '): ' + JSON.stringify(listas.repartidores.slice(0,5)));
-    Logger.log('Franjas (' + listas.franjas.length + '): ' + JSON.stringify(listas.franjas.slice(0,5)));
+    Logger.log('Franjas por tienda (muestra): ' + JSON.stringify(listas.tiendas.slice(0,3).reduce(function(acc, t) {
+      acc[t] = listas.franjasPorTienda[t]; return acc;
+    }, {})));
 
   } catch(e) {
     Logger.log('EXCEPCION: ' + e.message);
