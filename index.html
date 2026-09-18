@@ -338,6 +338,7 @@ const fotoPreview = document.getElementById('fotoPreview');
 const fotoInfo    = document.getElementById('fotoInfo');
 const fechaInput  = document.getElementById('fecha');
 const repartSel   = document.getElementById('repartidor');
+const tiendaSel   = document.getElementById('tienda');
 
 /* ============================================================
    SESIÓN — niveles: admin / usuario 1 / usuario 2
@@ -419,46 +420,80 @@ if (!ES_ADMIN) {
 const PROXY_URL   = "https://sad-proxy.colatino-ventas-enlinea.workers.dev/";
 const BACKEND_GET = PROXY_URL + "?url=" + encodeURIComponent(
   "https://script.google.com/macros/s/AKfycbzkf4K28coJa5YXNv_iN08sfhjrtKenyFJgHxWaIxMGVtuABHswvySAFEmowq5vP4rD/exec"
-) + "&t=" + Date.now();
+);
 
 let listasCargadas = false;
+let TIENDAS_FRANJAS = {}; // { "TRAVESIA": ["10-13H","13-16H",...], "ONLINE": ["10-22H"], ... }
 
-(async function cargarListas() {
+/* Caché local: pinta al instante con lo último guardado mientras se
+   refresca en segundo plano. Evita esperar red en cada apertura. */
+const LISTAS_CACHE_KEY = 'nexo_listas_cache_v2';
+function leerListasCache() {
   try {
+    const raw = localStorage.getItem(LISTAS_CACHE_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    return (obj && obj.data) ? obj.data : null;
+  } catch(e) { return null; }
+}
+function guardarListasCache(data) {
+  try { localStorage.setItem(LISTAS_CACHE_KEY, JSON.stringify({ data: data, ts: Date.now() })); }
+  catch(e) {}
+}
 
+function aplicarDatosListas(data) {
+  fillSelect('tienda',     data.tiendas,     'Seleccione tienda...');
+  fillSelect('repartidor', data.repartidores, 'Seleccione repartidor...');
+  TIENDAS_FRANJAS = data.franjasPorTienda || {};
+  listasCargadas  = true;
+
+  aplicarReglasRepartidor();
+  aplicarReglasTienda();
+  aplicarReglasFranja();
+}
+
+async function cargarListas() {
+  // 1) Pintar de inmediato con la última copia guardada, sin esperar red
+  const cacheado = leerListasCache();
+  if (cacheado) {
+    try { aplicarDatosListas(cacheado); } catch(e) { console.warn('[Nexo] Caché de listas inválida:', e); }
+  }
+
+  // 2) Refrescar siempre contra el servidor (de entrada si no había caché)
+  try {
     console.time('[Nexo] FETCH tiendas/repartidores/franjas');
-
-    const r = await fetch(BACKEND_GET, { cache: 'no-store' });
-
+    const r = await fetch(BACKEND_GET);
     console.timeEnd('[Nexo] FETCH tiendas/repartidores/franjas');
 
     if (!r.ok) throw new Error('HTTP ' + r.status);
 
     const data = await r.json();
 
-    if (!data.tiendas || !data.repartidores || !data.franjas) {
+    if (!data.tiendas || !data.repartidores || !data.franjasPorTienda) {
       throw new Error('Respuesta incompleta: ' + JSON.stringify(data));
     }
 
-    fillSelect('tienda',     data.tiendas,     'Seleccione tienda...');
-    fillSelect('repartidor', data.repartidores, 'Seleccione repartidor...');
-    fillSelect('franja',     data.franjas,      'Seleccione franja horaria...');
-
-    listasCargadas = true;
+    guardarListasCache(data);
+    aplicarDatosListas(data);
 
     console.log('[Nexo] sesion:', JSON.stringify(sesion));
     console.log('[Nexo] tiendaPre:', sesion && sesion.tiendaPre);
 
-    aplicarReglasRepartidor();
-    aplicarReglasTienda();
-    aplicarReglasFranja();
-
   } catch (err) {
-    setMsg('⚠️ Error cargando listas: ' + err.message, '#ffcc00');
+    if (!cacheado) {
+      setMsg('⚠️ Error cargando listas: ' + err.message, '#ffcc00');
+    }
     console.error('[Nexo] cargarListas:', err);
   }
-})();
-  
+}
+cargarListas();
+
+// Si la tienda cambia (admin / usuario 2 pueden elegir otra), recalcular sus franjas
+tiendaSel.addEventListener('change', aplicarReglasFranja);
+
+// Revisa cada minuto si alguna franja ya cruzó el corte de "1h antes de caducar"
+setInterval(() => { if (listasCargadas) aplicarReglasFranja(); }, 60000);
+
 function fillSelect(id, arr, placeholder) {
   const el = document.getElementById(id);
   el.innerHTML = '';
@@ -504,7 +539,6 @@ function aplicarReglasRepartidor() {
 function aplicarReglasTienda() {
   const tiendaPre = sesion && sesion.tiendaPre ? sesion.tiendaPre.trim() : '';
   if (!tiendaPre) return;
-  const tiendaSel = document.getElementById('tienda');
   const opciones  = Array.from(tiendaSel.options).map(o => o.value);
   const match     = opciones.find(o =>
     o.toLowerCase().trim() === tiendaPre.toLowerCase()
@@ -520,48 +554,57 @@ function aplicarReglasTienda() {
 }
 
 /* ============================================================
-   FRANJA HORARIA (solo usuario 2)
+   FRANJA HORARIA — según la tienda elegida y la hora actual
+   Regla: se puede elegir una franja hasta 1 hora antes de que acabe.
+   Si la tienda solo tiene UNA franja (p.ej. "ONLINE" 10-22H), el corte
+   es justo en su hora de fin — hay que estar dentro del tramo.
+   El corte por hora solo se aplica a usuario 1 y usuario 2;
+   admin y usuario 3 ven todas las franjas de la tienda sin filtrar por hora.
 ============================================================ */
-function getFranjasPermitidas() {
+function parseFranja(str) {
+  const m = /^(\d{1,2})-(\d{1,2})H$/i.exec(String(str).trim());
+  if (!m) return null;
+  return { inicio: parseInt(m[1], 10) * 60, fin: parseInt(m[2], 10) * 60 };
+}
+
+function getFranjasPermitidas(listaFranjas) {
   const ahora = new Date();
   const mins  = ahora.getHours() * 60 + ahora.getMinutes();
-  const t = (hh, mm) => hh * 60 + mm;
-  let franjas = [];
-  if (mins >= t(9,0)  && mins < t(11,0))  franjas = ['10-13H'];
-  if (mins >= t(11,0) && mins < t(14,30)) franjas = ['12-14H','13-16H'];
-  if (mins >= t(15,0) && mins < t(16,30)) franjas = ['16-19H'];
-  if (mins >= t(16,30)&& mins < t(19,0))  franjas = ['17-19H'];
-  if (mins >= t(18,0) && mins < t(19,30)) franjas = ['17-19H','19-22H'];
-  return franjas;
+  const esTramoUnico = listaFranjas.length === 1;
+  return listaFranjas.filter(f => {
+    const p = parseFranja(f);
+    if (!p) return true; // formato no reconocido: no bloquear por seguridad
+    const limite = esTramoUnico ? p.fin : (p.fin - 60);
+    return mins <= limite;
+  });
 }
 
 function aplicarReglasFranja() {
-  if (!ES_USUARIO_1 && !ES_USUARIO_2) return;
-  const franjaSel = document.getElementById('franja');
-  const permitidas = getFranjasPermitidas();
-  const opcionesActuales = Array.from(franjaSel.options)
-    .filter(o => o.value !== '')
-    .map(o => ({ value: o.value, text: o.textContent }));
-  if (opcionesActuales.length === 0) return;
-  franjaSel._allOptions = opcionesActuales;
-  if (permitidas.length === 0) {
-    setMsg('⚠️ Fuera del horario de reparto', '#ffcc00');
+  const franjaSel   = document.getElementById('franja');
+  const tienda      = tiendaSel.value;
+  const listaTienda = TIENDAS_FRANJAS[tienda] || [];
+
+  if (!tienda || listaTienda.length === 0) {
+    fillSelect('franja', [], 'Seleccione franja horaria...');
+    franjaSel.disabled = false;
+    franjaSel.classList.remove('locked');
     return;
   }
-  const placeholder = franjaSel.options[0].cloneNode(true);
-  franjaSel.innerHTML = '';
-  franjaSel.appendChild(placeholder);
-  let primeraPermitida = null;
-  opcionesActuales.forEach(op => {
-    const permitida = permitidas.some(p => p.toLowerCase() === op.value.toLowerCase());
-    if (permitida) {
-      const el = document.createElement('option');
-      el.value = op.value; el.textContent = op.text;
-      franjaSel.appendChild(el);
-      if (!primeraPermitida) primeraPermitida = op.value;
-    }
-  });
-  if (primeraPermitida) franjaSel.value = primeraPermitida;
+
+  const conFiltroHora = ES_USUARIO_1 || ES_USUARIO_2;
+  const permitidas    = conFiltroHora ? getFranjasPermitidas(listaTienda) : listaTienda;
+
+  const seleccionActual = franjaSel.value;
+  fillSelect('franja', permitidas, 'Seleccione franja horaria...');
+
+  if (permitidas.length === 0) {
+    setMsg('⚠️ Fuera del horario disponible para esta tienda', '#ffcc00');
+  } else if (permitidas.includes(seleccionActual)) {
+    franjaSel.value = seleccionActual;
+  } else {
+    franjaSel.value = permitidas[0];
+  }
+
   if (permitidas.length === 1) {
     franjaSel.disabled = true;
     franjaSel.classList.add('locked');
@@ -946,6 +989,20 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
     }
   }
 
+  // Revalidar que la franja elegida sigue disponible (por si pasó tiempo
+  // con la pestaña abierta y ya cruzó el corte de "1h antes de caducar")
+  if (ES_USUARIO_1 || ES_USUARIO_2) {
+    const tiendaActual    = document.getElementById('tienda').value;
+    const listaTienda     = TIENDAS_FRANJAS[tiendaActual] || [];
+    const permitidasAhora = getFranjasPermitidas(listaTienda);
+    const franjaElegida   = document.getElementById('franja').value;
+    if (!permitidasAhora.includes(franjaElegida)) {
+      alert('La franja horaria seleccionada ya no está disponible. Elige otra, por favor.');
+      aplicarReglasFranja();
+      return;
+    }
+  }
+
   _submitting = true;
   showSpinner('Procesando foto...');
   setMsg('', '');
@@ -1088,7 +1145,7 @@ function resetFormulario() {
 ============================================================ */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js?v=5')
+    navigator.serviceWorker.register('service-worker.js?v=6')
       .then(reg => console.log('[SW] Registrado:', reg.scope))
       .catch(err => console.warn('[SW] Error:', err));
   });
