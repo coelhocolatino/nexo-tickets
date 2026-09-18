@@ -238,7 +238,7 @@ button:active { transform:scale(.97); }
       <span class="nivel-tag" id="nivelTag">—</span>
       &nbsp;·&nbsp;Salir
     </div>
-    <div class="app-version">SAD Ticket Upload v2.8.0</div>
+    <div class="app-version">SAD Ticket Upload v2.8.1</div>
   </div>
 
   <form id="ticketForm" novalidate>
@@ -355,6 +355,12 @@ document.getElementById('badgeNombre').textContent = sesion?.nombre || '—';
 const nivelTag = document.getElementById('nivelTag');
 nivelTag.textContent = NIVEL;
 if (ES_ADMIN) nivelTag.classList.add('admin');
+
+// Pasa el usuario ya logueado al Módulo de Reservas, para que no vuelva a pedir contraseña.
+const btnReservas = document.querySelector('.btn-reservas');
+if (btnReservas) {
+  btnReservas.href = 'reservas.html?u=' + encodeURIComponent((sesion && sesion.usuario) || '');
+}
 
 function cerrarSesion() {
   if (confirm('¿Cerrar sesión?')) {
