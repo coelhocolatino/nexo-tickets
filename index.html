@@ -422,7 +422,20 @@ function showOfflineAlert() {
 /* ============================================================
    FECHA POR DEFECTO Y BLOQUEO
 ============================================================ */
-const HOY = new Date().toISOString().split('T')[0];
+// OJO: toISOString() siempre da la fecha en UTC, no en hora local. En España
+// (UTC+1 invierno / UTC+2 verano) eso hacía que, durante la madrugada
+// (00:00-02:00 hora local aprox.), la fecha calculada fuera la de AYER en
+// vez de la de hoy — y como el campo queda bloqueado para usuario 1/usuario 3,
+// no había forma de corregirlo a mano. Fix 2026-09-22: calcular la fecha con
+// los componentes LOCALES del navegador (getFullYear/getMonth/getDate),
+// nunca con toISOString().
+function fechaLocalISO(d) {
+  const y   = d.getFullYear();
+  const m   = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+const HOY = fechaLocalISO(new Date());
 fechaInput.value = HOY;
 
 if (!ES_ADMIN) {
