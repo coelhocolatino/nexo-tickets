@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<!-- Nexo Tickets — informe.html (nuevo, 2026-09-22)
+     Muestra el informe de Looker Studio / Data Studio propio del usuario
+     logueado (columna INFORME de la hoja USUARIOS, guardada en la sesión
+     al hacer login). Si el usuario no tiene informe asignado, muestra un
+     mensaje en vez del iframe. Botones "Volver" (index.html) y
+     "Salir" (cierra sesión, igual que en index.html). -->
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#003366" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Nexo Tickets" />
+<link rel="icon" href="nexo-icon-192.png">
+<link rel="apple-touch-icon" href="nexo-icon-192.png">
+<title>Nexo · Informe</title>
+<style>
+:root {
+  --bg1:#003366; --bg2:#0077cc;
+  --card-bg:rgba(255,255,255,.12);
+  --text-main:#fff; --text-dark:#003366;
+  --radius-card:24px; --radius-field:12px;
+  --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+}
+*, *::before, *::after { box-sizing:border-box; -webkit-font-smoothing:antialiased; font-family:var(--font); }
+html, body { height:100%; }
+body {
+  margin:0; min-height:100vh;
+  background:linear-gradient(180deg, var(--bg1), var(--bg2));
+  color:var(--text-main);
+  display:flex; justify-content:center; align-items:flex-start;
+  padding:16px 12px 20px;
+}
+.card {
+  width:100%; max-width:900px;
+  background:var(--card-bg);
+  border-radius:var(--radius-card);
+  box-shadow:0 16px 40px rgba(0,0,0,.45);
+  padding:16px 14px 18px;
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  display:flex; flex-direction:column; gap:12px;
+}
+.header { text-align:center; margin-bottom:2px; }
+.logo {
+  width:150px; max-width:60%;
+  height:auto; display:block;
+  margin:0 auto 8px auto;
+  background:#fff;
+  border-radius:14px;
+  padding:6px 12px;
+}
+.titulo { font-size:1.05rem; font-weight:800; margin:2px 0 4px; }
+.user-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(255,255,255,.15);
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:20px;
+  padding:5px 14px 5px 10px;
+  font-size:.8rem; font-weight:700;
+  color:rgba(255,255,255,.92);
+}
+.nivel-tag {
+  display:inline-block;
+  background:rgba(96,165,250,.25);
+  color:#bfdbfe;
+  padding:2px 8px;
+  border-radius:10px;
+  font-size:.65rem;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  margin-left:6px;
+}
+.nivel-tag.admin { background:rgba(251,146,60,.25); color:#fed7aa; }
+
+.informe-wrap {
+  position:relative;
+  width:100%;
+  border-radius:14px;
+  overflow:hidden;
+  background:rgba(0,0,0,.2);
+  border:2px solid rgba(255,255,255,.25);
+  min-height:60vh;
+}
+.informe-wrap iframe {
+  display:block; width:100%; height:100%;
+  min-height:60vh;
+  border:none; background:#fff;
+}
+
+.sin-informe {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:10px; text-align:center;
+  padding:60px 20px;
+  min-height:40vh;
+}
+.sin-informe .icono { font-size:2.6rem; }
+.sin-informe .texto { font-size:1rem; font-weight:700; color:rgba(255,255,255,.92); }
+.sin-informe .subtexto { font-size:.83rem; color:rgba(255,255,255,.6); max-width:320px; }
+
+.botones { display:flex; gap:10px; }
+.botones button, .botones a.btn {
+  flex:1; text-align:center; text-decoration:none;
+  border:none; border-radius:var(--radius-field);
+  background:#fff; color:var(--text-dark);
+  font-weight:700; padding:14px 12px;
+  font-size: max(.95rem, 15px);
+  cursor:pointer;
+  box-shadow:0 8px 22px rgba(0,0,0,.38);
+  transition:transform .12s;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+}
+.botones button:active, .botones a.btn:active { transform:scale(.97); }
+.botones .btn-salir { background:rgba(220,38,38,.9); color:#fff; }
+</style>
+
+<!-- GUARD DE SESIÓN: redirige antes de pintar nada (igual que index.html) -->
+<script>
+(function sessionGuard() {
+  try {
+    var raw = sessionStorage.getItem('sad_user');
+    if (!raw) { window.location.replace('login.html'); return; }
+    var u = JSON.parse(raw);
+    if (!u || !u.usuario || !u.token) {
+      sessionStorage.removeItem('sad_user');
+      window.location.replace('login.html');
+      return;
+    }
+  } catch(e) {
+    sessionStorage.removeItem('sad_user');
+    window.location.replace('login.html');
+  }
+})();
+</script>
+</head>
+<body>
+
+<div class="card">
+  <div class="header">
+    <img class="logo" src="nexo-logo-full.png" alt="Nexo · Distribución Inteligente" />
+    <div class="titulo">📊 Informe</div>
+    <div class="user-badge">
+      👤 <span id="badgeNombre">—</span>
+      <span class="nivel-tag" id="nivelTag">—</span>
+    </div>
+  </div>
+
+  <div id="contenedorInforme"></div>
+
+  <div class="botones">
+    <a class="btn" href="index.html">⬅️ Volver</a>
+    <button class="btn-salir" onclick="cerrarSesion()">🚪 Salir</button>
+  </div>
+</div>
+
+<script>
+let sesion = null;
+try { sesion = JSON.parse(sessionStorage.getItem('sad_user')); } catch(e) {}
+
+document.getElementById('badgeNombre').textContent = sesion?.nombre || '—';
+const NIVEL = (sesion && sesion.nivel ? String(sesion.nivel).toLowerCase().trim() : 'usuario 1');
+const nivelTag = document.getElementById('nivelTag');
+nivelTag.textContent = NIVEL;
+if (NIVEL === 'admin') nivelTag.classList.add('admin');
+
+function cerrarSesion() {
+  if (confirm('¿Cerrar sesión?')) {
+    sessionStorage.removeItem('sad_user');
+    localStorage.removeItem('sad_user');
+    window.location.replace('login.html');
+  }
+}
+
+// Convierte el enlace normal de Looker Studio / Data Studio (el que se ve
+// al abrir el informe) en su versión "embed" para poder mostrarlo en un
+// iframe. Ej: https://datastudio.google.com/reporting/<id>
+//         →   https://datastudio.google.com/embed/reporting/<id>
+// IMPORTANTE: el dueño del informe tiene que tener activada la opción
+// "Insertar informe" (Archivo → Insertar informe, en Looker Studio) para
+// que Google permita mostrarlo dentro de un iframe. Si esa opción no está
+// activada, Google bloquea la carga aunque el enlace sea correcto.
+function toEmbedUrl(url) {
+  try {
+    const u = new URL(url);
+    if (!/\/embed\//.test(u.pathname)) {
+      u.pathname = u.pathname.replace('/reporting/', '/embed/reporting/');
+    }
+    return u.toString();
+  } catch(e) {
+    return url;
+  }
+}
+
+const contenedor = document.getElementById('contenedorInforme');
+const informeUrl = (sesion && sesion.informe ? String(sesion.informe).trim() : '');
+
+if (informeUrl) {
+  const wrap = document.createElement('div');
+  wrap.className = 'informe-wrap';
+  const iframe = document.createElement('iframe');
+  iframe.src = toEmbedUrl(informeUrl);
+  iframe.setAttribute('allowfullscreen', '');
+  iframe.setAttribute('loading', 'lazy');
+  wrap.appendChild(iframe);
+  contenedor.appendChild(wrap);
+} else {
+  contenedor.innerHTML = `
+    <div class="sin-informe">
+      <div class="icono">📄🚫</div>
+      <div class="texto">Informe no disponible para este usuario</div>
+      <div class="subtexto">Si creés que deberías tener un informe asignado, avisá al administrador.</div>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>
