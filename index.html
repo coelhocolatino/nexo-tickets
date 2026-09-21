@@ -57,6 +57,15 @@ body {
 }
 .btn-reservas:active { transform:scale(.93); }
 .btn-reservas img { width:100%; height:100%; display:block; object-fit:cover; }
+.btn-informe {
+  position:absolute; top:42px; right:-2px;
+  display:block; width:38px; height:38px;
+  border-radius:10px; overflow:hidden;
+  box-shadow:0 4px 14px rgba(0,0,0,.35);
+  transition:transform .12s;
+}
+.btn-informe:active { transform:scale(.93); }
+.btn-informe img { width:100%; height:100%; display:block; object-fit:cover; }
 .logo {
   width:170px; max-width:65%;
   height:auto; display:block;
@@ -241,6 +250,9 @@ button:active { transform:scale(.97); }
   <div class="header">
     <a class="btn-reservas" href="reservas.html" title="Reservas">
       <img src="boton_reservas.png" alt="Reservas" />
+    </a>
+    <a class="btn-informe" href="informe.html" title="Informe">
+      <img src="boton_informe.png" alt="Informe" />
     </a>
     <img class="logo" src="nexo-logo-full.png" alt="Nexo · Distribución Inteligente" />
     <div class="user-badge" id="userBadge" onclick="cerrarSesion()" title="Pulsa para cerrar sesión">
