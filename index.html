@@ -1,4 +1,14 @@
 <!DOCTYPE html>
+<!-- Nexo Tickets index.html — parche 2026-09-22:
+     1) Reintento automático (hasta 3 intentos) cuando "Subir ticket" falla
+        por un error transitorio de Google (página HTML en vez de JSON/texto).
+     2) Distingue "YA_SUBIDO" (idempotencia del backend) de "OK" para que el
+        repartidor sepa con certeza si el ticket se subió, sin duplicados.
+     3) Si los reintentos rápidos se agotan, el ticket se guarda en la cola
+        offline (IndexedDB) y se reintenta solo cada 30s en segundo plano,
+        en vez de mostrar el HTML crudo de Google.
+     Requiere el fix complementario en el backend (Code.gs, función
+     procesarTicket) para la idempotencia — ver documentación del proyecto. -->
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
@@ -861,6 +871,24 @@ async function eliminarDeCola(id) {
   });
 }
 
+async function incrementarIntentos(id) {
+  const db    = await abrirDB();
+  const tx    = db.transaction(STORE_NAME, 'readwrite');
+  const store = tx.objectStore(STORE_NAME);
+  return new Promise((resolve, reject) => {
+    const getReq = store.get(id);
+    getReq.onsuccess = () => {
+      const item = getReq.result;
+      if (!item) return resolve();
+      item._intentos = (item._intentos || 0) + 1;
+      const putReq = store.put(item);
+      putReq.onsuccess = () => resolve();
+      putReq.onerror   = e => reject(e.target.error);
+    };
+    getReq.onerror = e => reject(e.target.error);
+  });
+}
+
 async function contarPendientes() {
   const db    = await abrirDB();
   const tx    = db.transaction(STORE_NAME, 'readonly');
@@ -897,6 +925,14 @@ async function actualizarBadgePendientes() {
   } catch(e) {}
 }
 
+// Un fallo "transitorio" es un problema de red/infraestructura de Google
+// (por ejemplo Apps Script devolviendo una página de error HTML en vez del
+// texto esperado) — vale la pena reintentarlo. Un error real de la app
+// (ej. "ERROR: imagen vacía") es determinístico y reintentarlo no ayuda.
+function esFalloTransitorio(resp, text) {
+  return !resp.ok || /^\s*<!DOCTYPE|^\s*<html/i.test(text || '');
+}
+
 async function enviarTicketDeCola(item) {
   const { id, ...datos } = item;
   const resp = await fetch(window.BACKEND_URL, {
@@ -905,8 +941,9 @@ async function enviarTicketDeCola(item) {
     body:    JSON.stringify(datos)
   });
   const text = await resp.text();
-  if (!resp.ok || text.includes('ERROR')) throw new Error(text);
-  return text;
+  if (esFalloTransitorio(resp, text)) throw new Error(text || ('HTTP ' + resp.status));
+  if (text.startsWith('ERROR:')) throw Object.assign(new Error(text), { noReintentar: true });
+  return text; // 'OK | ...' o 'YA_SUBIDO | ...'
 }
 
 let _procesandoCola = false;
@@ -920,23 +957,33 @@ async function procesarCola(mostrarMsg) {
     if (mostrarMsg) setMsg(`⏳ Subiendo ${pendientes.length} ticket(s) pendiente(s)...`, '#ffcc00');
     let ok = 0, fail = 0;
     for (const item of pendientes) {
+      // Un ticket que ya falló muchas veces se descarta para no reintentarlo
+      // para siempre (protección ante un payload realmente inválido).
+      if ((item._intentos || 0) >= 20) {
+        console.warn('[Nexo] Cola: descartando item tras 20 intentos', item.id);
+        await eliminarDeCola(item.id);
+        continue;
+      }
       try {
         await enviarTicketDeCola(item);
         await eliminarDeCola(item.id);
         ok++;
       } catch(e) {
         console.warn('[Nexo] Cola: fallo en item', item.id, e.message);
-        fail++;
+        if (e.noReintentar) {
+          await eliminarDeCola(item.id); // error real de la app, no tiene sentido guardarlo
+        } else {
+          await incrementarIntentos(item.id);
+          fail++;
+        }
       }
     }
     await actualizarBadgePendientes();
-    if (mostrarMsg) {
-      if (fail === 0) {
-        setMsg(`✅ ${ok} ticket(s) subido(s) correctamente`, '#9dffb0');
-        setTimeout(clearMsg, 4000);
-      } else {
-        setMsg(`⚠️ ${ok} subidos, ${fail} fallaron (se reintentarán)`, '#ffcc00');
-      }
+    if (ok > 0) {
+      setMsg(`✅ ${ok} ticket(s) pendiente(s) subido(s) correctamente`, '#9dffb0');
+      setTimeout(clearMsg, 4000);
+    } else if (mostrarMsg && fail > 0) {
+      setMsg(`⚠️ Seguimos intentando subir ${fail} ticket(s) pendiente(s)...`, '#ffcc00');
     }
   } catch(e) {
     console.error('[Nexo] procesarCola:', e);
@@ -948,6 +995,11 @@ window.addEventListener('online', () => {
   console.log('[Nexo] Conexión recuperada — procesando cola');
   setTimeout(() => procesarCola(true), 1500);
 });
+
+// Reintento periódico en segundo plano: cubre fallos intermitentes de Google
+// aunque el teléfono siga "online" todo el tiempo (no solo al recuperar
+// señal). Silencioso salvo cuando algo termina de subirse.
+setInterval(() => procesarCola(false), 30000);
 
 window.addEventListener('load', async () => {
   await actualizarBadgePendientes();
@@ -961,6 +1013,42 @@ window.addEventListener('load', async () => {
    ENVÍO DEL TICKET
 ============================================================ */
 let _submitting = false;
+
+/**
+ * Envía el ticket reintentando automáticamente cuando el fallo parece ser
+ * un problema transitorio de Google (ej. Apps Script devolviendo una página
+ * de error HTML en vez del texto esperado — ver esFalloTransitorio). Un
+ * error real de la app (ERROR: ...) se corta al primer intento.
+ */
+async function enviarTicketConReintentos(payload, intentos = 3, esperaBaseMs = 1500) {
+  let ultimoError;
+  for (let i = 0; i < intentos; i++) {
+    try {
+      const resp = await fetch(window.BACKEND_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload)
+      });
+      const text = await resp.text();
+
+      if (esFalloTransitorio(resp, text)) {
+        throw new Error(text || ('HTTP ' + resp.status));
+      }
+      if (text.startsWith('ERROR:')) {
+        throw Object.assign(new Error(text), { noReintentar: true });
+      }
+      return text; // 'OK | ...' o 'YA_SUBIDO | ...'
+    } catch(err) {
+      if (err.noReintentar) throw err;
+      ultimoError = err;
+      if (i < intentos - 1) {
+        showSpinner(`Subiendo ticket... reintentando (${i + 2}/${intentos})`);
+        await new Promise(r => setTimeout(r, esperaBaseMs * (i + 1)));
+      }
+    }
+  }
+  throw ultimoError;
+}
 
 document.getElementById('ticketForm').addEventListener('submit', async function(e) {
   e.preventDefault();
@@ -1055,54 +1143,38 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
       return;
     }
 
-    // Envío online
-    const resp = await fetch(window.BACKEND_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload)
-    });
-    const text = await resp.text();
+    // Envío online — con reintentos automáticos ante fallos intermitentes
+    // de Google Apps Script (ver enviarTicketConReintentos más arriba).
+    const text = await enviarTicketConReintentos(payload);
 
-    if (!resp.ok || text.startsWith('ERROR')) throw new Error(text);
-
-    setMsg('✅ Ticket subido correctamente', '#9dffb0');
+    if (text.startsWith('YA_SUBIDO')) {
+      setMsg('✅ Este ticket ya estaba subido — no hace falta subirlo de nuevo', '#9dffb0');
+    } else {
+      setMsg('✅ Ticket subido correctamente', '#9dffb0');
+    }
     setTimeout(clearMsg, 5000);
     resetFormulario();
 
   } catch(err) {
     console.error('[Nexo] submit:', err);
-    if (!navigator.onLine || err.name === 'TypeError') {
-      // Intentar guardar en cola aunque falle el fetch
+
+    if (err.noReintentar) {
+      // Error real de la app (ej. imagen vacía) — reintentar no ayuda, se avisa directo
+      setMsg('❌ Error: ' + err.message, '#ff6b6b');
+    } else {
+      // Sin conexión, o fallo intermitente de Google tras varios reintentos:
+      // el ticket NO se pierde — se guarda y se reintenta solo en segundo
+      // plano (cada 30s y al volver la conexión). El backend es idempotente:
+      // si este ticket ya se había subido en un intento anterior, no se
+      // duplica el archivo en Drive, así que reintentarlo es seguro.
       try {
-        const base64Retry = await new Promise((res, rej) => {
-          const r = new FileReader();
-          r.onerror = () => rej();
-          r.onload  = ev => res(ev.target.result);
-          r.readAsDataURL(fotoInput._procesada || fotoInput.files[0]);
-        });
-        const payloadRetry = {
-          fecha:         fechaInput.value,
-          tienda:        document.getElementById('tienda').value,
-          repartidor:    document.getElementById('repartidor').value,
-          franja:        document.getElementById('franja').value,
-          pedidos:       document.getElementById('pedidos').value,
-          dobles:        document.getElementById('dobles').value,
-          xr:            document.getElementById('xr').value,
-          km:            document.getElementById('km').value,
-          obs:           document.getElementById('obs').value,
-          imagenBase64:  base64Retry,
-          usuarioSesion: sesion?.usuario || '',
-          nivelSesion:   NIVEL
-        };
-        await guardarEnCola(payloadRetry);
+        await guardarEnCola(payload);
         await actualizarBadgePendientes();
-        setMsg('📥 Sin conexión — ticket guardado, se subirá al recuperar red', '#ffcc00');
+        setMsg('⏳ Problema de conexión con el servidor — el ticket quedó guardado y se subirá solo (no hace falta repetirlo)', '#ffcc00');
         resetFormulario();
       } catch(qErr) {
         setMsg('❌ Error: ' + err.message, '#ff6b6b');
       }
-    } else {
-      setMsg('❌ Error: ' + err.message, '#ff6b6b');
     }
   } finally {
     hideSpinner();
