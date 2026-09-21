@@ -290,7 +290,7 @@ input::placeholder { color:#3d4e66; }
 
   <!-- ── STEP 1: Introducir usuario ── -->
   <div class="step active" id="step1">
-    <div class="card-title">Acceso al <em>sistema</em></div>
+    <div class="card-title">Acceso al <em>sistema v2</em></div>
 
     <!-- Botón biométrico (visible solo si hay credencial guardada) -->
     <button class="btn btn-bio" id="btnBiometria" style="display:none" onclick="loginBiometrico()">
@@ -781,17 +781,36 @@ async function loginBiometrico() {
       }
     });
 
-    // Autenticación biométrica OK → restaurar sesión
-    usuarioActual = {
-      usuario  : bio.usuario,
-      nombre   : bio.nombre,
-      nivel    : bio.nivel,
-      tiendaPre: bio.tiendaPre || ''
-    };
-    guardarSesion({ token: Date.now().toString(36) });
-    showMsg('msg1', '✅ Biometría verificada. Entrando...', 'success');
-    setTimeout(() => window.location.replace('index.html'), 700);
+// Autenticación biométrica OK → traer los datos ACTUALES de la planilla,
+// nunca los que quedaron guardados en el teléfono cuando se activó la
+// huella (pueden haber quedado viejos si la cuenta cambió de nombre,
+// nivel o tienda después de eso — esto fue lo que pasó con WILLIAN/WEXPOSITO).
+const data = await proxyPost({ accion: 'verificarUsuario', usuario: bio.usuario });
+if (!data.encontrado || !data.activo) {
+  showMsg('msg1', '🚫 Tu cuenta ya no está disponible. Usa tu contraseña.', 'error');
+  setLoading(btn, false);
+  return;
+}
 
+usuarioActual = {
+  usuario  : bio.usuario,
+  nombre   : data.nombre    || bio.nombre,
+  nivel    : data.nivel     || bio.nivel,
+  tiendaPre: data.tiendaPre || bio.tiendaPre || ''
+};
+
+// Refrescar también la foto guardada en el teléfono, para no repetir
+// esta consulta de más la próxima vez si ya está al día.
+if (data.nombre && (data.nombre !== bio.nombre || data.nivel !== bio.nivel)) {
+  bio.nombre = data.nombre;
+  bio.nivel  = data.nivel || bio.nivel;
+  bio.tiendaPre = data.tiendaPre || bio.tiendaPre || '';
+  localStorage.setItem(BIO_KEY, JSON.stringify(bio));
+}
+
+guardarSesion({ token: Date.now().toString(36) });
+showMsg('msg1', '✅ Biometría verificada. Entrando...', 'success');
+setTimeout(() => window.location.replace('index.html'), 700);
   } catch(err) {
     console.warn('[Nexo] loginBiometrico:', err.name, err.message);
     setLoading(btn, false);
