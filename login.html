@@ -426,6 +426,7 @@ function guardarSesion(data) {
     nombre   : usuarioActual.nombre   || usuarioActual.usuario,
     nivel    : usuarioActual.nivel    || 'usuario 1',
     tiendaPre: usuarioActual.tiendaPre || data.tiendaPre || '',
+    informe  : usuarioActual.informe  || data.informe    || '',
     token    : data.token || Date.now().toString(36),
     timestamp: Date.now(),
     expiry   : Date.now() + SESSION_TTL   // ← expiración 6 h
@@ -590,6 +591,7 @@ async function verificarUsuario() {
       activo   : data.activo,
       nivel    : data.nivel    || 'usuario 1',
       tiendaPre: data.tiendaPre || '',
+      informe  : data.informe   || '',
       tienePwd : data.tienePwd
     };
     setLoading(btn, false);
@@ -624,6 +626,7 @@ async function hacerLogin() {
       usuarioActual.nivel    = data.nivel    || usuarioActual.nivel;
       usuarioActual.nombre   = data.nombre   || usuarioActual.nombre;
       usuarioActual.tiendaPre = data.tiendaPre || usuarioActual.tiendaPre || '';
+      usuarioActual.informe   = data.informe   || usuarioActual.informe   || '';
       guardarSesion(data);
       showMsg('msg2', '✅ Acceso concedido.', 'success');
       setLoading(btn, false);
@@ -658,6 +661,7 @@ async function registrarPassword() {
       usuarioActual.nivel    = data.nivel    || usuarioActual.nivel;
       usuarioActual.nombre   = data.nombre   || usuarioActual.nombre;
       usuarioActual.tiendaPre = data.tiendaPre || usuarioActual.tiendaPre || '';
+      usuarioActual.informe   = data.informe   || usuarioActual.informe   || '';
       guardarSesion(data);
       showMsg('msg3', '✅ Contraseña creada.', 'success');
       setLoading(btn, false);
@@ -735,6 +739,7 @@ async function activarBiometria() {
       nombre      : usuarioActual.nombre,
       nivel       : usuarioActual.nivel,
       tiendaPre   : usuarioActual.tiendaPre || '',
+      informe     : usuarioActual.informe   || '',
       credentialId: bufToBase64(credential.rawId),
       registrado  : Date.now()
     };
@@ -796,15 +801,17 @@ usuarioActual = {
   usuario  : bio.usuario,
   nombre   : data.nombre    || bio.nombre,
   nivel    : data.nivel     || bio.nivel,
-  tiendaPre: data.tiendaPre || bio.tiendaPre || ''
+  tiendaPre: data.tiendaPre || bio.tiendaPre || '',
+  informe  : data.informe   || bio.informe   || ''
 };
 
 // Refrescar también la foto guardada en el teléfono, para no repetir
 // esta consulta de más la próxima vez si ya está al día.
-if (data.nombre && (data.nombre !== bio.nombre || data.nivel !== bio.nivel)) {
+if (data.nombre && (data.nombre !== bio.nombre || data.nivel !== bio.nivel || data.informe !== bio.informe)) {
   bio.nombre = data.nombre;
   bio.nivel  = data.nivel || bio.nivel;
   bio.tiendaPre = data.tiendaPre || bio.tiendaPre || '';
+  bio.informe   = data.informe   || bio.informe   || '';
   localStorage.setItem(BIO_KEY, JSON.stringify(bio));
 }
 
