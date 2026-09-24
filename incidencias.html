@@ -51,7 +51,7 @@ body { margin:0; background:#f1f5f9; color:#0f172a; padding:14px 12px 40px; }
 </div>
 <script>
 /* URL /exec del NUEVO Apps Script del módulo Embolsado (la misma que en asignar.html) */
-var EMBOLSADO_URL = 'PEGAR_AQUI_URL_EXEC_DEL_NUEVO_SCRIPT';
+var EMBOLSADO_URL = 'https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoDisEn4qrGWh0tEGfGHn4NXoEqP1ShODyIWQ1bzYyWfcuz_Pqh/exec';
 var PROXY = 'https://sad-proxy.colatino-ventas-enlinea.workers.dev/';
 var SESION = {}; try { SESION = JSON.parse(sessionStorage.getItem('sad_user') || '{}'); } catch (e) {}
 var USUARIO = SESION.usuario || '';
@@ -117,7 +117,7 @@ async function cargar() {
   pintar();
 }
 
-if (EMBOLSADO_URL.indexOf('PEGAR_AQUI') === 0) msg('Falta configurar EMBOLSADO_URL en incidencias.html', 'err');
+if (EMBOLSADO_URL.indexOf('https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoDisEn4qrGWh0tEGfGHn4NXoEqP1ShODyIWQ1bzYyWfcuz_Pqh/exec') === 0) msg('Falta configurar EMBOLSADO_URL en incidencias.html', 'err');
 else { cargar(); setInterval(cargar, 30000); }
 </script>
 </body>
