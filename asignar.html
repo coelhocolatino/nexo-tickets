@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Nexo · Asignar pedidos</title>
+<link rel="icon" href="nexo-icon-192.png">
+<script>
+/* Guard de sesión */
+(function () {
+  try {
+    var u = JSON.parse(sessionStorage.getItem('sad_user') || 'null');
+    if (!u || !u.usuario || !u.token) location.replace('login.html');
+  } catch (e) { location.replace('login.html'); }
+})();
+</script>
+<style>
+:root { --bg1:#003366; --bg2:#0077cc; --ok:#16a34a; --bad:#dc2626; --amarillo:#fef08a; }
+* { box-sizing:border-box; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+body { margin:0; min-height:100vh; background:linear-gradient(180deg,var(--bg1),var(--bg2)); color:#fff; padding:14px 12px 90px; }
+.wrap { max-width:460px; margin:0 auto; }
+.top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.top a.volver { color:#fff; text-decoration:none; font-size:22px; padding:4px 8px; }
+.top h1 { font-size:18px; margin:0; flex:1; }
+.tabs { display:flex; gap:8px; margin-bottom:10px; }
+.tab { flex:1; padding:10px; border:0; border-radius:12px; background:rgba(255,255,255,.15); color:#fff; font-weight:700; font-size:14px; }
+.tab.on { background:#fff; color:#003366; }
+.info { font-size:12px; opacity:.85; margin:0 2px 10px; }
+#msg { font-size:13px; padding:8px 10px; border-radius:10px; margin-bottom:10px; display:none; }
+#msg.ok { background:#dcfce7; color:#166534; display:block; }
+#msg.err { background:#fee2e2; color:#991b1b; display:block; }
+.vacio { text-align:center; opacity:.85; padding:30px 10px; }
+.card { background:#fff; color:#0f172a; border-radius:16px; padding:12px 12px 14px; margin-bottom:10px; position:relative; box-shadow:0 6px 18px rgba(0,0,0,.25); }
+.card.cobro { background:var(--amarillo); }
+.card .cab { display:flex; align-items:center; gap:8px; font-weight:800; font-size:15px; }
+.card .cab .chk { width:24px; height:24px; accent-color:#0077cc; flex:0 0 auto; }
+.card .cab .grow { flex:1; }
+.tag { display:inline-block; background:#e0f2fe; color:#075985; border-radius:8px; padding:2px 8px; font-size:12px; font-weight:700; }
+.card.cobro .tag { background:#fde047; color:#713f12; }
+.fila { font-size:14px; margin-top:6px; }
+.fila b { color:#475569; font-weight:600; font-size:12px; display:block; }
+.fila a.tel { color:#0369a1; font-weight:700; font-size:16px; text-decoration:none; }
+.fila textarea { width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:6px 8px; font-size:14px; resize:vertical; min-height:44px; background:rgba(255,255,255,.7); }
+.chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.chip { background:#f1f5f9; border-radius:8px; padding:3px 8px; font-size:12px; font-weight:600; }
+.card.cobro .chip { background:#fff7c2; }
+.cobro-badge { background:#facc15; color:#713f12; border-radius:8px; padding:3px 8px; font-size:12px; font-weight:800; margin-top:8px; display:inline-block; }
+.btn-cam { position:absolute; right:10px; bottom:10px; width:38px; height:38px; border:0; border-radius:50%; background:rgba(15,23,42,.12); font-size:18px; }
+.btn-cam:disabled { opacity:.3; }
+.acciones { display:flex; gap:8px; margin-top:12px; padding-right:48px; }
+.acciones button { flex:1; padding:11px 6px; border:0; border-radius:10px; font-weight:800; font-size:14px; color:#fff; }
+.b-inc { background:var(--bad); } .b-ent { background:var(--ok); }
+.barra { position:fixed; left:0; right:0; bottom:0; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:rgba(0,30,60,.92); display:none; }
+.barra button { width:100%; max-width:460px; display:block; margin:0 auto; padding:14px; border:0; border-radius:12px; background:#22c55e; color:#fff; font-size:16px; font-weight:800; }
+.barra button:disabled { opacity:.5; }
+.modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:flex-start; justify-content:center; overflow:auto; padding:16px 10px; z-index:50; }
+.modal.on { display:flex; }
+.modal .box { background:#fff; color:#0f172a; border-radius:16px; padding:14px; width:100%; max-width:440px; }
+.modal h2 { margin:0 0 10px; font-size:17px; }
+.modal img.foto { width:100%; border-radius:10px; }
+.tipo { display:block; width:100%; text-align:left; padding:12px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; margin-bottom:8px; font-weight:700; font-size:14px; }
+.tipo.on { border-color:#0077cc; background:#e0f2fe; }
+.box textarea { width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:8px; font-size:14px; min-height:70px; }
+.box .row { display:flex; gap:8px; margin-top:10px; }
+.box .row button { flex:1; padding:12px; border:0; border-radius:10px; font-weight:800; font-size:14px; }
+.b-gris { background:#e2e8f0; color:#0f172a; } .b-azul { background:#0077cc; color:#fff; } .b-rojo { background:var(--bad); color:#fff; }
+.miniaturas { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.miniaturas img { width:64px; height:64px; object-fit:cover; border-radius:8px; }
+.ausente button.intento { width:100%; padding:12px; border:0; border-radius:10px; background:#f59e0b; color:#fff; font-weight:800; margin-bottom:8px; }
+.ausente .cuenta { font-size:13px; margin-bottom:8px; }
+.btn-foto { width:100%; padding:11px; border:1px dashed #64748b; border-radius:10px; background:#f8fafc; font-weight:700; margin-top:8px; }
+#spin { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:99; font-weight:700; }
+#spin.on { display:flex; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="volver" href="index.html" title="Volver">←</a>
+    <h1>Asignar pedidos</h1>
+    <span id="quien" style="font-size:12px;opacity:.85"></span>
+  </div>
+  <div class="tabs">
+    <button class="tab" id="tabDisp" onclick="cambiarTab('disp')">Disponibles</button>
+    <button class="tab" id="tabRuta" onclick="cambiarTab('ruta')">Mi ruta</button>
+  </div>
+  <div class="info" id="info"></div>
+  <div id="msg"></div>
+  <div id="lista"></div>
+</div>
+
+<div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
+
+<!-- Modal foto ticket -->
+<div class="modal" id="mFoto"><div class="box">
+  <h2>Foto del ticket</h2>
+  <div id="fotoCont" style="text-align:center;padding:20px">Cargando…</div>
+  <div class="row"><button class="b-gris" onclick="cerrar('mFoto')">Cerrar</button></div>
+</div></div>
+
+<!-- Modal incidencia -->
+<div class="modal" id="mInc"><div class="box">
+  <h2 id="incTitulo">Incidencia</h2>
+  <div id="incTipos"></div>
+  <div id="incAusente" class="ausente" style="display:none"></div>
+  <div id="incObsWrap" style="display:none">
+    <textarea id="incObs" placeholder="Observaciones"></textarea>
+  </div>
+  <div id="incFotoWrap" style="display:none">
+    <button class="btn-foto" id="btnIncFoto" onclick="document.getElementById('incFile').click()">📷 Añadir foto</button>
+    <div class="miniaturas" id="incMini"></div>
+  </div>
+  <input type="file" id="incFile" accept="image/*" capture="environment" style="display:none" />
+  <div class="row">
+    <button class="b-gris" onclick="cerrar('mInc')">Cancelar</button>
+    <button class="b-rojo" id="btnIncEnviar" onclick="enviarIncidencia()">Registrar</button>
+  </div>
+</div></div>
+
+<div id="spin">Procesando…</div>
+
+<script>
+/* ============ CONFIG ============ */
+/* URL /exec del NUEVO Apps Script del módulo Embolsado (pegar aquí tras desplegar) */
+var EMBOLSADO_URL = 'PEGAR_AQUI_URL_EXEC_DEL_NUEVO_SCRIPT';
+var PROXY = 'https://sad-proxy.colatino-ventas-enlinea.workers.dev/';
+
+var SESION = {};
+try { SESION = JSON.parse(sessionStorage.getItem('sad_user') || '{}'); } catch (e) {}
+var USUARIO = SESION.usuario || '';
+document.getElementById('quien').textContent = '👤 ' + (SESION.nombre || USUARIO);
+
+var TIPOS = {
+  CLIENTE_AUSENTE:      { etiqueta: 'Cliente ausente',            fotosMax: 2, obs: false },
+  DIRECCION_INCORRECTA: { etiqueta: 'Dirección incorrecta',       fotosMax: 0, obs: true },
+  PRODUCTO_FALTANTE:    { etiqueta: 'Producto faltante o dañado', fotosMax: 3, obs: true },
+  COMPRA_RECHAZADA:     { etiqueta: 'Compra rechazada',           fotosMax: 0, obs: true },
+  FRIO_OLVIDADO:        { etiqueta: 'Frío olvidado',              fotosMax: 0, obs: true }
+};
+
+function api(accion, datos) {
+  var body = Object.assign({ accion: accion, usuario: USUARIO }, datos || {});
+  return fetch(PROXY + '?url=' + encodeURIComponent(EMBOLSADO_URL), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  }).then(function (r) { return r.json(); }).catch(function (e) {
+    return { ok: false, error: 'Sin conexión con el servidor.' };
+  });
+}
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function msg(t, tipo) { var m = document.getElementById('msg'); m.className = tipo || ''; m.textContent = t || ''; if (!t) m.style.display = 'none'; if (t) setTimeout(function () { if (m.textContent === t) msg(''); }, 6000); }
+function spin(on) { document.getElementById('spin').classList.toggle('on', !!on); }
+function cerrar(id) { document.getElementById(id).classList.remove('on'); }
+
+/* ============ ESTADO ============ */
+var tab = 'disp', disp = [], ruta = [], sel = {}, tramos = [];
+
+function cambiarTab(t) {
+  tab = t; sel = {};
+  document.getElementById('tabDisp').classList.toggle('on', t === 'disp');
+  document.getElementById('tabRuta').classList.toggle('on', t === 'ruta');
+  pintar();
+}
+
+async function cargar(inicial) {
+  spin(true);
+  var rr = await api('listarMiRuta');
+  var rd = await api('listarDisponibles');
+  spin(false);
+  if (!rr.ok) { msg(rr.error, 'err'); }
+  if (!rd.ok) { msg(rd.error, 'err'); }
+  ruta = rr.ok ? rr.pedidos : [];
+  disp = rd.ok ? rd.pedidos : [];
+  tramos = rd.ok ? rd.tramos : [];
+  document.getElementById('tabRuta').textContent = 'Mi ruta (' + ruta.length + ')';
+  document.getElementById('tabDisp').textContent = 'Disponibles (' + disp.length + ')';
+  if (inicial) { cambiarTab(ruta.length ? 'ruta' : 'disp'); } else { pintar(); }
+}
+
+function cardHTML(o, conCheck, conAcc) {
+  var h = '<div class="card' + (o.cobro ? ' cobro' : '') + '" id="c_' + esc(o.id) + '">';
+  h += '<div class="cab">';
+  if (conCheck) h += '<input class="chk" type="checkbox" ' + (sel[o.id] ? 'checked' : '') + ' onchange="toggleSel(\'' + esc(o.id) + '\',this.checked)">';
+  h += '<span class="grow">Caja ' + esc(o.caja) + ' · Ticket ' + esc(o.ticket) + '</span><span class="tag">' + esc(o.franja) + '</span></div>';
+  h += '<div class="fila"><b>Entrega</b>' + esc(o.fecha) + ' · ' + esc(o.franja) + '</div>';
+  h += '<div class="fila"><b>Cliente</b>' + esc(o.nombre || '—') + '</div>';
+  if (o.telefono) h += '<div class="fila"><b>Teléfono</b><a class="tel" href="tel:' + esc(o.telefono.replace(/[^\d+]/g, '')) + '" onclick="llamada(\'' + esc(o.id) + '\')">📞 ' + esc(o.telefono) + '</a></div>';
+  h += '<div class="fila"><b>Dirección' + (o.ascensor ? ' · ascensor: ' + esc(o.ascensor) : '') + '</b><textarea id="d_' + esc(o.id) + '" data-orig="' + esc(o.direccion) + '" onblur="guardarDir(\'' + esc(o.id) + '\')">' + esc(o.direccion) + '</textarea></div>';
+  h += '<div class="chips"><span class="chip">📦 ' + esc(o.nCajas || '0') + ' cajas</span><span class="chip">🧊 nevera ' + esc(o.nevera || '0') + '</span><span class="chip">❄️ fríos ' + esc(o.frios || '0') + '</span><span class="chip">🥶 congelados ' + esc(o.congelados || '0') + '</span></div>';
+  if (o.cobro) h += '<div class="cobro-badge">💶 COBRO: ' + esc(o.cobro) + '</div>';
+  if (conAcc) h += '<div class="acciones"><button class="b-inc" onclick="abrirIncidencia(\'' + esc(o.id) + '\')">INCIDENCIA</button><button class="b-ent" onclick="entregado(\'' + esc(o.id) + '\')">ENTREGADO</button></div>';
+  h += '<button class="btn-cam" title="Ver foto del ticket" ' + (o.tieneFoto ? '' : 'disabled') + ' onclick="verFoto(\'' + esc(o.id) + '\')">📷</button>';
+  return h + '</div>';
+}
+
+function pintar() {
+  var l = document.getElementById('lista'), info = document.getElementById('info');
+  var barra = document.getElementById('barra');
+  if (tab === 'disp') {
+    info.textContent = tramos.length ? 'Pedidos de hoy · tramo(s) actual(es): ' + tramos.join(', ') : 'Ahora mismo no hay ningún tramo de entrega activo.';
+    l.innerHTML = disp.length ? disp.map(function (o) { return cardHTML(o, true, false); }).join('') : '<div class="vacio">No hay pedidos disponibles para este tramo.</div>';
+    barra.style.display = disp.length ? 'block' : 'none';
+    actualizarBarra();
+  } else {
+    info.textContent = 'Pedidos asignados a ti, pendientes de entrega.';
+    l.innerHTML = ruta.length ? ruta.map(function (o) { return cardHTML(o, false, true); }).join('') : '<div class="vacio">No tienes pedidos pendientes en tu ruta.</div>';
+    barra.style.display = 'none';
+  }
+}
+
+function toggleSel(id, on) { if (on) sel[id] = 1; else delete sel[id]; actualizarBarra(); }
+function actualizarBarra() {
+  var n = Object.keys(sel).length, b = document.getElementById('btnAsignar');
+  b.textContent = 'Asignar a mi ruta (' + n + ')'; b.disabled = n === 0;
+}
+
+async function asignarSeleccion() {
+  var ids = Object.keys(sel);
+  if (!ids.length) return;
+  spin(true);
+  var r = await api('asignarPedidos', { ids: ids });
+  spin(false);
+  if (!r.ok) { msg(r.error, 'err'); return; }
+  if (r.rechazados && r.rechazados.length) msg(r.rechazados.length + ' pedido(s) ya no estaban disponibles.', 'err');
+  if (r.total > 0) {
+    try { sessionStorage.setItem('nexo_asignados', String((parseInt(sessionStorage.getItem('nexo_asignados') || '0', 10) || 0) + r.total)); } catch (e) {}
+    location.href = 'index.html';
+    return;
+  }
+  sel = {}; cargar(false);
+}
+
+/* ============ AUDITORÍA ============ */
+function llamada(id) { api('registrarLlamada', { id: id }); }
+async function guardarDir(id) {
+  var t = document.getElementById('d_' + id); if (!t) return;
+  var nueva = t.value.trim(); if (nueva === t.dataset.orig || !nueva) return;
+  var r = await api('editarDireccion', { id: id, direccion: nueva });
+  if (r.ok) { t.dataset.orig = nueva.toUpperCase(); t.value = nueva.toUpperCase(); msg('Dirección actualizada.', 'ok'); }
+  else msg(r.error, 'err');
+}
+async function verFoto(id) {
+  document.getElementById('fotoCont').innerHTML = 'Cargando…';
+  document.getElementById('mFoto').classList.add('on');
+  var r = await api('fotoTicketBase64', { id: id });
+  document.getElementById('fotoCont').innerHTML = r.ok ? '<img class="foto" src="' + r.dataUrl + '">' : esc(r.error);
+}
+async function entregado(id) {
+  if (!confirm('¿Confirmas que el pedido ha sido ENTREGADO?')) return;
+  spin(true); var r = await api('marcarEntregado', { id: id }); spin(false);
+  if (r.ok) { msg('Pedido entregado.', 'ok'); cargar(false); } else msg(r.error, 'err');
+}
+
+/* ============ INCIDENCIAS ============ */
+var incId = null, incTipo = null, incFotos = [], incIntentos = [], incTimer = null;
+
+function abrirIncidencia(id) {
+  incId = id; incTipo = null; incFotos = []; incIntentos = []; clearInterval(incTimer);
+  var o = ruta.filter(function (x) { return x.id === id; })[0] || {};
+  document.getElementById('incTitulo').textContent = 'Incidencia · Caja ' + (o.caja || '') + ' · Ticket ' + (o.ticket || '');
+  document.getElementById('incTipos').innerHTML = Object.keys(TIPOS).map(function (k) {
+    return '<button class="tipo" id="t_' + k + '" onclick="elegirTipo(\'' + k + '\')">' + TIPOS[k].etiqueta + '</button>';
+  }).join('');
+  ['incAusente', 'incObsWrap', 'incFotoWrap'].forEach(function (x) { document.getElementById(x).style.display = 'none'; });
+  document.getElementById('incObs').value = '';
+  document.getElementById('incMini').innerHTML = '';
+  document.getElementById('mInc').classList.add('on');
+}
+
+function elegirTipo(k) {
+  incTipo = k; incFotos = []; incIntentos = []; clearInterval(incTimer);
+  Object.keys(TIPOS).forEach(function (x) { document.getElementById('t_' + x).classList.toggle('on', x === k); });
+  var d = TIPOS[k];
+  document.getElementById('incObsWrap').style.display = 'block';
+  document.getElementById('incObs').placeholder = d.obs ? 'Observaciones (obligatorio)' + (k === 'COMPRA_RECHAZADA' ? ' — motivo del rechazo' : '') : 'Observaciones (opcional)';
+  document.getElementById('incFotoWrap').style.display = d.fotosMax ? 'block' : 'none';
+  document.getElementById('btnIncFoto').textContent = k === 'CLIENTE_AUSENTE' ? '📷 Foto del portal (opcional)' : '📷 Añadir foto (máx. ' + d.fotosMax + ')';
+  document.getElementById('incMini').innerHTML = '';
+  var a = document.getElementById('incAusente');
+  if (k === 'CLIENTE_AUSENTE') { a.style.display = 'block'; pintarAusente(); } else a.style.display = 'none';
+}
+
+function pintarAusente() {
+  var n = incIntentos.length;
+  var h = '<button class="intento" onclick="nuevoIntento()" ' + (n >= 3 ? 'disabled' : '') + '>📞 Registrar tentativa (' + n + '/3)</button>';
+  if (n) h += '<div class="cuenta" id="cuenta"></div>';
+  document.getElementById('incAusente').innerHTML = h;
+  tick();
+  clearInterval(incTimer); if (n) incTimer = setInterval(tick, 1000);
+}
+function nuevoIntento() { if (incIntentos.length < 3) { incIntentos.push(Date.now()); pintarAusente(); } }
+function faltaEspera() { return incIntentos.length ? Math.max(0, incIntentos[0] + 10 * 60 * 1000 - Date.now()) : 1; }
+function tick() {
+  var c = document.getElementById('cuenta'); if (!c) return;
+  var f = faltaEspera(), n = incIntentos.length;
+  var t = incIntentos.map(function (x) { return new Date(x).toLocaleTimeString('es-ES'); }).join(' · ');
+  if (n < 3) c.textContent = 'Tentativas: ' + t;
+  else if (f > 0) c.textContent = 'Tentativas: ' + t + ' — espera ' + Math.floor(f / 60000) + ':' + String(Math.floor(f % 60000 / 1000)).padStart(2, '0') + ' para poder registrar.';
+  else c.textContent = 'Tentativas: ' + t + ' — ✅ espera de 10 min cumplida.';
+}
+
+document.getElementById('incFile').addEventListener('change', async function (ev) {
+  var f = ev.target.files[0]; ev.target.value = '';
+  if (!f || !incTipo) return;
+  if (incFotos.length >= TIPOS[incTipo].fotosMax) { msg('Máximo de fotos alcanzado.', 'err'); return; }
+  var d = await reducir(f, 1400);
+  incFotos.push(d);
+  document.getElementById('incMini').innerHTML = incFotos.map(function (x) { return '<img src="' + x + '">'; }).join('');
+});
+
+function reducir(file, max) {
+  return new Promise(function (res, rej) {
+    var img = new Image(), url = URL.createObjectURL(file);
+    img.onload = function () {
+      var s = Math.min(1, max / Math.max(img.width, img.height));
+      var c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.75));
+    };
+    img.onerror = function () { rej(new Error('No se pudo leer la foto')); };
+    img.src = url;
+  });
+}
+
+async function enviarIncidencia() {
+  if (!incTipo) { msg('Elige el tipo de incidencia.', 'err'); return; }
+  var d = TIPOS[incTipo], obs = document.getElementById('incObs').value.trim();
+  if (d.obs && !obs) { alert('Escribe las observaciones.'); return; }
+  if (incTipo === 'CLIENTE_AUSENTE') {
+    if (incIntentos.length < 3) { alert('Hacen falta 3 tentativas de contacto.'); return; }
+    if (faltaEspera() > 0) { alert('Aún no han pasado 10 minutos desde la primera tentativa.'); return; }
+  }
+  spin(true);
+  var r = await api('registrarIncidencia', { id: incId, tipo: incTipo, observaciones: obs, intentos: incIntentos, fotos: incFotos });
+  spin(false);
+  if (!r.ok) { alert(r.error); return; }
+  clearInterval(incTimer); cerrar('mInc'); msg('Incidencia registrada. Se ha avisado a Embolsado y ADM.', 'ok'); cargar(false);
+}
+
+if (EMBOLSADO_URL.indexOf('PEGAR_AQUI') === 0) msg('Falta configurar EMBOLSADO_URL en asignar.html', 'err');
+else cargar(true);
+</script>
+</body>
+</html>
