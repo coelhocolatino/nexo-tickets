@@ -297,12 +297,12 @@ button:active { transform:scale(.97); }
     <div>
       <label for="tienda">Tienda</label>
       <div class="tienda-row">
-        <a class="btn-asignar" id="btnAsignar" href="asignar.html" title="Asignar pedidos">
-          <img src="boton_asignar.png" alt="Asignar pedidos" />
-        </a>
         <select class="control" id="tienda" name="tienda" required>
           <option value="" disabled selected>Cargando...</option>
         </select>
+        <a class="btn-asignar" id="btnAsignar" href="asignar.html" title="Asignar pedidos">
+          <img src="boton_asignar.png" alt="Asignar pedidos" />
+        </a>
       </div>
     </div>
 
@@ -422,7 +422,12 @@ var PROXY_BASE = 'https://sad-proxy.colatino-ventas-enlinea.workers.dev/';
 function postProxy(url, body) {
   return fetch(PROXY_BASE + '?url=' + encodeURIComponent(url), {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-  }).then(function (r) { return r.json(); });
+  }).then(function (r) {
+    return r.text().then(function (t) {
+      try { return JSON.parse(t); }
+      catch (e) { return { ok: false, error: 'Respuesta inesperada (' + r.status + '): ' + t.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 140) }; }
+    });
+  });
 }
 if (ES_ADMIN) {
   document.getElementById('adminBar').style.display = 'flex';
@@ -435,7 +440,7 @@ if (ES_ADMIN) {
       var r = await postProxy(CONTROL_TICKETS_URL, { accion: 'actualizarManual', usuario: (sesion && sesion.usuario) || '' });
       if (r && r.ok) setMsg('✅ Pedidos actualizados' + (r.periodos ? ' (' + r.periodos + ')' : ''), '#9dffb0');
       else setMsg('❌ ' + ((r && r.error) || 'No se pudo actualizar'), '#ff6b6b');
-    } catch (e) { setMsg('❌ Error de conexión al actualizar', '#ff6b6b'); }
+    } catch (e) { setMsg('❌ Error de conexión al actualizar: ' + (e && e.message ? e.message : e), '#ff6b6b'); }
     hideSpinner();
     setTimeout(clearMsg, 6000);
   });
