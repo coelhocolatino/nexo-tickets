@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nexo · Incidencias de entrega</title>
+<link rel="icon" href="nexo-icon-192.png">
+<script>
+(function () {
+  try {
+    var u = JSON.parse(sessionStorage.getItem('sad_user') || 'null');
+    if (!u || !u.usuario || !u.token) location.replace('login.html');
+  } catch (e) { location.replace('login.html'); }
+})();
+</script>
+<style>
+* { box-sizing:border-box; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+body { margin:0; background:#f1f5f9; color:#0f172a; padding:14px 12px 40px; }
+.wrap { max-width:720px; margin:0 auto; }
+.top { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.top a { text-decoration:none; font-size:22px; color:#003366; }
+.top h1 { font-size:18px; margin:0; flex:1; color:#003366; }
+.badge { background:#dc2626; color:#fff; border-radius:999px; padding:2px 10px; font-weight:800; font-size:13px; }
+.filtros { display:flex; gap:8px; margin-bottom:12px; }
+.filtros button { flex:1; padding:9px; border:0; border-radius:10px; background:#e2e8f0; font-weight:700; }
+.filtros button.on { background:#003366; color:#fff; }
+#msg { padding:8px 10px; border-radius:10px; margin-bottom:10px; display:none; font-size:13px; }
+#msg.ok { display:block; background:#dcfce7; color:#166534; } #msg.err { display:block; background:#fee2e2; color:#991b1b; }
+.inc { background:#fff; border-radius:14px; padding:12px; margin-bottom:10px; border-left:6px solid #dc2626; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+.inc.RESTAURADA { border-left-color:#16a34a; } .inc.ELIMINADA { border-left-color:#64748b; opacity:.75; }
+.inc .t { font-weight:800; font-size:15px; display:flex; justify-content:space-between; gap:8px; }
+.inc .est { font-size:11px; font-weight:800; padding:2px 8px; border-radius:8px; background:#fee2e2; color:#991b1b; }
+.inc.RESTAURADA .est { background:#dcfce7; color:#166534; } .inc.ELIMINADA .est { background:#e2e8f0; color:#334155; }
+.inc .l { font-size:13px; margin-top:4px; } .inc .l b { color:#475569; }
+.inc a { color:#0369a1; font-weight:700; }
+.acc { display:flex; gap:8px; margin-top:10px; }
+.acc button { flex:1; padding:10px; border:0; border-radius:10px; font-weight:800; color:#fff; }
+.r { background:#16a34a; } .e { background:#dc2626; }
+.vacio { text-align:center; color:#64748b; padding:30px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="index.html">←</a><h1>Incidencias de entrega</h1><span class="badge" id="badge" style="display:none"></span></div>
+  <div class="filtros">
+    <button id="fAb" class="on" onclick="filtro('ABIERTA')">Abiertas</button>
+    <button id="fTo" onclick="filtro('TODAS')">Todas</button>
+  </div>
+  <div id="msg"></div>
+  <div id="lista"><div class="vacio">Cargando…</div></div>
+</div>
+<script>
+/* URL /exec del NUEVO Apps Script del módulo Embolsado (la misma que en asignar.html) */
+var EMBOLSADO_URL = 'PEGAR_AQUI_URL_EXEC_DEL_NUEVO_SCRIPT';
+var PROXY = 'https://sad-proxy.colatino-ventas-enlinea.workers.dev/';
+var SESION = {}; try { SESION = JSON.parse(sessionStorage.getItem('sad_user') || '{}'); } catch (e) {}
+var USUARIO = SESION.usuario || '';
+var filtroAct = 'ABIERTA', datos = [], esAdmin = false, abiertasPrev = null;
+
+function api(accion, extra) {
+  return fetch(PROXY + '?url=' + encodeURIComponent(EMBOLSADO_URL), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign({ accion: accion, usuario: USUARIO }, extra || {}))
+  }).then(function (r) { return r.json(); }).catch(function () { return { ok: false, error: 'Sin conexión con el servidor.' }; });
+}
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function msg(t, tipo) { var m = document.getElementById('msg'); m.className = tipo || ''; m.textContent = t || ''; if (t) setTimeout(function () { msg(''); }, 6000); }
+function filtro(f) { filtroAct = f; document.getElementById('fAb').classList.toggle('on', f === 'ABIERTA'); document.getElementById('fTo').classList.toggle('on', f === 'TODAS'); pintar(); }
+
+function pitido() {
+  try {
+    var c = new (window.AudioContext || window.webkitAudioContext)(), o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination); o.frequency.value = 880; g.gain.value = .15; o.start(); o.stop(c.currentTime + .25);
+  } catch (e) {}
+}
+
+function pintar() {
+  var l = document.getElementById('lista');
+  var v = datos.filter(function (i) { return filtroAct === 'TODAS' || i['ESTADO'] === 'ABIERTA'; });
+  if (!v.length) { l.innerHTML = '<div class="vacio">No hay incidencias.</div>'; return; }
+  l.innerHTML = v.map(function (i) {
+    var h = '<div class="inc ' + esc(i['ESTADO']) + '"><div class="t"><span>' + esc(i['TIPO']) + '</span><span class="est">' + esc(i['ESTADO']) + '</span></div>';
+    h += '<div class="l"><b>Fecha/hora:</b> ' + esc(i['FECHA']) + ' ' + esc(i['HORA']) + ' · <b>Usuario:</b> ' + esc(i['USUARIO']) + '</div>';
+    h += '<div class="l"><b>Caja:</b> ' + esc(i['CAJA']) + ' · <b>Ticket:</b> ' + esc(i['TICKET']) + '</div>';
+    h += '<div class="l"><b>Cliente:</b> ' + esc(i['NOMBRE']) + ' · <b>Tel:</b> ' + (i['TELEFONO'] ? '<a href="tel:' + esc(i['TELEFONO']) + '">' + esc(i['TELEFONO']) + '</a>' : '—') + '</div>';
+    h += '<div class="l"><b>Dirección:</b> ' + esc(i['DIRECCION']) + '</div>';
+    if (i['OBSERVACIONES']) h += '<div class="l"><b>Observaciones:</b> ' + esc(i['OBSERVACIONES']) + '</div>';
+    if (i['INTENTOS']) h += '<div class="l"><b>Tentativas:</b> ' + esc(i['INTENTOS']) + '</div>';
+    var links = [];
+    if (i['URL TICKET']) links.push('<a target="_blank" rel="noopener" href="' + esc(i['URL TICKET']) + '">Foto ticket</a>');
+    if (i['URL CARPETA FOTOS']) links.push('<a target="_blank" rel="noopener" href="' + esc(i['URL CARPETA FOTOS']) + '">Fotos incidencia</a>');
+    if (links.length) h += '<div class="l">' + links.join(' · ') + '</div>';
+    if (i['RESUELTO POR']) h += '<div class="l"><b>Resuelto por:</b> ' + esc(i['RESUELTO POR']) + ' · ' + esc(i['RESUELTO HORA']) + '</div>';
+    if (esAdmin && i['ESTADO'] === 'ABIERTA') {
+      var id = esc(i['ID INCIDENCIA']);
+      h += '<div class="acc"><button class="r" onclick="accion(\'restaurarPedido\',\'' + id + '\',\'¿Restaurar el pedido? Volverá a estar disponible para reparto.\')">RESTAURAR</button><button class="e" onclick="accion(\'eliminarPedido\',\'' + id + '\',\'¿ELIMINAR el pedido? Quedará excluido.\')">ELIMINAR</button></div>';
+    }
+    return h + '</div>';
+  }).join('');
+}
+
+async function accion(a, idInc, pregunta) {
+  if (!confirm(pregunta)) return;
+  var r = await api(a, { idIncidencia: idInc });
+  if (r.ok) { msg('Hecho.', 'ok'); cargar(); } else msg(r.error, 'err');
+}
+
+async function cargar() {
+  var r = await api('listarIncidencias');
+  if (!r.ok) { document.getElementById('lista').innerHTML = '<div class="vacio">' + esc(r.error) + '</div>'; return; }
+  esAdmin = r.esAdmin; datos = r.incidencias;
+  var ab = datos.filter(function (i) { return i['ESTADO'] === 'ABIERTA'; }).length;
+  var b = document.getElementById('badge'); b.style.display = ab ? 'inline-block' : 'none'; b.textContent = ab + ' abiertas';
+  if (abiertasPrev !== null && ab > abiertasPrev) pitido();
+  abiertasPrev = ab;
+  document.title = (ab ? '(' + ab + ') ' : '') + 'Nexo · Incidencias';
+  pintar();
+}
+
+if (EMBOLSADO_URL.indexOf('PEGAR_AQUI') === 0) msg('Falta configurar EMBOLSADO_URL en incidencias.html', 'err');
+else { cargar(); setInterval(cargar, 30000); }
+</script>
+</body>
+</html>
