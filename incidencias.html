@@ -117,7 +117,7 @@ async function cargar() {
   pintar();
 }
 
-if (EMBOLSADO_URL.indexOf('https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoDisEn4qrGWh0tEGfGHn4NXoEqP1ShODyIWQ1bzYyWfcuz_Pqh/exec') === 0) msg('Falta configurar EMBOLSADO_URL en incidencias.html', 'err');
+if (EMBOLSADO_URL.indexOf('PEGAR_AQUI') === 0) msg('Falta configurar EMBOLSADO_URL en incidencias.html', 'err');
 else { cargar(); setInterval(cargar, 30000); }
 </script>
 </body>
