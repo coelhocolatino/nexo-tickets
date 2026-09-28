@@ -1,25 +1,155 @@
 <!DOCTYPE html>
-<html lang="es"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Nexo · Configuración</title><link rel="icon" href="nexo-icon-192.png">
-<style>body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:linear-gradient(180deg,#003366,#0077cc);color:#fff;font-family:system-ui,sans-serif;text-align:center;padding:24px}
-img{width:64px}a{color:#ffcc00;font-weight:700}
-@keyframes spin{to{transform:rotate(360deg)}}.ring{width:40px;height:40px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}</style></head>
-<body><img src="boton_config.png" alt=""><h2>Configuración</h2>
-<div class="ring"></div><p>Abriendo el módulo de Configuración…</p>
-<a id="linkManual" href="index.html">← Volver</a>
+<!-- Nexo · Configuración (solo ADM) — 2026-09-28
+     Página propia en GitHub: ya NO redirige al módulo de Reservas.
+     Backend: NEXO SCRIPT (acciones obtenerPedidosEmitidos / guardarPedidosEmitidos),
+     que escribe en la hoja PEDIDOS_TOTAL de la planilla 19bqTde5…  -->
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#003366" />
+<link rel="icon" href="nexo-icon-192.png">
+<title>Nexo · Configuración</title>
+<style>
+:root { --bg1:#003366; --bg2:#0077cc; --card-bg:rgba(255,255,255,.12); --text-dark:#003366; }
+*, *::before, *::after { box-sizing:border-box; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+body { margin:0; min-height:100vh; background:linear-gradient(180deg,var(--bg1),var(--bg2)); color:#fff;
+  display:flex; justify-content:center; align-items:flex-start; padding:24px 16px 56px; }
+.card { width:100%; max-width:420px; background:var(--card-bg); border-radius:24px; padding:20px 16px 28px;
+  box-shadow:0 16px 40px rgba(0,0,0,.45); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+.header { display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+.header img { width:40px; height:40px; border-radius:10px; }
+.header h1 { font-size:1.15rem; margin:0; flex:1; }
+.volver { color:#fff; text-decoration:none; font-weight:700; font-size:.85rem; background:rgba(255,255,255,.16);
+  border:1px solid rgba(255,255,255,.3); padding:8px 12px; border-radius:12px; }
+.seccion { background:rgba(255,255,255,.95); color:var(--text-dark); border-radius:16px; padding:16px; }
+.seccion h2 { font-size:1rem; margin:0 0 4px; }
+.seccion p.hint { font-size:.78rem; color:#64748b; margin:0 0 14px; line-height:1.4; }
+label { display:block; font-size:.76rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin:0 0 4px; }
+.control { width:100%; border:1.5px solid #e2e8f0; border-radius:12px; padding:12px; font-size:16px; font-weight:700;
+  color:var(--text-dark); background:#fff; margin-bottom:12px; outline:none; }
+.control:focus { border-color:#2563eb; }
+.tiendas { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+.tienda-btn { border:1.5px solid #e2e8f0; background:#fff; color:var(--text-dark); border-radius:12px; padding:12px 6px;
+  font-weight:800; font-size:.95rem; cursor:pointer; }
+.tienda-btn.activo { background:#fde047; border-color:#f59e0b; color:#78350f; }
+.actual { font-size:.85rem; font-weight:700; margin:-4px 0 12px; min-height:1.2em; color:#334155; }
+.btn { width:100%; border:none; border-radius:12px; padding:14px; font-size:1rem; font-weight:800; cursor:pointer;
+  background:#22c55e; color:#fff; box-shadow:0 8px 20px rgba(0,0,0,.25); }
+.btn:disabled { opacity:.55; cursor:not-allowed; }
+.msg { display:none; margin-top:12px; padding:10px; border-radius:10px; font-size:.88rem; font-weight:700; text-align:center; }
+.msg.show { display:block; }
+.msg.ok { background:#dcfce7; color:#166534; }
+.msg.error { background:#fee2e2; color:#991b1b; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <img src="boton_config.png" alt="" />
+    <h1>Configuración</h1>
+    <a class="volver" href="index.html">← Volver</a>
+  </div>
+
+  <div class="seccion">
+    <h2>📦 Pedidos diarios emitidos</h2>
+    <p class="hint">Cantidad de pedidos emitidos por tienda y día (hoja PEDIDOS_TOTAL). Si el día ya existe se actualiza; si no, se añade.</p>
+
+    <label>Tienda</label>
+    <div class="tiendas">
+      <button type="button" class="tienda-btn activo" data-tienda="TRAVESIA">TRAVESIA</button>
+      <button type="button" class="tienda-btn" data-tienda="GRANVIA">GRANVIA</button>
+    </div>
+
+    <label for="fecha">Fecha</label>
+    <input class="control" type="date" id="fecha" />
+
+    <div class="actual" id="actual"></div>
+
+    <label for="cantidad">Pedidos emitidos</label>
+    <input class="control" type="number" id="cantidad" min="0" max="100000" step="1" inputmode="numeric" placeholder="0" />
+
+    <button class="btn" id="btnGuardar" type="button">💾 Guardar</button>
+    <div class="msg" id="msg"></div>
+  </div>
+</div>
+
 <script>
-// Solo admin. El módulo Config vive dentro de NEXO RESERVAS (Apps Script): se abre con ?p=config.
-var RESERVAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbwXkz9LoSa2ucdz9x1_wD9Z0BMsRe9R2vrnZ_MZEeKGSpKN55EQM3cVQLYtdeOL9JwP/exec";
-try {
-  var u = JSON.parse(sessionStorage.getItem('sad_user') || 'null');
-  if (!u || String(u.nivel).toLowerCase() !== 'admin') { location.replace('index.html'); }
-  else {
-    var usuario = new URLSearchParams(location.search).get('u') || u.usuario || '';
-    var url = RESERVAS_EXEC_URL + '?p=config' + (usuario ? '&u=' + encodeURIComponent(usuario) : '');
-    document.getElementById('linkManual').textContent = 'Si no abre solo, toca aquí';
-    document.getElementById('linkManual').href = url;
-    location.replace(url);
-  }
-} catch (e) { location.replace('login.html'); }
+var BACKEND_URL = "https://script.google.com/macros/s/AKfycbzkf4K28coJa5YXNv_iN08sfhjrtKenyFJgHxWaIxMGVtuABHswvySAFEmowq5vP4rD/exec";
+var PROXY = "https://sad-proxy.colatino-ventas-enlinea.workers.dev/";
+
+/* Solo ADM */
+var sesion = null;
+try { sesion = JSON.parse(sessionStorage.getItem('sad_user') || 'null'); } catch (e) {}
+if (!sesion || !sesion.usuario) { location.replace('login.html'); }
+else if (String(sesion.nivel || '').toLowerCase() !== 'admin') { location.replace('index.html'); }
+
+var tienda = 'TRAVESIA';
+var fechaEl = document.getElementById('fecha');
+var cantEl = document.getElementById('cantidad');
+var actualEl = document.getElementById('actual');
+var btn = document.getElementById('btnGuardar');
+
+function hoyISO() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function fechaES(iso) { var p = iso.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+function msg(t, tipo) { var m = document.getElementById('msg'); m.textContent = t; m.className = 'msg show ' + tipo; }
+function limpiarMsg() { document.getElementById('msg').className = 'msg'; }
+
+function post(body) {
+  body.usuario = sesion.usuario;
+  return fetch(PROXY + '?url=' + encodeURIComponent(BACKEND_URL), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  }).then(function (r) { return r.text(); }).then(function (t) {
+    try { return JSON.parse(t); }
+    catch (e) { return { ok: false, error: 'Respuesta inesperada del servidor.' }; }
+  });
+}
+
+var consultaN = 0;
+function cargar() {
+  var fecha = fechaEl.value;
+  if (!fecha) return;
+  var n = ++consultaN;
+  actualEl.textContent = 'Consultando…';
+  post({ accion: 'obtenerPedidosEmitidos', tienda: tienda, fecha: fecha }).then(function (r) {
+    if (n !== consultaN) return;
+    if (!r || !r.ok) { actualEl.textContent = '⚠️ ' + ((r && r.error) || 'No se pudo consultar.'); return; }
+    if (r.existe) { actualEl.textContent = 'Valor actual: ' + r.cantidad; cantEl.value = r.cantidad; }
+    else { actualEl.textContent = 'Sin registro para ' + tienda + ' el ' + fechaES(fecha) + '.'; cantEl.value = ''; }
+  }).catch(function () { if (n === consultaN) actualEl.textContent = '⚠️ Error de conexión.'; });
+}
+
+document.querySelectorAll('.tienda-btn').forEach(function (b) {
+  b.addEventListener('click', function () {
+    tienda = b.getAttribute('data-tienda');
+    document.querySelectorAll('.tienda-btn').forEach(function (x) { x.classList.toggle('activo', x === b); });
+    limpiarMsg(); cargar();
+  });
+});
+fechaEl.addEventListener('change', function () { limpiarMsg(); cargar(); });
+
+btn.addEventListener('click', function () {
+  var fecha = fechaEl.value;
+  var cant = cantEl.value.trim();
+  if (!fecha) { msg('Elige una fecha.', 'error'); return; }
+  if (!/^\d+$/.test(cant) || Number(cant) > 100000) { msg('Indica una cantidad válida (número entero).', 'error'); return; }
+  if (!confirm('¿Guardar ' + cant + ' pedidos emitidos para ' + tienda + ' el ' + fechaES(fecha) + '?')) return;
+  btn.disabled = true; limpiarMsg();
+  post({ accion: 'guardarPedidosEmitidos', tienda: tienda, fecha: fecha, cantidad: Number(cant) }).then(function (r) {
+    btn.disabled = false;
+    if (!r || !r.ok) { msg('❌ ' + ((r && r.error) || 'No se pudo guardar.'), 'error'); return; }
+    var txt = r.accion === 'incluido' ? 'añadido' : (r.accion === 'alterado' ? 'actualizado' : 'sin cambios');
+    msg('✅ ' + tienda + ' ' + fechaES(fecha) + ': ' + cant + ' (' + txt + ').', 'ok');
+    actualEl.textContent = 'Valor actual: ' + cant;
+  }).catch(function () { btn.disabled = false; msg('⚠️ Error de conexión.', 'error'); });
+});
+
+fechaEl.max = hoyISO();
+fechaEl.value = hoyISO();
+if (sesion && String(sesion.nivel || '').toLowerCase() === 'admin') cargar();
 </script>
-</body></html>
+</body>
+</html>
