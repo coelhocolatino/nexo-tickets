@@ -284,7 +284,7 @@ button:active { transform:scale(.97); }
       <a id="btnActualizar" title="Actualizar pedidos (control de tickets)"><img src="boton_actualizar_pedidos.png" alt="Actualizar pedidos" /></a>
       <a id="btnConfig" href="config.html" title="Configuración"><img src="boton_config.png" alt="Configuración" /></a>
     </div>
-    <div class="app-version">SAD Ticket Upload v2.9.1</div>
+    <div class="app-version">SAD Ticket Upload v2.9.2</div>
   </div>
 
   <form id="ticketForm" novalidate>
@@ -551,7 +551,50 @@ function guardarListasCache(data) {
   catch(e) {}
 }
 
+/* ============================================================
+   FIX 2026-09-29 — CONSERVAR TIENDA / REPARTIDOR
+   Bug: la app pinta las listas desde la caché y, unos segundos después,
+   al llegar la respuesta del servidor, volvía a rellenar los <select>
+   con el placeholder → se BORRABAN la tienda y el repartidor elegidos.
+   Como sacar/cargar la foto lleva unos segundos, justo en ese momento
+   llegaba la respuesta y se perdía la selección. Además, si el móvil
+   recarga la página al volver de la cámara, también se perdía todo.
+   Solución: al refrescar las listas se conserva lo elegido, y el
+   formulario se guarda en sessionStorage para recuperarlo si la
+   página se recarga.
+============================================================ */
+const FORM_ESTADO_KEY = 'nexo_form_estado_v1';
+const CAMPOS_ESTADO   = ['tienda', 'repartidor', 'franja', 'pedidos', 'dobles', 'xr', 'km', 'obs'];
+
+function leerEstadoForm() {
+  try { return JSON.parse(sessionStorage.getItem(FORM_ESTADO_KEY)) || {}; }
+  catch(e) { return {}; }
+}
+function guardarEstadoForm() {
+  try {
+    const est = {};
+    CAMPOS_ESTADO.forEach(c => { est[c] = document.getElementById(c).value; });
+    sessionStorage.setItem(FORM_ESTADO_KEY, JSON.stringify(est));
+  } catch(e) {}
+}
+function borrarEstadoForm() {
+  try { sessionStorage.removeItem(FORM_ESTADO_KEY); } catch(e) {}
+}
+// Selecciona "valor" en el <select> solo si existe como opción real.
+function restaurarSeleccion(sel, valor) {
+  if (!valor) return false;
+  const existe = Array.from(sel.options).some(o => o.value === valor && !o.disabled);
+  if (existe) { sel.value = valor; return true; }
+  return false;
+}
+
 function aplicarDatosListas(data) {
+  // Recordar lo que el usuario ya tenía elegido ANTES de rellenar las listas
+  const guardado   = leerEstadoForm();
+  const prevTienda = tiendaSel.value || guardado.tienda || '';
+  const prevRep    = repartSel.value || guardado.repartidor || '';
+  const prevFranja = document.getElementById('franja').value || guardado.franja || '';
+
   fillSelect('tienda',     data.tiendas,     'Seleccione tienda...');
   fillSelect('repartidor', data.repartidores, 'Seleccione repartidor...');
   TIENDAS_FRANJAS = data.franjasPorTienda || {};
@@ -559,8 +602,31 @@ function aplicarDatosListas(data) {
 
   aplicarReglasRepartidor();
   aplicarReglasTienda();
+
+  // Volver a poner la selección previa (si el repartidor está bloqueado a la
+  // cuenta, se respeta el bloqueo)
+  restaurarSeleccion(tiendaSel, prevTienda);
+  if (!repartSel.disabled) restaurarSeleccion(repartSel, prevRep);
+
   aplicarReglasFranja();
+  restaurarSeleccion(document.getElementById('franja'), prevFranja);
+  try { actualizarBtnAsignar(); } catch(e) { /* aún no inicializado al pintar desde caché */ }
 }
+
+// Guardar el formulario cada vez que cambia algo (para sobrevivir a una
+// recarga de la página al volver de la cámara)
+CAMPOS_ESTADO.forEach(c => {
+  const el = document.getElementById(c);
+  el.addEventListener('change', guardarEstadoForm);
+  el.addEventListener('input',  guardarEstadoForm);
+});
+// Restaurar los campos numéricos / obs si la página se recargó
+(function restaurarCamposSimples() {
+  const g = leerEstadoForm();
+  ['pedidos', 'dobles', 'xr', 'km', 'obs'].forEach(c => {
+    if (g[c] !== undefined && g[c] !== null && g[c] !== '') document.getElementById(c).value = g[c];
+  });
+})();
 
 async function cargarListas() {
   // 1) Pintar de inmediato con la última copia guardada, sin esperar red
@@ -1168,14 +1234,34 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
     repartSel.value = match || miNombre;
   }
 
-  // Validar campos obligatorios
+  // Validar campos obligatorios (sin espacios en blanco)
   const campos = ['fecha', 'tienda', 'repartidor', 'franja', 'pedidos'];
   for (const c of campos) {
-    if (!document.getElementById(c).value) {
-      alert('Por favor, completa todos los campos obligatorios.');
+    if (!String(document.getElementById(c).value || '').trim()) {
+      alert(c === 'repartidor'
+        ? 'Falta el nombre del REPARTIDOR. No se puede subir el ticket sin repartidor.'
+        : c === 'tienda'
+          ? 'Falta la TIENDA. Selecciónala antes de subir el ticket.'
+          : 'Por favor, completa todos los campos obligatorios.');
       return;
     }
   }
+
+  // FIX 2026-09-29: "congelar" los datos del formulario AHORA, antes de
+  // procesar la foto. Antes se leían después (tras varios segundos de
+  // compresión) y, si en ese intervalo se refrescaban las listas, el
+  // ticket se enviaba con tienda/repartidor vacíos.
+  const datosForm = {
+    fecha:      fechaInput.value,
+    tienda:     String(tiendaSel.value).trim(),
+    repartidor: String(repartSel.value).trim(),
+    franja:     String(document.getElementById('franja').value).trim(),
+    pedidos:    document.getElementById('pedidos').value,
+    dobles:     document.getElementById('dobles').value,
+    xr:         document.getElementById('xr').value,
+    km:         document.getElementById('km').value,
+    obs:        document.getElementById('obs').value
+  };
 
   // Revalidar que la franja elegida sigue disponible (por si pasó tiempo
   // con la pestaña abierta y ya cruzó el corte de "1h antes de caducar")
@@ -1220,19 +1306,16 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
     });
 
     const payload = {
-      fecha:         fechaInput.value,
-      tienda:        document.getElementById('tienda').value,
-      repartidor:    document.getElementById('repartidor').value,
-      franja:        document.getElementById('franja').value,
-      pedidos:       document.getElementById('pedidos').value,
-      dobles:        document.getElementById('dobles').value,
-      xr:            document.getElementById('xr').value,
-      km:            document.getElementById('km').value,
-      obs:           document.getElementById('obs').value,
+      ...datosForm,
       imagenBase64:  base64,
       usuarioSesion: sesion?.usuario || '',
       nivelSesion:   NIVEL
     };
+
+    // Última barrera: nunca enviar ni guardar en cola un ticket sin repartidor/tienda
+    if (!payload.repartidor || !payload.tienda) {
+      throw Object.assign(new Error('Falta la tienda o el repartidor. Revisa el formulario.'), { noReintentar: true });
+    }
 
     if (!navigator.onLine) {
       await guardarEnCola(payload);
@@ -1324,6 +1407,7 @@ aplicarPedidosAsignados();
    RESET FORMULARIO
 ============================================================ */
 function resetFormulario() {
+  borrarEstadoForm();
   liberarPedidosAsignados();
   fotoInput.value      = '';
   fotoInput._procesada = null;
