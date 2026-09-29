@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Nexo · Asignar pedidos</title>
+<title>Nexo · Pedidos asignados</title>
 <link rel="icon" href="nexo-icon-192.png">
 <script>
 /* Guard de sesión */
@@ -69,6 +69,36 @@ body { margin:0; min-height:100vh; background:linear-gradient(180deg,var(--bg1),
 .ausente button.intento { width:100%; padding:12px; border:0; border-radius:10px; background:#f59e0b; color:#fff; font-weight:800; margin-bottom:8px; }
 .ausente .cuenta { font-size:13px; margin-bottom:8px; }
 .btn-foto { width:100%; padding:11px; border:1px dashed #64748b; border-radius:10px; background:#f8fafc; font-weight:700; margin-top:8px; }
+/* ===== Fase 1 multi-ticket: panel de lectura de la foto ===== */
+.lote { background:rgba(255,255,255,.12); border-radius:16px; padding:10px; margin-bottom:12px; }
+.lote-cab { display:flex; align-items:center; gap:8px; font-weight:800; font-size:15px; margin-bottom:6px; }
+.lote-cab .grow { flex:1; }
+.lote-cab button { border:0; border-radius:8px; padding:6px 10px; font-weight:700; background:rgba(255,255,255,.2); color:#fff; }
+.lote-res { font-size:12px; opacity:.9; margin-bottom:8px; }
+.lote-leyendo { text-align:center; padding:18px 8px; font-weight:700; }
+.lote-leyendo .rueda { width:34px; height:34px; border:4px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%;
+  margin:0 auto 10px; animation:gira 1s linear infinite; }
+@keyframes gira { to { transform:rotate(360deg); } }
+.tk { background:#fff; color:#0f172a; border-radius:12px; padding:8px; margin-bottom:8px; display:flex; gap:8px; align-items:flex-start; }
+.tk.ok { border-left:6px solid var(--ok); }
+.tk.rev { border-left:6px solid #f59e0b; background:#fffbeb; }
+.tk.mal { border-left:6px solid var(--bad); }
+.tk.fuera { opacity:.55; }
+.tk .mini { width:64px; height:96px; object-fit:cover; object-position:top; border-radius:6px; background:#e2e8f0; flex:0 0 auto; }
+.tk .cuerpo { flex:1; min-width:0; font-size:13px; }
+.tk .titulo { font-weight:800; font-size:14px; }
+.tk .estado { font-size:12px; margin-top:2px; }
+.tk .form { margin-top:6px; }
+.tk .form .g { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+.tk .form label { font-size:11px; color:#475569; font-weight:700; display:block; margin-top:4px; }
+.tk .form input { width:100%; padding:7px 6px; border:1px solid #cbd5e1; border-radius:8px; font-size:14px; }
+.tk .form input.oblig { border-color:#f59e0b; background:#fff; }
+.tk .form .btns { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.tk .form .btns button { flex:1; padding:9px 6px; border:0; border-radius:8px; font-weight:800; font-size:13px; }
+.tk .form label.chkman { display:flex; align-items:center; gap:6px; font-size:12px; margin-top:8px; color:#0f172a; }
+.tk .form label.chkman input { width:20px; height:20px; flex:0 0 auto; }
+.b-verde { background:var(--ok); color:#fff; }
+.b-add { width:100%; padding:10px; border:1px dashed rgba(255,255,255,.6); border-radius:10px; background:transparent; color:#fff; font-weight:700; }
 #spin { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:99; font-weight:700; }
 #spin.on { display:flex; }
 </style>
@@ -77,12 +107,14 @@ body { margin:0; min-height:100vh; background:linear-gradient(180deg,var(--bg1),
 <div class="wrap">
   <div class="top">
     <a class="volver" href="index.html" title="Volver">←</a>
-    <h1>Asignar pedidos</h1>
+    <h1>Pedidos asignados</h1>
     <span id="quien" style="font-size:12px;opacity:.85"></span>
   </div>
+  <!-- Fase 1 multi-ticket: resultado de la lectura de la foto -->
+  <div id="lotes"></div>
   <div class="tabs">
+    <button class="tab" id="tabRuta" onclick="cambiarTab('ruta')">Asignados</button>
     <button class="tab" id="tabDisp" onclick="cambiarTab('disp')">Disponibles</button>
-    <button class="tab" id="tabRuta" onclick="cambiarTab('ruta')">Mi ruta</button>
   </div>
   <div class="info" id="info"></div>
   <div id="msg"></div>
@@ -171,9 +203,10 @@ async function cargar(inicial) {
   ruta = rr.ok ? rr.pedidos : [];
   disp = rd.ok ? rd.pedidos : [];
   tramos = rd.ok ? rd.tramos : [];
-  document.getElementById('tabRuta').textContent = 'Mi ruta (' + ruta.length + ')';
+  document.getElementById('tabRuta').textContent = 'Asignados (' + ruta.length + ')';
   document.getElementById('tabDisp').textContent = 'Disponibles (' + disp.length + ')';
-  if (inicial) { cambiarTab(ruta.length ? 'ruta' : 'disp'); } else { pintar(); }
+  // Si se viene de subir una foto (?lote=...), se queda en "Asignados".
+  if (inicial) { cambiarTab(ruta.length || /[?&]lote=/.test(location.search) ? 'ruta' : 'disp'); } else { pintar(); }
 }
 
 function cardHTML(o, conCheck, conAcc) {
@@ -238,11 +271,49 @@ async function guardarDir(id) {
   if (r.ok) { t.dataset.orig = nueva.toUpperCase(); t.value = nueva.toUpperCase(); msg('Dirección actualizada.', 'ok'); }
   else msg(r.error, 'err');
 }
+var _fotoCompleta = '';
 async function verFoto(id) {
   document.getElementById('fotoCont').innerHTML = 'Cargando…';
   document.getElementById('mFoto').classList.add('on');
   var r = await api('fotoTicketBase64', { id: id });
-  document.getElementById('fotoCont').innerHTML = r.ok ? '<img class="foto" src="' + r.dataUrl + '">' : esc(r.error);
+  if (!r.ok) { document.getElementById('fotoCont').innerHTML = esc(r.error); return; }
+  // Recorte virtual: si la foto tiene varios tickets, se enseña solo el de este pedido.
+  var src = r.dataUrl, extra = '';
+  if (r.box) {
+    try { src = await recortar(r.dataUrl, r.box, 1400); } catch (e) { src = r.dataUrl; }
+    _fotoCompleta = r.dataUrl;
+    extra = '<button class="b-gris" style="width:100%;margin-top:8px;padding:10px;border:0;border-radius:10px;font-weight:700" onclick="verCompleta()">Ver foto completa</button>';
+  }
+  document.getElementById('fotoCont').innerHTML = '<img class="foto" src="' + src + '">' + extra;
+}
+function verCompleta() { document.getElementById('fotoCont').innerHTML = '<img class="foto" src="' + _fotoCompleta + '">'; }
+function verImagen(src) {
+  document.getElementById('fotoCont').innerHTML = '<img class="foto" src="' + src + '">';
+  document.getElementById('mFoto').classList.add('on');
+}
+
+/* ============ RECORTE VIRTUAL ============
+   box = [ymin, xmin, ymax, xmax] en escala 0-1000 (formato de Gemini). */
+var _imgCache = {};
+function cargarImg(src) {
+  if (_imgCache[src]) return _imgCache[src];
+  _imgCache[src] = new Promise(function (res, rej) {
+    var i = new Image(); i.onload = function () { res(i); }; i.onerror = function () { rej(new Error('img')); }; i.src = src;
+  });
+  return _imgCache[src];
+}
+async function recortar(src, box, maxAncho) {
+  var b = Array.isArray(box) ? box : String(box || '').split(',').map(Number);
+  if (b.length !== 4 || b.some(isNaN)) return src;
+  var img = await cargarImg(src);
+  var W = img.naturalWidth, H = img.naturalHeight, m = 12; // margen de 1,2 %
+  var y0 = Math.max(0, (b[0] - m) / 1000 * H), x0 = Math.max(0, (b[1] - m) / 1000 * W);
+  var y1 = Math.min(H, (b[2] + m) / 1000 * H), x1 = Math.min(W, (b[3] + m) / 1000 * W);
+  var w = x1 - x0, h = y1 - y0; if (w < 10 || h < 10) return src;
+  var s = Math.min(1, (maxAncho || 900) / w);
+  var c = document.createElement('canvas'); c.width = Math.round(w * s); c.height = Math.round(h * s);
+  c.getContext('2d').drawImage(img, x0, y0, w, h, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.88);
 }
 async function entregado(id) {
   if (!confirm('¿Confirmas que el pedido ha sido ENTREGADO?')) return;
@@ -336,8 +407,233 @@ async function enviarIncidencia() {
   clearInterval(incTimer); cerrar('mInc'); msg('Incidencia registrada. Se ha avisado a Embolsado y ADM.', 'ok'); cargar(false);
 }
 
+/* =====================================================================
+   FASE 1 MULTI-TICKET — lectura de la foto subida en index.html
+   index.html guarda la foto en IndexedDB ('nexo-lotes') y viene aquí.
+   Se procesa cada lote pendiente: Gemini lee los tickets, el servidor
+   graba y asigna los que coinciden (CAJA + TICKET en la fecha/franja) y
+   los demás quedan en naranja para confirmar a mano.
+===================================================================== */
+var LOTES_DB = 'nexo-lotes';
+var LOTES = {};   // id -> { lote, res, items:[...] }
+var ES_ADMIN = String(SESION.nivel || '').toLowerCase().trim() === 'admin';
+
+function abrirLotesDB() {
+  return new Promise(function (res, rej) {
+    var r = indexedDB.open(LOTES_DB, 1);
+    r.onupgradeneeded = function () { if (!r.result.objectStoreNames.contains('lotes')) r.result.createObjectStore('lotes', { keyPath: 'id' }); };
+    r.onsuccess = function () { res(r.result); };
+    r.onerror = function () { rej(r.error); };
+  });
+}
+function lotesPendientes() {
+  return abrirLotesDB().then(function (db) {
+    return new Promise(function (res, rej) {
+      var q = db.transaction('lotes', 'readonly').objectStore('lotes').getAll();
+      q.onsuccess = function () { res((q.result || []).sort(function (a, b) { return a.ts - b.ts; })); };
+      q.onerror = function () { rej(q.error); };
+    });
+  }).catch(function () { return []; });
+}
+function borrarLote(id) {
+  return abrirLotesDB().then(function (db) {
+    return new Promise(function (res) {
+      var tx = db.transaction('lotes', 'readwrite'); tx.objectStore('lotes').delete(id);
+      tx.oncomplete = function () { res(); }; tx.onerror = function () { res(); };
+    });
+  }).catch(function () {});
+}
+
+var ETIQUETAS = {
+  ASIGNADO:        { cls: 'ok',  txt: '✅ Asignado' },
+  GRABADO:         { cls: 'ok',  txt: '✅ Grabado (sin asignar)' },
+  REVISAR:         { cls: 'rev', txt: '❓ Revisar' },
+  DUPLICADO:       { cls: 'mal', txt: '⚠️ Repetido en la foto' },
+  OTRO_REPARTIDOR: { cls: 'mal', txt: '⚠️ De otro repartidor' },
+  CERRADO:         { cls: 'mal', txt: '⚠️ Ya cerrado' },
+  DESCARTADO:      { cls: 'mal fuera', txt: '🗑️ Descartado' },
+  LEYENDO:         { cls: 'rev', txt: '⏳ …' }
+};
+
+function formatoFechaCorta(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] : iso; }
+
+function pintarLote(id) {
+  var L = LOTES[id]; if (!L) return;
+  var cont = document.getElementById('lt_' + id);
+  if (!cont) {
+    cont = document.createElement('div'); cont.className = 'lote'; cont.id = 'lt_' + id;
+    document.getElementById('lotes').appendChild(cont);
+  }
+  var l = L.lote;
+  var h = '<div class="lote-cab"><span class="grow">📸 Foto de tickets · ' + esc(formatoFechaCorta(l.fecha)) + ' · ' + esc(l.franja || '') +
+          (ES_ADMIN && l.repartidor ? ' · ' + esc(l.repartidor) : '') + '</span>';
+  if (L.estado === 'listo' && !pendientesRevision(L)) h += '<button onclick="cerrarLote(\'' + esc(id) + '\')">Cerrar</button>';
+  h += '</div>';
+
+  if (L.estado === 'leyendo') {
+    h += '<div class="lote-leyendo"><div class="rueda"></div>Leyendo tickets…<br><span style="font-weight:400;font-size:12px;opacity:.85">Puede tardar hasta 1 minuto. No cierres esta página.</span></div>';
+  } else if (L.estado === 'error') {
+    h += '<div class="lote-res">❌ ' + esc(L.error) + '</div>' +
+         '<button class="b-add" onclick="procesarLote(\'' + esc(id) + '\')">🔄 Reintentar</button>';
+  } else {
+    var n = L.items.filter(function (x) { return x.estado === 'ASIGNADO' || x.estado === 'GRABADO'; }).length;
+    var rev = pendientesRevision(L);
+    h += '<div class="lote-res">' + L.items.filter(function (x) { return x.estado !== 'DESCARTADO'; }).length + ' ticket(s) · ' +
+         n + ' listo(s)' + (rev ? ' · <b>' + rev + ' por revisar</b>' : '') + '</div>';
+    if (L.aviso) h += '<div class="lote-res">⚠️ ' + esc(L.aviso) + '</div>';
+    L.items.forEach(function (it, i) { h += itemHTML(id, i, it); });
+    h += '<button class="b-add" onclick="anadirTicket(\'' + esc(id) + '\')">➕ Añadir un ticket que falta</button>';
+  }
+  cont.innerHTML = h;
+  // Miniaturas (recorte virtual en el propio móvil, con la foto local).
+  if (L.estado === 'listo') L.items.forEach(function (it, i) {
+    if (!it.box || it.mini) return;
+    recortar(l.imagen, it.box, 360).then(function (u) {
+      it.mini = u; var im = document.getElementById('mi_' + id + '_' + i); if (im) im.src = u;
+    }).catch(function () {});
+  });
+}
+
+function pendientesRevision(L) {
+  return (L.items || []).filter(function (x) { return x.estado === 'REVISAR' || x.estado === 'DUPLICADO'; }).length;
+}
+
+function itemHTML(id, i, it) {
+  var et = ETIQUETAS[it.estado] || ETIQUETAS.REVISAR;
+  var d = it.datos || {};
+  var key = esc(id) + "'," + i;
+  var h = '<div class="tk ' + et.cls + '">';
+  h += it.box ? '<img class="mini" id="mi_' + esc(id) + '_' + i + '" src="' + (it.mini || '') + '" onclick="verMini(\'' + key + ')">' : '<div class="mini"></div>';
+  h += '<div class="cuerpo"><div class="titulo">' + (it.caja || it.ticket ? 'Caja ' + esc(it.caja || '?') + ' · Ticket ' + esc(it.ticket || '?') : 'Ticket sin leer') +
+       (it.manual ? ' · MANUAL' : '') + '</div>';
+  var nombre = it.nombre || d.nombre;
+  if (nombre) h += '<div>' + esc(nombre) + '</div>';
+  var dir = it.direccion || d.direccion;
+  if (dir) h += '<div style="font-size:12px;color:#475569">' + esc(dir) + '</div>';
+  h += '<div class="estado"><b>' + et.txt + '</b>' + (it.mensaje ? ' — ' + esc(it.mensaje) : '') + '</div>';
+
+  if (it.estado === 'REVISAR' || it.estado === 'DUPLICADO') {
+    var L = LOTES[id].lote;
+    var p = 'f_' + esc(id) + '_' + i + '_';
+    h += '<div class="form">' +
+      '<div class="g">' +
+        '<div><label>Fecha entrega *</label><input class="oblig" type="date" id="' + p + 'fecha" value="' + esc(it.fechaForm || L.fecha) + '"></div>' +
+        '<div><label>Caja *</label><input class="oblig" inputmode="numeric" maxlength="3" id="' + p + 'caja" value="' + esc(it.caja || '') + '"></div>' +
+        '<div><label>Ticket *</label><input class="oblig" inputmode="numeric" id="' + p + 'ticket" value="' + esc(it.ticket || '') + '"></div>' +
+      '</div>' +
+      '<label>Nombre</label><input id="' + p + 'nombre" value="' + esc(d.nombre || '') + '">' +
+      '<label>Dirección</label><input id="' + p + 'direccion" value="' + esc(d.direccion || '') + '">' +
+      '<div class="g">' +
+        '<div><label>Teléfono</label><input inputmode="tel" id="' + p + 'telefono" value="' + esc(d.telefono || '') + '"></div>' +
+        '<div><label>Nº cajas</label><input id="' + p + 'n_cajas" value="' + esc(d.n_cajas == null ? '' : d.n_cajas) + '"></div>' +
+        '<div><label>F / N / C</label><input id="' + p + 'fnc" placeholder="1/2/0" value="' + esc([d.frios, d.nevera, d.congelados].map(function (x) { return x == null ? '' : x; }).join('/').replace(/^\/\/$/, '')) + '"></div>' +
+      '</div>' +
+      '<label class="chkman"><input type="checkbox" id="' + p + 'manual"' + (it.manual ? ' checked' : '') + '> Ticket manual (se graba como "nº Manual")</label>' +
+      '<div class="btns">' +
+        '<button class="b-verde" onclick="resolver(\'' + key + ',false)">Guardar y asignar</button>' +
+        '<button class="b-azul" onclick="resolver(\'' + key + ',true)">Saltar (solo asignar)</button>' +
+        '<button class="b-gris" onclick="descartar(\'' + key + ')">Descartar</button>' +
+      '</div></div>';
+  }
+  return h + '</div></div>';
+}
+
+function verMini(id, i) {
+  var L = LOTES[id], it = L.items[i];
+  recortar(L.lote.imagen, it.box, 1400).then(verImagen).catch(function () { verImagen(L.lote.imagen); });
+}
+
+async function procesarLote(id) {
+  var L = LOTES[id]; L.estado = 'leyendo'; pintarLote(id);
+  var l = L.lote;
+  var r = await api('procesarFotoMultiple', {
+    imagenBase64: l.imagen, fecha: l.fecha, franja: l.franja, tienda: l.tienda,
+    repartidor: l.repartidor, asignar: l.asignar !== false
+  });
+  if (!r.ok) {
+    L.estado = 'error'; L.error = r.error || 'Error desconocido';
+    pintarLote(id);
+    return;
+  }
+  // El servidor ya tiene la foto y los datos: se borra la copia del móvil
+  // (la imagen se queda en memoria mientras esta página esté abierta).
+  await borrarLote(id);
+  L.res = r; L.estado = 'listo'; L.aviso = r.avisoOcr || '';
+  L.items = (r.tickets || []).map(function (t) { return t; });
+  pintarLote(id);
+}
+
+function leerForm(id, i) {
+  var p = 'f_' + id + '_' + i + '_';
+  function v(k) { var e = document.getElementById(p + k); return e ? (e.type === 'checkbox' ? e.checked : e.value.trim()) : ''; }
+  var fnc = String(v('fnc') || '').split('/');
+  return {
+    fecha: v('fecha'), caja: v('caja'), ticket: v('ticket'), manual: v('manual'),
+    datos: { nombre: v('nombre'), direccion: v('direccion'), telefono: v('telefono'), n_cajas: v('n_cajas'),
+             frios: (fnc[0] || '').trim(), nevera: (fnc[1] || '').trim(), congelados: (fnc[2] || '').trim() }
+  };
+}
+
+async function resolver(id, i, saltar) {
+  var L = LOTES[id], it = L.items[i], f = leerForm(id, i);
+  if (!f.fecha || !f.caja || !f.ticket) { alert('Fecha de entrega, caja y ticket son obligatorios.'); return; }
+  var datos = Object.assign({}, it.datos || {}, f.datos);
+  spin(true);
+  var r = await api('resolverTicketLote', {
+    fotoId: L.res.fotoId, box: it.box || '', fecha: f.fecha, franja: L.res.franja || L.lote.franja,
+    caja: f.caja, ticket: f.ticket, datos: datos, repartidor: L.lote.repartidor,
+    asignar: L.lote.asignar !== false, saltar: !!saltar, manual: !!f.manual
+  });
+  spin(false);
+  if (!r.ok) { alert(r.error || 'No se pudo guardar.'); return; }
+  it.estado = r.estado; it.mensaje = r.mensaje; it.caja = r.caja; it.ticket = r.ticket;
+  it.nombre = r.nombre; it.direccion = r.direccion; it.manual = !!f.manual; it.datos = datos;
+  pintarLote(id);
+  cargar(false);
+}
+
+function descartar(id, i) {
+  if (!confirm('¿Descartar este ticket? No se graba ni se asigna.')) return;
+  var it = LOTES[id].items[i]; it.estado = 'DESCARTADO'; it.mensaje = '';
+  pintarLote(id);
+}
+
+function anadirTicket(id) {
+  var L = LOTES[id];
+  L.items.push({ idx: L.items.length, estado: 'REVISAR', mensaje: 'Añadido a mano: escribe fecha, caja y ticket.', caja: '', ticket: '', box: '', datos: {} });
+  pintarLote(id);
+}
+
+function cerrarLote(id) {
+  var c = document.getElementById('lt_' + id); if (c) c.remove();
+  delete LOTES[id];
+}
+
+async function procesarPendientes() {
+  var lista = await lotesPendientes();
+  // Solo los lotes de este usuario (si el móvil se comparte, no se mezclan).
+  lista = lista.filter(function (l) { return !l.usuario || l.usuario === USUARIO; });
+  if (!lista.length) return false;
+  cambiarTab('ruta');
+  for (var k = 0; k < lista.length; k++) {
+    LOTES[lista[k].id] = { lote: lista[k], estado: 'leyendo', items: [] };
+    pintarLote(lista[k].id);
+  }
+  for (var j = 0; j < lista.length; j++) await procesarLote(lista[j].id);
+  return true;
+}
+
+// Aviso si se sale de la página mientras se leen tickets.
+window.addEventListener('beforeunload', function (e) {
+  var leyendo = Object.keys(LOTES).some(function (k) { return LOTES[k].estado === 'leyendo'; });
+  if (leyendo) { e.preventDefault(); e.returnValue = ''; }
+});
+
 if (EMBOLSADO_URL.indexOf('PEGAR_AQUI') === 0) msg('Falta configurar EMBOLSADO_URL en asignar.html', 'err');
-else cargar(true);
+else {
+  cargar(true);
+  procesarPendientes().then(function (hubo) { if (hubo) cargar(false); });
+}
 </script>
 </body>
 </html>
