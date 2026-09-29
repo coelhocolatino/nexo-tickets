@@ -84,6 +84,10 @@ body {
 .btn-asignar img { width:100%; height:100%; display:block; object-fit:cover; }
 .asig-hint { font-size:12px; color:#9dffb0; margin-top:4px; display:none; }
 .asig-hint a { color:#ffcc00; text-decoration:underline; cursor:pointer; margin-left:6px; }
+/* Fase 1 multi-ticket: opción de ADM "leer y asignar" */
+.leer-tickets { display:none; align-items:center; gap:8px; font-size:13px; margin-top:10px; padding:8px 10px;
+  border-radius:10px; background:rgba(255,255,255,.12); cursor:pointer; }
+.leer-tickets input { width:20px; height:20px; accent-color:#22c55e; }
 .logo {
   width:170px; max-width:65%;
   height:auto; display:block;
@@ -284,7 +288,7 @@ button:active { transform:scale(.97); }
       <a id="btnActualizar" title="Actualizar pedidos (control de tickets)"><img src="boton_actualizar_pedidos.png" alt="Actualizar pedidos" /></a>
       <a id="btnConfig" href="config.html" title="Configuración"><img src="boton_config.png" alt="Configuración" /></a>
     </div>
-    <div class="app-version">SAD Ticket Upload v2.9.1</div>
+    <div class="app-version">SAD Ticket Upload v3.0.0</div>
   </div>
 
   <form id="ticketForm" novalidate>
@@ -300,8 +304,8 @@ button:active { transform:scale(.97); }
         <select class="control" id="tienda" name="tienda" required>
           <option value="" disabled selected>Cargando...</option>
         </select>
-        <a class="btn-asignar" id="btnAsignar" href="asignar.html" title="Asignar pedidos">
-          <img src="boton_asignar.png" alt="Asignar pedidos" />
+        <a class="btn-asignar" id="btnAsignar" href="asignar.html" title="Pedidos asignados">
+          <img src="boton_asignar.png" alt="Pedidos asignados" />
         </a>
       </div>
     </div>
@@ -368,6 +372,11 @@ button:active { transform:scale(.97); }
         🔄 Girar foto
       </button>
       <input type="file" id="foto" name="foto" accept="image/*" style="display:none;" />
+      <!-- Fase 1 multi-ticket: solo ADM y solo TRAVESIA. Desmarcado = subir la foto como siempre, sin leer ni asignar. -->
+      <label class="leer-tickets" id="wrapLeerTickets">
+        <input type="checkbox" id="leerTickets" checked />
+        <span>Leer los tickets y asignarlos a este repartidor</span>
+      </label>
     </div>
 
     <img id="fotoPreview" src="" alt="Vista previa del ticket" />
@@ -836,8 +845,10 @@ function getExifOrientation(dataURL) {
   return 1;
 }
 
-function optimizarFoto(file, rotacionExtra) {
+function optimizarFoto(file, rotacionExtra, maxLado, calidad) {
   rotacionExtra = rotacionExtra || 0;
+  maxLado = maxLado || 1800;      // subida normal: 1800 px (igual que siempre)
+  calidad = calidad || 0.82;      // lectura multi-ticket: se llama con 2600 px / 0.85
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
@@ -879,7 +890,7 @@ function optimizarFoto(file, rotacionExtra) {
           const finalW = swap2 ? visH : visW;
           const finalH = swap2 ? visW : visH;
 
-          const MAX   = 1800;
+          const MAX   = maxLado;
           const scale = Math.min(MAX / Math.max(finalW, finalH), 1);
           const dstW  = Math.round(finalW * scale);
           const dstH  = Math.round(finalH * scale);
@@ -906,7 +917,7 @@ function optimizarFoto(file, rotacionExtra) {
           c2.toBlob(blob => {
             if (!blob) return reject(new Error('Error al exportar'));
             resolve(new File([blob], 'ticket.jpg', { type: 'image/jpeg' }));
-          }, 'image/jpeg', 0.82);
+          }, 'image/jpeg', calidad);
 
         } catch(err) { reject(err); }
       };
@@ -1195,6 +1206,14 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
   showSpinner('Procesando foto...');
   setMsg('', '');
 
+  // Fase 1 multi-ticket: si es TRAVESIA (y ADM no ha desmarcado la opción),
+  // se guarda en el móvil una copia en alta resolución para leer TODOS los
+  // tickets en "Pedidos Asignados". La subida normal no cambia.
+  let loteId = null;
+  try { loteId = await prepararLoteMulti(foto); }
+  catch (lErr) { console.warn('[Nexo] Lote multi-ticket:', lErr); loteId = null; }
+  let errorDefinitivo = false;
+
   try {
     // Preparar foto
     let fotoOpt;
@@ -1260,6 +1279,7 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
 
     if (err.noReintentar) {
       // Error real de la app (ej. imagen vacía) — reintentar no ayuda, se avisa directo
+      errorDefinitivo = true;
       setMsg('❌ Error: ' + err.message, '#ff6b6b');
     } else {
       // Sin conexión, o fallo intermitente de Google tras varios reintentos:
@@ -1280,7 +1300,71 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
     hideSpinner();
     _submitting = false;
   }
+
+  // Fase 1: ir directamente a "Pedidos Asignados", donde se leen los tickets.
+  // Si la subida dio un error definitivo, el usuario se queda aquí para verlo
+  // (el lote queda guardado y se leerá la próxima vez que abra Pedidos Asignados).
+  if (loteId && !errorDefinitivo) {
+    if (navigator.onLine) {
+      location.href = 'asignar.html?lote=' + encodeURIComponent(loteId);
+    } else {
+      setMsg('📥 Sin conexión — la foto se leerá al abrir "Pedidos asignados" con red', '#ffcc00');
+    }
+  }
 });
+
+/* ============================================================
+   FASE 1 MULTI-TICKET — lote para leer en "Pedidos Asignados"
+   Se guarda en IndexedDB (la foto en alta resolución no cabe en
+   sessionStorage). asignar.html lo lee, lo procesa y lo borra.
+============================================================ */
+const LOTES_DB = 'nexo-lotes';
+function abrirLotesDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(LOTES_DB, 1);
+    r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains('lotes')) r.result.createObjectStore('lotes', { keyPath: 'id' }); };
+    r.onsuccess = () => res(r.result);
+    r.onerror   = () => rej(r.error);
+  });
+}
+async function guardarLote(lote) {
+  const db = await abrirLotesDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('lotes', 'readwrite');
+    tx.objectStore('lotes').put(lote);
+    tx.oncomplete = () => res();
+    tx.onerror    = () => rej(tx.error);
+  });
+}
+function leerTicketsActivo() {
+  if (!esTravesia(tiendaSel.value)) return false;
+  if (!ES_ADMIN) return true;                       // repartidor: siempre
+  return document.getElementById('leerTickets').checked;  // ADM: puede desmarcarlo
+}
+async function prepararLoteMulti(foto) {
+  if (!leerTicketsActivo()) return null;
+  showSpinner('Preparando lectura de tickets...');
+  const hq = await optimizarFoto(foto, rotacionManual, 2600, 0.85);
+  const dataUrl = await new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onerror = () => rej(new Error('Error leyendo foto'));
+    r.onload  = ev => res(ev.target.result);
+    r.readAsDataURL(hq);
+  });
+  const lote = {
+    id:         'L' + Date.now(),
+    ts:         Date.now(),
+    imagen:     dataUrl,
+    fecha:      fechaInput.value,
+    tienda:     document.getElementById('tienda').value,
+    franja:     document.getElementById('franja').value,
+    repartidor: document.getElementById('repartidor').value,
+    usuario:    sesion?.usuario || '',
+    asignar:    true
+  };
+  await guardarLote(lote);
+  return lote.id;
+}
 
 
 /* ============================================================
@@ -1292,6 +1376,8 @@ const asigHint   = document.getElementById('asigHint');
 function esTravesia(v) { return /trav[eé]s[ií]a/i.test(String(v || '')); }
 function actualizarBtnAsignar() {
   btnAsignar.style.display = esTravesia(tiendaSel.value) ? 'block' : 'none';
+  // Fase 1: la casilla "Leer los tickets y asignarlos" solo la ve ADM en TRAVESIA.
+  document.getElementById('wrapLeerTickets').style.display = (ES_ADMIN && esTravesia(tiendaSel.value)) ? 'flex' : 'none';
 }
 tiendaSel.addEventListener('change', actualizarBtnAsignar);
 (function () {
@@ -1357,7 +1443,7 @@ function resetFormulario() {
 ============================================================ */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js?v=6')
+    navigator.serviceWorker.register('service-worker.js?v=7')
       .then(reg => console.log('[SW] Registrado:', reg.scope))
       .catch(err => console.warn('[SW] Error:', err));
   });
