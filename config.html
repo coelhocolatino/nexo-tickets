@@ -2,7 +2,12 @@
 <!-- Nexo · Configuración (solo ADM) — 2026-09-28
      Página propia en GitHub: ya NO redirige al módulo de Reservas.
      Backend: NEXO SCRIPT (acciones obtenerPedidosEmitidos / guardarPedidosEmitidos),
-     que escribe en la hoja PEDIDOS_TOTALES de la planilla 19bqTde5…  -->
+     que escribe en la hoja PEDIDOS_TOTALES de la planilla 19bqTde5…
+
+     2026-10-02: nueva sección "Límites de pedidos por franja" — lee y ajusta
+     directamente la hoja LIMITES de la planilla RESERVAS DE PEDIDOS (1rpXo…).
+     Backend: MÓDULO EMBOLSADO (acciones obtenerLimites / guardarLimites,
+     requiere el Embolsado.gs del 2026-10-02).  -->
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
@@ -41,6 +46,22 @@ label { display:block; font-size:.76rem; font-weight:800; color:#64748b; text-tr
 .msg.show { display:block; }
 .msg.ok { background:#dcfce7; color:#166534; }
 .msg.error { background:#fee2e2; color:#991b1b; }
+/* Límites de pedidos por franja (2026-10-02) */
+.seccion + .seccion { margin-top:16px; }
+.lim-tabla { display:grid; grid-template-columns:44px repeat(4, minmax(0, 1fr)); gap:6px; align-items:center; margin-bottom:12px; }
+.lim-cab { font-size:.68rem; font-weight:800; color:#64748b; text-align:center; letter-spacing:.02em; }
+.lim-dia { font-size:.78rem; font-weight:800; color:var(--text-dark); }
+.lim-dia.hoy { color:#b45309; }
+.lim-in { width:100%; min-width:0; border:1.5px solid #e2e8f0; border-radius:10px; padding:10px 2px; font-size:16px; font-weight:800;
+  color:var(--text-dark); background:#fff; text-align:center; outline:none; -moz-appearance:textfield; appearance:textfield; }
+.lim-in::-webkit-outer-spin-button, .lim-in::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.lim-in:focus { border-color:#2563eb; }
+.lim-in.cambiado { border-color:#f59e0b; background:#fef9c3; }
+.lim-in.mal { border-color:#dc2626; background:#fee2e2; }
+.lim-acciones { display:flex; gap:8px; }
+.lim-acciones .btn { flex:1; white-space:nowrap; font-size:.95rem; padding:14px 8px; }
+.lim-acciones .btn.gris { background:#e2e8f0; color:#334155; box-shadow:none; flex:0 0 36%; }
+.lim-estado { font-size:.85rem; font-weight:700; color:#334155; min-height:1.2em; margin-bottom:10px; }
 </style>
 </head>
 <body>
@@ -71,6 +92,18 @@ label { display:block; font-size:.76rem; font-weight:800; color:#64748b; text-tr
 
     <button class="btn" id="btnGuardar" type="button">💾 Guardar</button>
     <div class="msg" id="msg"></div>
+  </div>
+
+  <div class="seccion">
+    <h2>⏱️ Límites de pedidos por franja</h2>
+    <p class="hint">Nº máximo de reservas por día de la semana y franja horaria (hoja LIMITES). Vale para Reservas y Embolsado desde el momento en que se guarda.</p>
+    <div class="lim-estado" id="limEstado">Cargando…</div>
+    <div class="lim-tabla" id="limTabla"></div>
+    <div class="lim-acciones">
+      <button class="btn gris" id="btnLimDeshacer" type="button" disabled>↺ Deshacer</button>
+      <button class="btn" id="btnLimGuardar" type="button" disabled>💾 Guardar límites</button>
+    </div>
+    <div class="msg" id="msgLim"></div>
   </div>
 </div>
 
@@ -150,6 +183,99 @@ btn.addEventListener('click', function () {
 fechaEl.max = hoyISO();
 fechaEl.value = hoyISO();
 if (sesion && String(sesion.nivel || '').toLowerCase() === 'admin') cargar();
+
+/* ============================================================
+   LÍMITES DE PEDIDOS POR FRANJA (2026-10-02)
+   Lee y ajusta la hoja LIMITES de la planilla RESERVAS DE PEDIDOS
+   a través del backend del Módulo Embolsado (solo ADM).
+============================================================ */
+var EMBOLSADO_URL = 'https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoDisEn4qrGWh0tEGfGHn4NXoEqP1ShODyIWQ1bzYyWfcuz_Pqh/exec';
+var LIM_MAX = 999;
+var LIM_ETIQUETA = { LUNES: 'LUN', MARTES: 'MAR', MIERCOLES: 'MIÉ', JUEVES: 'JUE', VIERNES: 'VIE', SABADO: 'SÁB', DOMINGO: 'DOM' };
+var LIM_NOMBRE = { LUNES: 'Lunes', MARTES: 'Martes', MIERCOLES: 'Miércoles', JUEVES: 'Jueves', VIERNES: 'Viernes', SABADO: 'Sábado', DOMINGO: 'Domingo' };
+var LIM_DIA_JS = ['DOMINGO', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
+var limOriginal = {}, limFranjas = [], limDias = [];
+var limTabla = document.getElementById('limTabla');
+var limEstado = document.getElementById('limEstado');
+var btnLimGuardar = document.getElementById('btnLimGuardar');
+var btnLimDeshacer = document.getElementById('btnLimDeshacer');
+
+function postEmbolsado(body) {
+  body.usuario = sesion.usuario;
+  return fetch(PROXY + '?url=' + encodeURIComponent(EMBOLSADO_URL), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  }).then(function (r) { return r.text(); }).then(function (t) {
+    try { return JSON.parse(t); }
+    catch (e) { return { ok: false, error: 'Respuesta inesperada del servidor.' }; }
+  });
+}
+function msgLim(t, tipo) { var m = document.getElementById('msgLim'); m.textContent = t; m.className = 'msg show ' + tipo; }
+function limpiarMsgLim() { document.getElementById('msgLim').className = 'msg'; }
+
+function pintarLimites() {
+  var hoy = LIM_DIA_JS[new Date().getDay()];
+  var h = '<div></div>' + limFranjas.map(function (f) { return '<div class="lim-cab">' + f + '</div>'; }).join('');
+  limDias.forEach(function (d) {
+    h += '<div class="lim-dia' + (d === hoy ? ' hoy' : '') + '" title="' + LIM_NOMBRE[d] + '">' + LIM_ETIQUETA[d] + '</div>';
+    limFranjas.forEach(function (f) {
+      h += '<input class="lim-in" type="number" inputmode="numeric" min="0" max="' + LIM_MAX + '" step="1" data-dia="' + d + '" data-franja="' + f +
+        '" value="' + limOriginal[d][f] + '" aria-label="' + LIM_NOMBRE[d] + ' ' + f + '" />';
+    });
+  });
+  limTabla.innerHTML = h;
+  revisarLimites();
+}
+
+/** Devuelve { cambios:[{dia,franja,antes,ahora}], errores:n } y marca cada casilla. */
+function revisarLimites() {
+  var cambios = [], errores = 0;
+  limTabla.querySelectorAll('.lim-in').forEach(function (inp) {
+    var d = inp.getAttribute('data-dia'), f = inp.getAttribute('data-franja');
+    var v = inp.value.trim();
+    var valido = /^\d{1,3}$/.test(v) && Number(v) <= LIM_MAX;
+    var distinto = valido && Number(v) !== limOriginal[d][f];
+    inp.classList.toggle('mal', !valido);
+    inp.classList.toggle('cambiado', distinto);
+    if (!valido) errores++;
+    else if (distinto) cambios.push({ dia: d, franja: f, antes: limOriginal[d][f], ahora: Number(v) });
+  });
+  btnLimGuardar.disabled = errores > 0 || cambios.length === 0;
+  btnLimDeshacer.disabled = errores === 0 && cambios.length === 0;
+  limEstado.textContent = errores ? '⚠️ Hay casillas no válidas (número entero de 0 a ' + LIM_MAX + ').'
+    : cambios.length ? cambios.length + (cambios.length === 1 ? ' cambio sin guardar.' : ' cambios sin guardar.')
+    : 'Límites actuales de la hoja.';
+  return { cambios: cambios, errores: errores };
+}
+
+function cargarLimites() {
+  limEstado.textContent = 'Cargando…';
+  postEmbolsado({ accion: 'obtenerLimites' }).then(function (r) {
+    if (!r || !r.ok) { limTabla.innerHTML = ''; limEstado.textContent = '⚠️ ' + ((r && r.error) || 'No se pudieron leer los límites.'); return; }
+    limOriginal = r.limites; limFranjas = r.franjas; limDias = r.dias;
+    pintarLimites();
+  }).catch(function () { limEstado.textContent = '⚠️ Error de conexión al leer los límites.'; });
+}
+
+limTabla.addEventListener('input', function () { limpiarMsgLim(); revisarLimites(); });
+btnLimDeshacer.addEventListener('click', function () { limpiarMsgLim(); pintarLimites(); });
+btnLimGuardar.addEventListener('click', function () {
+  var rev = revisarLimites();
+  if (rev.errores || !rev.cambios.length) return;
+  var lista = rev.cambios.map(function (c) { return '• ' + LIM_NOMBRE[c.dia] + ' ' + c.franja + ': ' + c.antes + ' → ' + c.ahora; }).join('\n');
+  if (!confirm('¿Guardar ' + rev.cambios.length + (rev.cambios.length === 1 ? ' cambio' : ' cambios') + ' en los límites?\n\n' + lista)) return;
+  var envio = {};
+  rev.cambios.forEach(function (c) { (envio[c.dia] = envio[c.dia] || {})[c.franja] = c.ahora; });
+  btnLimGuardar.disabled = true; btnLimDeshacer.disabled = true; limpiarMsgLim();
+  limEstado.textContent = 'Guardando…';
+  postEmbolsado({ accion: 'guardarLimites', limites: envio }).then(function (r) {
+    if (!r || !r.ok) { msgLim('❌ ' + ((r && r.error) || 'No se pudieron guardar los límites.'), 'error'); revisarLimites(); return; }
+    limOriginal = r.limites;
+    pintarLimites();
+    msgLim('✅ Límites guardados (' + r.cambiados + (r.cambiados === 1 ? ' cambio).' : ' cambios).'), 'ok');
+  }).catch(function () { msgLim('⚠️ Error de conexión. No se guardó nada.', 'error'); revisarLimites(); });
+});
+
+if (sesion && String(sesion.nivel || '').toLowerCase() === 'admin') cargarLimites();
 </script>
 </body>
 </html>
