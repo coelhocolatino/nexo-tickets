@@ -41,7 +41,7 @@ body { margin:0; background:#f1f5f9; color:#0f172a; padding:14px 12px 40px; }
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><a href="index.html">←</a><h1>Incidencias de entrega</h1><span class="badge" id="badge" style="display:none"></span></div>
+  <div class="top"><a href="index.html">←</a><h1 id="titulo">Incidencias de entrega</h1><span class="badge" id="badge" style="display:none"></span></div>
   <div class="filtros">
     <button id="fAb" class="on" onclick="filtro('ABIERTA')">Abiertas</button>
     <button id="fTo" onclick="filtro('TODAS')">Todas</button>
@@ -55,7 +55,7 @@ var EMBOLSADO_URL = 'https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoD
 var PROXY = 'https://sad-proxy.colatino-ventas-enlinea.workers.dev/';
 var SESION = {}; try { SESION = JSON.parse(sessionStorage.getItem('sad_user') || '{}'); } catch (e) {}
 var USUARIO = SESION.usuario || '';
-var filtroAct = 'ABIERTA', datos = [], esAdmin = false, abiertasPrev = null;
+var filtroAct = 'ABIERTA', datos = [], esAdmin = false, soloPropias = false, abiertasPrev = null;
 
 function api(accion, extra) {
   return fetch(PROXY + '?url=' + encodeURIComponent(EMBOLSADO_URL), {
@@ -77,7 +77,7 @@ function pitido() {
 function pintar() {
   var l = document.getElementById('lista');
   var v = datos.filter(function (i) { return filtroAct === 'TODAS' || i['ESTADO'] === 'ABIERTA'; });
-  if (!v.length) { l.innerHTML = '<div class="vacio">No hay incidencias.</div>'; return; }
+  if (!v.length) { l.innerHTML = '<div class="vacio">' + (soloPropias ? 'No tienes incidencias' : 'No hay incidencias') + (filtroAct === 'ABIERTA' ? ' abiertas' : '') + '.</div>'; return; }
   l.innerHTML = v.map(function (i) {
     var h = '<div class="inc ' + esc(i['ESTADO']) + '"><div class="t"><span>' + esc(i['TIPO']) + '</span><span class="est">' + esc(i['ESTADO']) + '</span></div>';
     h += '<div class="l"><b>Fecha/hora:</b> ' + esc(i['FECHA']) + ' ' + esc(i['HORA']) + ' · <b>Usuario:</b> ' + esc(i['USUARIO']) + '</div>';
@@ -123,6 +123,9 @@ async function cargar() {
   var r = await api('listarIncidencias');
   if (!r.ok) { document.getElementById('lista').innerHTML = '<div class="vacio">' + esc(r.error) + '</div>'; return; }
   esAdmin = r.esAdmin; datos = r.incidencias;
+  // 2026-10-02: los repartidores ven solo SUS incidencias (lo filtra el backend).
+  soloPropias = !!r.soloPropias;
+  document.getElementById('titulo').textContent = soloPropias ? 'Mis incidencias' : 'Incidencias de entrega';
   var ab = datos.filter(function (i) { return i['ESTADO'] === 'ABIERTA'; }).length;
   var b = document.getElementById('badge'); b.style.display = ab ? 'inline-block' : 'none'; b.textContent = ab + ' abiertas';
   if (abiertasPrev !== null && ab > abiertasPrev) pitido();

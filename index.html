@@ -8,7 +8,16 @@
         offline (IndexedDB) y se reintenta solo cada 30s en segundo plano,
         en vez de mostrar el HTML crudo de Google.
      Requiere el fix complementario en el backend (Code.gs, función
-     procesarTicket) para la idempotencia — ver documentación del proyecto. -->
+     procesarTicket) para la idempotencia — ver documentación del proyecto.
+
+     Cambios 2026-10-02 (v2.11.0):
+     1) El botón de Incidencias (⚠️) aparece para TODOS los usuarios; cada
+        repartidor ve solo sus propias incidencias (filtro en el backend del
+        Módulo Embolsado — requiere el Embolsado.gs del 2026-10-02).
+     2) Fecha y Franja horaria ocupan la misma línea, para todos.
+     3) Botones laterales apilados en una sola columna (para ADM se suman
+        Embolsado, Actualizar pedidos y Configuración). Incidencias y Pedidos
+        asignados siguen donde estaban. -->
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
@@ -48,48 +57,34 @@ body {
   backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
 }
 .header { text-align:center; margin-bottom:18px; position:relative; }
-.btn-reservas {
-  position:absolute; top:-4px; right:-2px;
-  display:block; width:38px; height:38px;
-  border-radius:10px; overflow:hidden;
-  box-shadow:0 4px 14px rgba(0,0,0,.35);
-  transition:transform .12s;
-}
-.btn-reservas:active { transform:scale(.93); }
-.btn-reservas img { width:100%; height:100%; display:block; object-fit:cover; }
-.btn-informe {
-  position:absolute; top:42px; right:-2px;
-  display:block; width:38px; height:38px;
-  border-radius:10px; overflow:hidden;
-  box-shadow:0 4px 14px rgba(0,0,0,.35);
-  transition:transform .12s;
-}
-.btn-informe:active { transform:scale(.93); }
-.btn-informe img { width:100%; height:100%; display:block; object-fit:cover; }
+/* Botones laterales APILADOS (2026-10-02): Reservas, Informe, %DIA y, solo
+   para ADM, Embolsado / Actualizar pedidos / Configuración — todos en una
+   columna a la derecha. Si la columna baja más que la cabecera, los campos
+   del formulario que queden a su altura se acortan solos (ver
+   ajustarCamposAlStack). Incidencias (arriba a la izquierda) y Pedidos
+   asignados (junto a Tienda) no cambian de sitio. */
+.side-stack { position:absolute; top:-4px; right:-2px; z-index:5;
+  display:flex; flex-direction:column; gap:8px; }
+.side-stack a { position:relative; display:block; flex:0 0 auto; width:38px; height:38px;
+  border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.35); transition:transform .12s; cursor:pointer; }
+.side-stack a:active { transform:scale(.93); }
+.side-stack a img { width:100%; height:100%; display:block; object-fit:cover; border-radius:inherit; }
+.side-stack a.redondo { border-radius:50%; }
+.side-stack .solo-adm { display:none; }
+.side-stack.adm .solo-adm { display:block; }
 /* Botón %DIA (pedidos tienda online DIA) + contador amarillo */
-.btn-dia {
-  display:none; position:absolute; top:88px; right:-2px;
-  width:38px; height:38px; border-radius:50%;
-  box-shadow:0 4px 14px rgba(0,0,0,.35);
-  transition:transform .12s;
-}
-.btn-dia:active { transform:scale(.93); }
-.btn-dia img { width:100%; height:100%; display:block; object-fit:cover; border-radius:50%; }
+.side-stack a.btn-dia { display:none; }
 .btn-dia .num { position:absolute; top:-7px; right:-7px; min-width:20px; height:20px; padding:0 5px; border-radius:999px;
   background:#facc15; color:#1f2937; font-size:11px; font-weight:900; display:none; align-items:center; justify-content:center;
   border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.35); }
 .btn-dia.nuevo .num { animation:diaPulso 1s ease-in-out 6; }
 @keyframes diaPulso { 50% { transform:scale(1.35); } }
-.btn-inc { display:none; position:absolute; top:-4px; left:-2px; width:38px; height:38px; border-radius:10px;
+.btn-inc { display:flex; position:absolute; top:-4px; left:-2px; width:38px; height:38px; border-radius:10px;
   background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.3); align-items:center; justify-content:center;
   font-size:20px; text-decoration:none; box-shadow:0 4px 14px rgba(0,0,0,.35); }
 .btn-inc:active { transform:scale(.93); }
 .btn-inc .num { position:absolute; top:-7px; right:-7px; min-width:19px; height:19px; padding:0 5px; border-radius:999px;
   background:#dc2626; color:#fff; font-size:11px; font-weight:800; display:none; align-items:center; justify-content:center; }
-.admin-bar { display:none; justify-content:center; gap:14px; margin:4px 0 10px; }
-.admin-bar a { display:block; width:42px; height:42px; border-radius:50%; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,.35); transition:transform .12s; cursor:pointer; }
-.admin-bar a:active { transform:scale(.93); }
-.admin-bar img { width:100%; height:100%; display:block; object-fit:cover; }
 .tienda-row { display:flex; align-items:center; gap:8px; }
 .tienda-row select { flex:1; min-width:0; }
 .btn-asignar { display:none; flex:0 0 auto; width:42px; height:42px; border-radius:10px; overflow:hidden;
@@ -161,6 +156,13 @@ select.control { -webkit-appearance:none; appearance:none; }
 }
 .row-2 { display:flex; gap:12px; }
 .row-2 .group { flex:1; min-width:0; }
+/* Fecha + Franja horaria en la misma línea (2026-10-02) */
+.row-fecha-franja { gap:10px; }
+.row-fecha-franja .group-fecha { flex:1.25 1 0; }
+.row-fecha-franja .group-franja { flex:1 1 0; }
+.row-fecha-franja .control { min-width:0; min-height:48px; padding-left:10px; padding-right:8px; }
+.row-fecha-franja input[type="date"].control { -webkit-appearance:none; appearance:none; text-align:left; }
+#ticketForm > * { transition:margin-right .15s; }
 .row-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
 .row-3 .group label { font-size:.82rem; text-align:center; }
 .row-3 .control { text-align:center; padding:12px 4px; }
@@ -280,15 +282,20 @@ button:active { transform:scale(.97); }
 
 <div class="card">
   <div class="header">
-    <a class="btn-reservas" href="reservas.html" title="Reservas">
-      <img src="boton_reservas.png" alt="Reservas" />
-    </a>
-    <a class="btn-informe" href="informe.html" title="Informe">
-      <img src="boton_informe.png" alt="Informe" />
-    </a>
-    <a class="btn-dia" id="btnDia" href="dia.html" title="Pedidos %DIA">
-      <img src="boton_dia.png" alt="%DIA" /><span class="num" id="numDia"></span>
-    </a>
+    <div class="side-stack" id="sideStack">
+      <a class="btn-reservas" href="reservas.html" title="Reservas">
+        <img src="boton_reservas.png" alt="Reservas" />
+      </a>
+      <a class="btn-informe" href="informe.html" title="Informe">
+        <img src="boton_informe.png" alt="Informe" />
+      </a>
+      <a class="btn-dia redondo" id="btnDia" href="dia.html" title="Pedidos %DIA">
+        <img src="boton_dia.png" alt="%DIA" /><span class="num" id="numDia"></span>
+      </a>
+      <a class="solo-adm redondo" id="btnEmbolsado" href="#" title="Módulo Embolsado"><img src="boton_embolsado.png" alt="Embolsado" /></a>
+      <a class="solo-adm redondo" id="btnActualizar" title="Actualizar pedidos (control de tickets)"><img src="boton_actualizar_pedidos.png" alt="Actualizar pedidos" /></a>
+      <a class="solo-adm redondo" id="btnConfig" href="config.html" title="Configuración"><img src="boton_config.png" alt="Configuración" /></a>
+    </div>
     <img class="logo" src="nexo-logo-full.png" alt="Nexo · Distribución Inteligente" />
     <a id="linkIncidencias" class="btn-inc" href="incidencias.html" title="Incidencias de entrega">⚠️<span class="num" id="numIncidencias"></span></a>
     <div class="user-badge" id="userBadge" onclick="cerrarSesion()" title="Pulsa para cerrar sesión">
@@ -296,20 +303,23 @@ button:active { transform:scale(.97); }
       <span class="nivel-tag" id="nivelTag">—</span>
       &nbsp;·&nbsp;Salir
     </div>
-    <div class="admin-bar" id="adminBar">
-      <a id="btnEmbolsado" href="#" title="Módulo Embolsado"><img src="boton_embolsado.png" alt="Embolsado" /></a>
-      <a id="btnActualizar" title="Actualizar pedidos (control de tickets)"><img src="boton_actualizar_pedidos.png" alt="Actualizar pedidos" /></a>
-      <a id="btnConfig" href="config.html" title="Configuración"><img src="boton_config.png" alt="Configuración" /></a>
-    </div>
-    <div class="app-version">SAD Ticket Upload v2.10.0</div>
+    <div class="app-version">SAD Ticket Upload v2.11.0</div>
   </div>
 
   <form id="ticketForm" novalidate>
-    <div>
-      <label for="fecha">Fecha</label>
-      <input class="control" type="date" name="fecha" id="fecha" required />
-      <div class="lock-hint" id="hintFecha" style="display:none;">🔒 Solo se puede registrar la fecha de hoy</div>
+    <div class="row-2 row-fecha-franja">
+      <div class="group group-fecha">
+        <label for="fecha">Fecha</label>
+        <input class="control" type="date" name="fecha" id="fecha" required />
+      </div>
+      <div class="group group-franja">
+        <label for="franja">Franja horaria</label>
+        <select class="control" id="franja" name="franja" required>
+          <option value="" disabled selected>Cargando...</option>
+        </select>
+      </div>
     </div>
+    <div class="lock-hint" id="hintFecha" style="display:none;">🔒 Solo se puede registrar la fecha de hoy</div>
 
     <div>
       <label for="tienda">Tienda</label>
@@ -328,14 +338,7 @@ button:active { transform:scale(.97); }
       <select class="control" id="repartidor" name="repartidor" required>
         <option value="" disabled selected>Cargando...</option>
       </select>
-      <div class="lock-hint" id="hintRepartidor" style="display:none;">🔒 Repartidor fijado a tu cuenta</div>
-    </div>
-
-    <div>
-      <label for="franja">Franja horaria</label>
-      <select class="control" id="franja" name="franja" required>
-        <option value="" disabled selected>Cargando...</option>
-      </select>
+      <div class="lock-hint" id="hintRepartidor" style="display:none; margin-top:4px;">🔒 Repartidor fijado a tu cuenta</div>
     </div>
 
     <div class="row-2">
@@ -447,7 +450,7 @@ function postProxy(url, body) {
   });
 }
 if (ES_ADMIN) {
-  document.getElementById('adminBar').style.display = 'flex';
+  document.getElementById('sideStack').classList.add('adm');
   document.getElementById('btnEmbolsado').href = EMBOLSADO_URL + '?u=' + encodeURIComponent((sesion && sesion.usuario) || '');
   document.getElementById('btnConfig').href = 'config.html?u=' + encodeURIComponent((sesion && sesion.usuario) || '');
   document.getElementById('btnActualizar').addEventListener('click', async function () {
@@ -462,12 +465,16 @@ if (ES_ADMIN) {
     setTimeout(clearMsg, 6000);
   });
 }
-var PUEDE_VER_INC = ES_ADMIN || (sesion && String(sesion.departamento || '').toUpperCase() === 'EMBOLSADO');
-if (PUEDE_VER_INC) {
-  document.getElementById('linkIncidencias').style.display = 'flex';
+/* Incidencias (2026-10-02): el botón aparece para TODOS los usuarios.
+   Embolsado y ADM ven todas; cada repartidor ve solo las suyas (el filtro
+   lo aplica el backend del Módulo Embolsado: listarIncidencias /
+   contarIncidenciasAbiertas). El globo rojo cuenta las ABIERTAS que ese
+   usuario puede ver. */
+(function () {
+  if (!sesion || !sesion.usuario) return;
   var refrescarIncidencias = async function () {
     try {
-      var r = await postProxy(EMBOLSADO_URL, { accion: 'contarIncidenciasAbiertas', usuario: (sesion && sesion.usuario) || '' });
+      var r = await postProxy(EMBOLSADO_URL, { accion: 'contarIncidenciasAbiertas', usuario: sesion.usuario });
       var n = (r && r.ok) ? (r.total || 0) : 0, el = document.getElementById('numIncidencias');
       el.textContent = n > 99 ? '99+' : String(n);
       el.style.display = n > 0 ? 'flex' : 'none';
@@ -475,7 +482,36 @@ if (PUEDE_VER_INC) {
   };
   refrescarIncidencias();
   setInterval(refrescarIncidencias, 60000);
+})();
+
+/* Los botones laterales van apilados en una columna a la derecha. Cuando la
+   columna baja más que la cabecera (ADM: 6 botones), se acortan solo los
+   campos del formulario que quedan a su altura, para que no se tapen. */
+function ajustarCamposAlStack() {
+  var stack = document.getElementById('sideStack');
+  var form = document.getElementById('ticketForm');
+  if (!stack || !form) return;
+  var hijos = Array.prototype.slice.call(form.children);
+  hijos.forEach(function (el) { el.style.marginRight = ''; });
+  var sb = stack.getBoundingClientRect();
+  if (!sb.height) return;
+  hijos.forEach(function (el) {
+    var r = el.getBoundingClientRect();
+    if (r.height > 0 && r.top < sb.bottom && r.bottom > sb.top) el.style.marginRight = Math.ceil(sb.width + 8) + 'px';
+  });
 }
+window.addEventListener('load', ajustarCamposAlStack);
+window.addEventListener('resize', ajustarCamposAlStack);
+document.addEventListener('DOMContentLoaded', function () {
+  ajustarCamposAlStack();
+  if ('ResizeObserver' in window) {
+    try {
+      var ro = new ResizeObserver(function () { ajustarCamposAlStack(); });
+      ro.observe(document.querySelector('.header'));
+      ro.observe(document.getElementById('sideStack'));
+    } catch (e) {}
+  }
+});
 
 /* ===== Pedidos %DIA: botón + contador (amarillo) + vibración =====
    Gestores (asignar_DIA / ADM / Embolsado / Reservas): nº de pedidos %DIA sin asignar.
@@ -492,6 +528,7 @@ var DIA_URL = 'https://script.google.com/macros/s/AKfycbwrX90CKa7GQki-DUDZFpdGVl
       var gestor = r.rol && r.rol.ver;
       var n = gestor ? (r.nuevos || 0) : (r.misPendientes || 0);
       btn.style.display = (gestor || n > 0) ? 'block' : 'none';
+      ajustarCamposAlStack();
       num.textContent = n > 99 ? '99+' : String(n);
       num.style.display = n > 0 ? 'flex' : 'none';
       var antes = parseInt(localStorage.getItem(clave) || '-1', 10);
@@ -817,7 +854,7 @@ function aplicarReglasFranja() {
   const listaTienda = TIENDAS_FRANJAS[tienda] || [];
 
   if (!tienda || listaTienda.length === 0) {
-    fillSelect('franja', [], 'Seleccione franja horaria...');
+    fillSelect('franja', [], 'Franja...');
     franjaSel.disabled = false;
     franjaSel.classList.remove('locked');
     return;
@@ -827,7 +864,7 @@ function aplicarReglasFranja() {
   const permitidas    = conFiltroHora ? getFranjasPermitidas(listaTienda) : listaTienda;
 
   const seleccionActual = franjaSel.value;
-  fillSelect('franja', permitidas, 'Seleccione franja horaria...');
+  fillSelect('franja', permitidas, 'Franja...');
 
   if (permitidas.length === 0) {
     setMsg('⚠️ Fuera del horario disponible para esta tienda', '#ffcc00');
@@ -1497,7 +1534,7 @@ function resetFormulario() {
 ============================================================ */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js?v=7')
+    navigator.serviceWorker.register('service-worker.js?v=8')
       .then(reg => console.log('[SW] Registrado:', reg.scope))
       .catch(err => console.warn('[SW] Error:', err));
   });

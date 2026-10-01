@@ -1,7 +1,7 @@
 // ==============================
 // Nexo · SAD Tickets - Service Worker v5
 // ==============================
-const CACHE_NAME = "nexo-tickets-v22";
+const CACHE_NAME = "nexo-tickets-v23";
 
 const ASSETS = [
   "./",
@@ -19,7 +19,10 @@ const ASSETS = [
   "./boton_actualizar_pedidos.png",
   "./boton_config.png",
   "./boton_dia.png",
-  "./dia.html"
+  "./dia.html",
+  "./incidencias.html",
+  "./boton_reservas.png",
+  "./boton_informe.png"
 ];
 
 // Instalación
