@@ -66,6 +66,20 @@ body {
 }
 .btn-informe:active { transform:scale(.93); }
 .btn-informe img { width:100%; height:100%; display:block; object-fit:cover; }
+/* Botón %DIA (pedidos tienda online DIA) + contador amarillo */
+.btn-dia {
+  display:none; position:absolute; top:88px; right:-2px;
+  width:38px; height:38px; border-radius:50%;
+  box-shadow:0 4px 14px rgba(0,0,0,.35);
+  transition:transform .12s;
+}
+.btn-dia:active { transform:scale(.93); }
+.btn-dia img { width:100%; height:100%; display:block; object-fit:cover; border-radius:50%; }
+.btn-dia .num { position:absolute; top:-7px; right:-7px; min-width:20px; height:20px; padding:0 5px; border-radius:999px;
+  background:#facc15; color:#1f2937; font-size:11px; font-weight:900; display:none; align-items:center; justify-content:center;
+  border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.35); }
+.btn-dia.nuevo .num { animation:diaPulso 1s ease-in-out 6; }
+@keyframes diaPulso { 50% { transform:scale(1.35); } }
 .btn-inc { display:none; position:absolute; top:-4px; left:-2px; width:38px; height:38px; border-radius:10px;
   background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.3); align-items:center; justify-content:center;
   font-size:20px; text-decoration:none; box-shadow:0 4px 14px rgba(0,0,0,.35); }
@@ -272,6 +286,9 @@ button:active { transform:scale(.97); }
     <a class="btn-informe" href="informe.html" title="Informe">
       <img src="boton_informe.png" alt="Informe" />
     </a>
+    <a class="btn-dia" id="btnDia" href="dia.html" title="Pedidos %DIA">
+      <img src="boton_dia.png" alt="%DIA" /><span class="num" id="numDia"></span>
+    </a>
     <img class="logo" src="nexo-logo-full.png" alt="Nexo · Distribución Inteligente" />
     <a id="linkIncidencias" class="btn-inc" href="incidencias.html" title="Incidencias de entrega">⚠️<span class="num" id="numIncidencias"></span></a>
     <div class="user-badge" id="userBadge" onclick="cerrarSesion()" title="Pulsa para cerrar sesión">
@@ -284,7 +301,7 @@ button:active { transform:scale(.97); }
       <a id="btnActualizar" title="Actualizar pedidos (control de tickets)"><img src="boton_actualizar_pedidos.png" alt="Actualizar pedidos" /></a>
       <a id="btnConfig" href="config.html" title="Configuración"><img src="boton_config.png" alt="Configuración" /></a>
     </div>
-    <div class="app-version">SAD Ticket Upload v2.9.2</div>
+    <div class="app-version">SAD Ticket Upload v2.10.0</div>
   </div>
 
   <form id="ticketForm" novalidate>
@@ -459,6 +476,45 @@ if (PUEDE_VER_INC) {
   refrescarIncidencias();
   setInterval(refrescarIncidencias, 60000);
 }
+
+/* ===== Pedidos %DIA: botón + contador (amarillo) + vibración =====
+   Gestores (asignar_DIA / ADM / Embolsado / Reservas): nº de pedidos %DIA sin asignar.
+   Repartidores: el botón aparece solo si tienen pedidos %DIA asignados (nº pendientes). */
+var DIA_URL = 'https://script.google.com/macros/s/AKfycbwrX90CKa7GQki-DUDZFpdGVlGIXZvmiHsRKCEW7ZwBbYkKfYPr3R1kx96Uz9GKL_0m/exec';
+(function () {
+  if (!sesion || !sesion.usuario || /^PEGAR_AQUI/.test(DIA_URL)) return;
+  var btn = document.getElementById('btnDia'), num = document.getElementById('numDia');
+  var clave = 'nexo_dia_cnt_' + String(sesion.usuario).toLowerCase();
+  async function refrescarDia() {
+    try {
+      var r = await postProxy(DIA_URL, { accion: 'diaResumen', usuario: sesion.usuario });
+      if (!r || !r.ok) return;
+      var gestor = r.rol && r.rol.ver;
+      var n = gestor ? (r.nuevos || 0) : (r.misPendientes || 0);
+      btn.style.display = (gestor || n > 0) ? 'block' : 'none';
+      num.textContent = n > 99 ? '99+' : String(n);
+      num.style.display = n > 0 ? 'flex' : 'none';
+      var antes = parseInt(localStorage.getItem(clave) || '-1', 10);
+      if (antes >= 0 && n > antes) {
+        btn.classList.remove('nuevo'); void btn.offsetWidth; btn.classList.add('nuevo');
+        try { if (navigator.vibrate) navigator.vibrate([300, 120, 300, 120, 300]); } catch (e) {}
+        var t = gestor ? (n - antes) + ' pedido(s) %DIA nuevo(s)' : 'Tienes ' + (n - antes) + ' pedido(s) %DIA asignado(s)';
+        setMsg('🔔 ' + t, '#facc15'); setTimeout(clearMsg, 8000);
+        try {
+          if ('Notification' in window && Notification.permission === 'granted' && navigator.serviceWorker) {
+            navigator.serviceWorker.getRegistration().then(function (reg) {
+              if (reg) reg.showNotification('Nexo · %DIA', { body: t, icon: 'boton_dia.png', vibrate: [300, 120, 300], tag: 'nexo-dia' });
+            });
+          }
+        } catch (e) {}
+      }
+      localStorage.setItem(clave, String(n));
+    } catch (e) { /* sin conexión: se deja el último valor */ }
+  }
+  refrescarDia();
+  setInterval(refrescarDia, 60000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) refrescarDia(); });
+})();
 
 function cerrarSesion() {
   if (confirm('¿Cerrar sesión?')) {
@@ -1441,7 +1497,7 @@ function resetFormulario() {
 ============================================================ */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js?v=6')
+    navigator.serviceWorker.register('service-worker.js?v=7')
       .then(reg => console.log('[SW] Registrado:', reg.scope))
       .catch(err => console.warn('[SW] Error:', err));
   });

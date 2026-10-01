@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Nexo · Pedidos %DIA</title>
+<link rel="icon" href="nexo-icon-192.png">
+<script>
+/* Guard de sesión (igual que asignar.html) */
+(function () {
+  try {
+    var u = JSON.parse(sessionStorage.getItem('sad_user') || 'null');
+    if (!u || !u.usuario || !u.token) location.replace('login.html');
+  } catch (e) { location.replace('login.html'); }
+})();
+</script>
+<style>
+:root { --bg1:#003366; --bg2:#0077cc; --ok:#16a34a; --bad:#dc2626; --rosa:#fce7f3; --rosa2:#f9a8d4; --rosa3:#be185d; --dia:#d52b1e; }
+* { box-sizing:border-box; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+body { margin:0; min-height:100vh; background:linear-gradient(180deg,var(--bg1),var(--bg2)); color:#fff; padding:14px 12px 40px; }
+.wrap { max-width:520px; margin:0 auto; }
+.top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.top a.volver { color:#fff; text-decoration:none; font-size:22px; padding:4px 8px; }
+.top h1 { font-size:18px; margin:0; flex:1; display:flex; align-items:center; gap:8px; }
+.top h1 img { height:22px; background:#fff; border-radius:6px; padding:2px 5px; }
+.quien { font-size:12px; opacity:.85; }
+.barra-busq { display:none; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.barra-busq button { padding:10px 14px; border:0; border-radius:12px; background:#fff; color:#003366; font-weight:800; font-size:14px; }
+.barra-busq button:disabled { opacity:.55; }
+.barra-busq .ult { font-size:12px; opacity:.9; flex:1; min-width:140px; }
+.btn-aviso { background:rgba(255,255,255,.18) !important; color:#fff !important; }
+.tabs { display:none; gap:6px; margin-bottom:10px; }
+.tab { flex:1; padding:9px 4px; border:0; border-radius:12px; background:rgba(255,255,255,.15); color:#fff; font-weight:700; font-size:13px; }
+.tab.on { background:#fff; color:#003366; }
+.info { font-size:12px; opacity:.9; margin:0 2px 10px; }
+#msg { font-size:13px; padding:8px 10px; border-radius:10px; margin-bottom:10px; display:none; }
+#msg.ok { background:#dcfce7; color:#166534; display:block; }
+#msg.err { background:#fee2e2; color:#991b1b; display:block; }
+#msg.info { background:#e0f2fe; color:#075985; display:block; }
+.vacio { text-align:center; opacity:.85; padding:30px 10px; }
+
+/* ===== CARD %DIA (rosa) ===== */
+.card { background:var(--rosa); color:#0f172a; border-radius:16px; padding:12px; margin-bottom:12px; position:relative;
+  box-shadow:0 6px 18px rgba(0,0,0,.25); border:2px solid var(--rosa2); }
+.card.alerta { border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.55), 0 6px 18px rgba(0,0,0,.25); }
+.card.tarde { border-color:var(--bad); box-shadow:0 0 0 3px rgba(220,38,38,.55), 0 6px 18px rgba(0,0,0,.25); }
+.card.foco { animation:foco 1.2s ease 2; }
+@keyframes foco { 50% { transform:scale(1.02); } }
+.card.entregado { background:#f0fdf4; border-color:#86efac; }
+.card.anulado { opacity:.6; background:#f1f5f9; border-color:#cbd5e1; }
+.cab { display:flex; align-items:flex-start; gap:8px; }
+.cab .cli { flex:1; font-weight:800; font-size:16px; }
+.est { border-radius:8px; padding:3px 8px; font-size:11px; font-weight:800; white-space:nowrap; }
+.est.PENDIENTE { background:#f0ad4e; color:#fff; } .est.ASIGNADO { background:#2563eb; color:#fff; }
+.est.ENTREGADO { background:var(--ok); color:#fff; } .est.ANULADO { background:#64748b; color:#fff; }
+.est.INCIDENCIA { background:var(--bad); color:#fff; }
+.card.incidencia { background:#fef2f2; border-color:#fca5a5; }
+.inc-info { background:#fee2e2; color:#991b1b; border-radius:8px; padding:6px 9px; font-size:13px; font-weight:700; margin-top:8px; }
+.duo-btn { display:flex; gap:8px; margin-top:10px; }
+.duo-btn .btn { flex:1; padding:13px 8px; font-size:14px; }
+.btn.rojo { background:var(--bad); }
+.tipo { display:block; width:100%; text-align:left; padding:12px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; margin-bottom:8px; font-weight:700; font-size:14px; color:#0f172a; }
+.tipo.on { border-color:#0077cc; background:#e0f2fe; }
+.miniaturas { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.miniaturas img { width:64px; height:64px; object-fit:cover; border-radius:8px; }
+.ausente button.intento { width:100%; padding:12px; border:0; border-radius:10px; background:#f59e0b; color:#fff; font-weight:800; margin-bottom:8px; }
+.ausente .cuenta { font-size:13px; margin-bottom:8px; }
+.btn-foto { width:100%; padding:11px; border:1px dashed #64748b; border-radius:10px; background:#f8fafc; font-weight:700; margin-top:8px; color:#0f172a; }
+.busq-bg { font-size:12px; display:none; align-items:center; gap:6px; }
+.busq-bg.on { display:inline-flex; }
+.busq-bg i { width:12px; height:12px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:gira 1s linear infinite; }
+@keyframes gira { to { transform:rotate(360deg); } }
+.aviso { margin-top:8px; border-radius:10px; padding:6px 10px; font-size:13px; font-weight:800; }
+.aviso.alerta { background:#fef3c7; color:#92400e; animation:lat 1s infinite; }
+.aviso.tarde { background:#fee2e2; color:#991b1b; animation:lat 1s infinite; }
+@keyframes lat { 50% { opacity:.55; } }
+.duo { display:flex; gap:12px; }
+.duo > div { flex:1; }
+.fila { font-size:14px; margin-top:7px; word-break:break-word; }
+.fila b { color:var(--rosa3); font-weight:700; font-size:11px; display:block; text-transform:uppercase; letter-spacing:.3px; }
+.fila a { color:#0369a1; font-weight:700; text-decoration:none; }
+.tel { display:inline-flex; align-items:center; gap:6px; margin-right:10px; }
+.tel a { font-size:16px; }
+.copiar { border:0; background:rgba(15,23,42,.08); border-radius:8px; padding:3px 7px; font-size:13px; }
+.chips { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.chip { background:#fff; border-radius:8px; padding:4px 9px; font-size:12px; font-weight:700; }
+.obs { background:#fff7ed; border-left:4px solid #fb923c; padding:6px 8px; border-radius:6px; font-size:13px; margin-top:8px; }
+.tienda-sel { background:#fff1f2; border:2px dashed var(--bad); border-radius:10px; padding:8px; margin-top:8px; }
+.tienda-sel select, .asig select { width:100%; padding:9px; border-radius:8px; border:1px solid #cbd5e1; font-size:14px; margin-top:4px; }
+.cap { margin-top:10px; border-radius:10px; overflow:hidden; background:#fff; border:1px solid var(--rosa2); min-height:60px;
+  display:flex; align-items:center; justify-content:center; font-size:12px; color:#64748b; cursor:zoom-in; position:relative; }
+.cap img { width:100%; display:block; max-height:260px; object-fit:cover; object-position:top; }
+.cap .etq { position:absolute; left:6px; top:6px; background:rgba(15,23,42,.7); color:#fff; border-radius:6px; padding:2px 6px; font-size:10px; font-weight:700; }
+.asig { margin-top:10px; display:flex; gap:8px; align-items:flex-end; }
+.asig > div { flex:1; }
+.btn { border:0; border-radius:10px; padding:11px 12px; font-weight:800; font-size:14px; color:#fff; background:var(--rosa3); }
+.btn.azul { background:#2563eb; } .btn.verde { background:var(--ok); } .btn.gris { background:#64748b; }
+.btn:disabled { opacity:.5; }
+.acciones { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+.acciones .btn { flex:1; }
+.btn-entregar { width:100%; margin-top:10px; padding:14px; font-size:15px; }
+.mini { font-size:11px; color:#64748b; margin-top:8px; }
+details.hist { margin-top:8px; font-size:11px; color:#475569; }
+details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
+
+/* ===== MODALES ===== */
+.modal { position:fixed; inset:0; background:rgba(0,0,0,.8); display:none; align-items:flex-start; justify-content:center; overflow:auto; padding:16px 10px; z-index:50; }
+.modal.on { display:flex; }
+.box { background:#fff; color:#0f172a; border-radius:16px; padding:14px; width:100%; max-width:480px; }
+.box h2 { margin:0 0 10px; font-size:17px; }
+.box label { display:block; font-size:12px; font-weight:700; color:#475569; margin-top:8px; }
+.box input, .box select, .box textarea { width:100%; padding:9px; border-radius:8px; border:1px solid #cbd5e1; font-size:14px; }
+.box .duo input { width:100%; }
+.box .pie { display:flex; gap:8px; margin-top:14px; }
+.box .pie .btn { flex:1; }
+#zoomCont { width:100%; overflow:auto; max-height:78vh; border-radius:10px; background:#0f172a; }
+#zoomCont img { width:100%; display:block; transition:width .15s; }
+.zoombar { display:flex; gap:8px; margin-top:8px; }
+.zoombar .btn { flex:1; }
+#fotoPrev { width:100%; border-radius:10px; display:none; margin-top:8px; }
+#spin { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:60; font-weight:700; text-align:center; padding:20px; }
+#spin.on { display:flex; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="volver" href="index.html" title="Volver">⬅️</a>
+    <h1><img src="boton_dia.png" alt="" style="height:30px;padding:0;border-radius:50%">Pedidos %DIA</h1>
+    <span class="quien" id="quien"></span>
+  </div>
+
+  <div class="barra-busq" id="barraBusq">
+    <button id="btnBuscar" onclick="buscarAhora()">🔄 Buscar ahora</button>
+    <span class="ult" id="ultLectura"></span>
+    <button class="btn-aviso" id="btnAvisos" style="display:none" onclick="activarAvisos()">🔔 Activar avisos</button>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab on" id="tPend" onclick="cambiarTab('pend')">Pendientes</button>
+    <button class="tab" id="tAsig" onclick="cambiarTab('asig')">Asignados</button>
+    <button class="tab" id="tEnt" onclick="cambiarTab('ent')">Cerrados</button>
+  </div>
+  <div class="info" id="info"></div>
+  <div class="busq-bg" id="busqBg"><i></i><span>Buscando pedidos nuevos en %DIA en segundo plano… puedes seguir trabajando.</span></div>
+  <div id="msg"></div>
+  <div id="lista"><div class="vacio">Cargando…</div></div>
+  <div style="text-align:center;margin-top:8px"><button class="btn gris" id="btnTodos" style="display:none" onclick="verTodos()">Ver histórico (45 días)</button></div>
+</div>
+
+<!-- Imagen ampliada -->
+<div class="modal" id="mZoom" onclick="if(event.target===this)cerrar('mZoom')">
+  <div class="box">
+    <h2 id="zoomTit">Imagen</h2>
+    <div id="zoomCont"></div>
+    <div class="zoombar">
+      <button class="btn gris" onclick="zoom(-1)">➖</button>
+      <button class="btn gris" onclick="zoom(1)">➕</button>
+      <button class="btn" onclick="cerrar('mZoom')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Entrega con foto -->
+<div class="modal" id="mEnt">
+  <div class="box">
+    <h2 id="entTit">Entregar pedido</h2>
+    <div class="mini">La foto del ticket es <b>obligatoria</b>. Se archiva en NEXO con las reglas de siempre (1 pedido) y sustituye a la captura en la tarjeta.</div>
+    <input type="file" id="fotoFile" accept="image/*" capture="environment" style="display:none">
+    <button class="btn azul btn-entregar" onclick="document.getElementById('fotoFile').click()">📷 Sacar foto del ticket</button>
+    <img id="fotoPrev" alt="">
+    <div class="pie">
+      <button class="btn gris" onclick="cerrar('mEnt')">Cancelar</button>
+      <button class="btn verde" id="btnConfEnt" disabled onclick="confirmarEntrega()">✅ ENTREGADO</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edición ADM -->
+<div class="modal" id="mEdit">
+  <div class="box">
+    <h2>✏️ Editar pedido <span id="edAlb"></span></h2>
+    <label>Tienda</label><select id="edTienda"></select>
+    <div class="duo">
+      <div><label>Fecha de entrega</label><input type="date" id="edFecha"></div>
+      <div><label>Tramo horario</label><select id="edTramo"><option>12-14H</option><option>17-19H</option></select></div>
+    </div>
+    <label>Cliente</label><input id="edCliente">
+    <label>Dirección</label><textarea id="edDir" rows="2"></textarea>
+    <label>Teléfonos (separados por espacio)</label><input id="edTel" inputmode="tel">
+    <div class="duo">
+      <div><label>Seco</label><input id="edSeco" inputmode="numeric"></div>
+      <div><label>Fresco</label><input id="edFresco" inputmode="numeric"></div>
+      <div><label>Congelado</label><input id="edCong" inputmode="numeric"></div>
+    </div>
+    <label>Observaciones</label><textarea id="edObs" rows="2"></textarea>
+    <div class="duo">
+      <div><label>Repartidor</label><select id="edRep"></select></div>
+      <div><label>Estado</label><select id="edEst"><option>PENDIENTE</option><option>ASIGNADO</option><option>ANULADO</option></select></div>
+    </div>
+    <div class="pie">
+      <button class="btn gris" onclick="cerrar('mEdit')">Cancelar</button>
+      <button class="btn" onclick="guardarEdicion()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Incidencia (misma lógica que Pedidos asignados de Nexo-tickets) -->
+<div class="modal" id="mInc">
+  <div class="box">
+    <h2 id="incTitulo">Incidencia</h2>
+    <div id="incTipos"></div>
+    <div id="incAusente" class="ausente" style="display:none"></div>
+    <div id="incObsWrap" style="display:none"><textarea id="incObs" rows="3" placeholder="Observaciones"></textarea></div>
+    <div id="incFotoWrap" style="display:none">
+      <button class="btn-foto" id="btnIncFoto" onclick="document.getElementById('incFile').click()">📷 Añadir foto</button>
+      <div class="miniaturas" id="incMini"></div>
+    </div>
+    <input type="file" id="incFile" accept="image/*" capture="environment" style="display:none" />
+    <div class="pie">
+      <button class="btn gris" onclick="cerrarInc()">Cancelar</button>
+      <button class="btn rojo" onclick="enviarIncidencia()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<div id="spin">Procesando…</div>
+
+<script>
+/* ============ CONFIG ============ */
+/* URL /exec del Apps Script "NEXO · DIA" (pegar aquí tras implementarlo) */
+var DIA_URL = 'https://script.google.com/macros/s/AKfycbwrX90CKa7GQki-DUDZFpdGVlGIXZvmiHsRKCEW7ZwBbYkKfYPr3R1kx96Uz9GKL_0m/exec';
+var PROXY = 'https://sad-proxy.colatino-ventas-enlinea.workers.dev/';
+
+var SESION = {};
+try { SESION = JSON.parse(sessionStorage.getItem('sad_user') || '{}'); } catch (e) {}
+var USUARIO = String(SESION.usuario || '').toLowerCase();
+document.getElementById('quien').textContent = '👤 ' + (SESION.nombre || USUARIO);
+
+function api(accion, datos, intentos) {
+  intentos = intentos || 1;
+  var body = JSON.stringify(Object.assign({ accion: accion, usuario: USUARIO }, datos || {}));
+  var intento = function (n) {
+    return fetch(PROXY + '?url=' + encodeURIComponent(DIA_URL), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body })
+      .then(function (r) { return r.text().then(function (t) {
+        try { return JSON.parse(t); } catch (e) { throw new Error('Respuesta inesperada (' + r.status + ')'); }
+      }); })
+      .catch(function (e) {
+        if (n + 1 < intentos) return new Promise(function (ok) { setTimeout(ok, 1500 * (n + 1)); }).then(function () { return intento(n + 1); });
+        return { ok: false, error: 'Sin respuesta del servidor (' + (e.message || 'sin conexión') + '). Inténtalo de nuevo.' };
+      });
+  };
+  return intento(0);
+}
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function msg(t, tipo, ms) { var m = document.getElementById('msg'); m.className = tipo || ''; m.textContent = t || ''; if (!t) m.style.display = 'none'; else m.style.display = ''; if (t && ms !== 0) setTimeout(function () { if (m.textContent === t) msg(''); }, ms || 7000); }
+function spin(on, t) { var s = document.getElementById('spin'); s.textContent = t || 'Procesando…'; s.classList.toggle('on', !!on); }
+function cerrar(id) { document.getElementById(id).classList.remove('on'); }
+function fechaES(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : (iso || '—'); }
+function hoyISO() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+
+/* ============ ESTADO ============ */
+var DATOS = { pedidos: [], rol: {}, tiendas: [], repartidores: [] };
+var TAB = 'pend', VISTA = null, CAPS = {}, FOCO = (location.search.match(/[?&]id=([^&]+)/) || [])[1];
+FOCO = FOCO ? decodeURIComponent(FOCO) : null;
+var ABRIR_INC = /[?&]inc=1/.test(location.search);
+var CLAVE_VISTOS = 'nexo_dia_vistos_' + USUARIO;
+
+var _firma = '';
+// Nunca bloquea la pantalla: la lista se actualiza sola cuando llegan datos nuevos.
+async function cargar(silencioso) {
+  var r = await api('diaListar', VISTA ? { vista: VISTA } : {}, 2);
+  if (!r.ok) { if (!silencioso) msg(r.error, 'err'); programar(60000); return; }
+  avisarNovedades(r);
+  var firma = JSON.stringify([r.pedidos, r.vista, r.rol]);
+  var cambio = firma !== _firma; _firma = firma;
+  DATOS = r;
+  document.getElementById('busqBg').classList.toggle('on', !!r.buscando);
+  var gestor = r.rol && r.rol.ver;
+  document.getElementById('barraBusq').style.display = gestor ? 'flex' : 'none';
+  document.getElementById('tabs').style.display = gestor ? 'flex' : 'none';
+  document.getElementById('btnTodos').style.display = gestor && r.vista !== 'todos' ? 'inline-block' : 'none';
+  document.getElementById('ultLectura').textContent = r.ultimaLectura ? 'Última lectura del portal: ' + r.ultimaLectura.slice(0, 16) : 'Aún no hay lecturas del portal.';
+  document.getElementById('btnBuscar').disabled = !!r.buscando;
+  if ('Notification' in window && Notification.permission === 'default') document.getElementById('btnAvisos').style.display = '';
+  if (gestor) {
+    var c = contar();
+    document.getElementById('tPend').textContent = 'Pendientes (' + c.pend + ')';
+    document.getElementById('tAsig').textContent = 'Asignados (' + c.asig + ')';
+    document.getElementById('tEnt').textContent = 'Cerrados (' + c.ent + ')';
+    if (FOCO) { var f = r.pedidos.filter(function (o) { return o.id === FOCO; })[0]; if (f) TAB = f.estadoNexo === 'PENDIENTE' ? 'pend' : f.estadoNexo === 'ASIGNADO' ? 'asig' : 'ent'; marcarTab(); }
+  }
+  if (cambio || FOCO) pintar();
+  if (ABRIR_INC && FOCO) { var fi = FOCO; ABRIR_INC = false; setTimeout(function () { abrirIncidencia(fi); }, 300); }
+  programar(r.buscando ? 15000 : 60000);
+}
+function contar() {
+  var c = { pend: 0, asig: 0, ent: 0 };
+  DATOS.pedidos.forEach(function (o) { if (o.estadoNexo === 'PENDIENTE') c.pend++; else if (o.estadoNexo === 'ASIGNADO') c.asig++; else c.ent++; });
+  return c;
+}
+var _timer = null;
+function programar(ms) { clearTimeout(_timer); _timer = setTimeout(function () { if (!document.querySelector('.modal.on')) cargar(true); else programar(ms); }, ms); }
+
+function marcarTab() {
+  ['pend', 'asig', 'ent'].forEach(function (t) { document.getElementById({ pend: 'tPend', asig: 'tAsig', ent: 'tEnt' }[t]).classList.toggle('on', t === TAB); });
+}
+function cambiarTab(t) { TAB = t; marcarTab(); pintar(); }
+function verTodos() { VISTA = 'todos'; cargar(); }
+
+/* ============ AVISOS (vibración / notificación) ============ */
+function avisarNovedades(r) {
+  var vistos = {};
+  try { vistos = JSON.parse(localStorage.getItem(CLAVE_VISTOS) || '{}'); } catch (e) {}
+  var primera = !Object.keys(vistos).length;
+  var nuevos = r.pedidos.filter(function (o) {
+    var clave = o.id + '|' + o.estadoNexo + '|' + (o.asignadoA || '');
+    var interesa = (r.rol && r.rol.ver) ? o.estadoNexo === 'PENDIENTE' : o.estadoNexo === 'ASIGNADO';
+    var nuevo = interesa && !vistos[clave];
+    vistos[clave] = 1;
+    return nuevo;
+  });
+  try { localStorage.setItem(CLAVE_VISTOS, JSON.stringify(vistos)); } catch (e) {}
+  if (primera || !nuevos.length) return;
+  var t = (r.rol && r.rol.ver) ? nuevos.length + ' pedido(s) %DIA nuevo(s) sin asignar' : 'Tienes ' + nuevos.length + ' pedido(s) %DIA nuevo(s) asignado(s)';
+  msg('🔔 ' + t, 'info', 10000);
+  notificar(t);
+}
+function notificar(t) {
+  try { if (navigator.vibrate) navigator.vibrate([300, 120, 300, 120, 300]); } catch (e) {}
+  try {
+    if ('Notification' in window && Notification.permission === 'granted' && navigator.serviceWorker) {
+      navigator.serviceWorker.getRegistration().then(function (reg) {
+        if (reg) reg.showNotification('Nexo · %DIA', { body: t, icon: 'boton_dia.png', badge: 'nexo-icon-192.png', vibrate: [300, 120, 300], tag: 'nexo-dia' });
+      });
+    }
+  } catch (e) {}
+}
+function activarAvisos() {
+  if (!('Notification' in window)) return;
+  Notification.requestPermission().then(function (p) {
+    document.getElementById('btnAvisos').style.display = 'none';
+    if (p === 'granted') notificar('Avisos activados');
+  });
+}
+
+/* ============ PINTAR ============ */
+function minutosAhora() { var d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+function alertaTramo(o) {
+  if (o.estadoNexo !== 'PENDIENTE' && o.estadoNexo !== 'ASIGNADO') return '';
+  if (o.finTramo == null) return '';
+  var hoy = hoyISO();
+  if (o.fecha && o.fecha < hoy) return 'tarde';
+  if (o.fecha !== hoy) return '';
+  var falta = o.finTramo - minutosAhora();
+  if (falta <= 0) return 'tarde';
+  if (falta <= 30) return 'alerta';
+  return '';
+}
+function pintar() {
+  var l = document.getElementById('lista'), info = document.getElementById('info');
+  var gestor = DATOS.rol && DATOS.rol.ver;
+  var lista = DATOS.pedidos.filter(function (o) {
+    if (!gestor) return true;
+    if (TAB === 'pend') return o.estadoNexo === 'PENDIENTE';
+    if (TAB === 'asig') return o.estadoNexo === 'ASIGNADO';
+    return o.estadoNexo === 'ENTREGADO' || o.estadoNexo === 'ANULADO' || o.estadoNexo === 'INCIDENCIA';
+  });
+  info.textContent = gestor
+    ? (TAB === 'pend' ? 'Pedidos detectados en %DIA (Vigo y Redondela) pendientes de asignar.' : TAB === 'asig' ? 'Asignados, hasta que el repartidor los entregue.' : 'Entregados, con incidencia (se resuelven en Incidencias ⚠️) o anulados.')
+    : 'Tus pedidos %DIA pendientes de entrega. Para entregar hace falta la foto del ticket.';
+  // Conservar lo que el usuario estaba eligiendo en los desplegables al refrescar
+  var guardados = {};
+  l.querySelectorAll('select[id^="rep_"], select[id^="ti_"]').forEach(function (s) { guardados[s.id] = s.value; });
+  l.innerHTML = lista.length ? lista.map(cardHTML).join('') : '<div class="vacio">' + (gestor ? 'No hay pedidos en esta pestaña.' : 'No tienes pedidos %DIA pendientes.') + '</div>';
+  Object.keys(guardados).forEach(function (k) { var s = document.getElementById(k); if (s && guardados[k]) s.value = guardados[k]; });
+  lista.forEach(function (o) { if (o.tieneCaptura || o.tieneFoto) cargarMiniatura(o); });
+  if (FOCO) {
+    var el = document.getElementById('c_' + FOCO);
+    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('foco'); }
+    FOCO = null;
+  }
+}
+
+function opcionesTiendas(sel) {
+  return '<option value="">— Elige la tienda —</option>' + (DATOS.tiendas || []).map(function (t) {
+    return '<option' + (t.tienda === sel ? ' selected' : '') + '>' + esc(t.tienda) + '</option>';
+  }).join('');
+}
+function opcionesRep(sel, vacio) {
+  return '<option value="">' + (vacio || '— Repartidor —') + '</option>' + (DATOS.repartidores || []).map(function (r) {
+    return '<option value="' + esc(r.usuario) + '"' + (r.usuario === sel ? ' selected' : '') + '>' + esc(r.nombre) + '</option>';
+  }).join('');
+}
+
+function cardHTML(o) {
+  var rol = DATOS.rol || {}, al = alertaTramo(o), id = esc(o.id);
+  var cls = 'card' + (al ? ' ' + al : '') + (o.estadoNexo === 'ENTREGADO' ? ' entregado' : '') + (o.estadoNexo === 'ANULADO' ? ' anulado' : '') + (o.estadoNexo === 'INCIDENCIA' ? ' incidencia' : '');
+  var h = '<div class="' + cls + '" id="c_' + id + '">';
+  h += '<div class="cab"><span class="cli">👤 ' + esc(o.cliente || '—') + '</span><span class="est ' + esc(o.estadoNexo) + '">' + esc(o.estadoNexo) + '</span></div>';
+  if (al === 'alerta') h += '<div class="aviso alerta">⚠️ Quedan menos de 30 min para el fin del tramo ' + esc(o.tramo) + '</div>';
+  if (al === 'tarde') h += '<div class="aviso tarde">⏰ Tramo ' + esc(o.tramo) + ' del ' + fechaES(o.fecha) + ' TERMINADO — pedido sin entregar</div>';
+  h += '<div class="duo"><div class="fila"><b>Tramo horario</b>' + esc(o.tramo || '—') + '</div><div class="fila"><b>Fecha de entrega</b>' + fechaES(o.fecha) + '</div></div>';
+  if (o.tienda) {
+    h += '<div class="fila"><b>Tienda</b>' + esc(o.tienda) + ' <span class="mini">(' + esc(o.centro) + ')</span></div>';
+  } else if (rol.asignar) {
+    h += '<div class="tienda-sel"><b style="color:#991b1b;font-size:12px">⚠️ No se pudo identificar la tienda (Centro: ' + esc(o.centro || '—') + '). ¿Cuál es?</b>' +
+      '<select id="ti_' + id + '">' + opcionesTiendas('') + '</select>' +
+      '<button class="btn" style="width:100%;margin-top:6px" onclick="fijarTienda(\'' + id + '\')">Guardar tienda</button></div>';
+  } else {
+    h += '<div class="fila"><b>Tienda</b><span style="color:#991b1b">Sin identificar</span> <span class="mini">(Centro: ' + esc(o.centro) + ')</span></div>';
+  }
+  h += '<div class="fila"><b>Cliente</b>' + esc(o.cliente || '—') + '</div>';
+  h += '<div class="fila"><b>Dirección</b><a href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(o.direccion || '') + '" target="_blank" rel="noopener">📍 ' + esc(o.direccion || '—') + '</a></div>';
+  if (o.telefonos && o.telefonos.length) {
+    h += '<div class="fila"><b>Teléfono</b>' + o.telefonos.map(function (t) {
+      return '<span class="tel"><a href="tel:' + esc(t) + '" onclick="llamada(\'' + id + '\',\'' + esc(t) + '\')">📞 ' + esc(t) + '</a><button class="copiar" onclick="copiar(\'' + esc(t) + '\')">📋</button></span>';
+    }).join('') + '</div>';
+  }
+  h += '<div class="duo"><div class="fila"><b>NumAlbaran</b>' + esc(o.albaran) + '</div><div class="fila"><b>Procedencia</b>' + esc(o.procedencia || '—') + '</div></div>';
+  h += '<div class="chips"><span class="chip">📦 Seco: ' + esc(o.seco || '0') + '</span><span class="chip">🧊 Fresco: ' + esc(o.fresco || '0') + '</span><span class="chip">❄️ Congelado: ' + esc(o.congelado || '0') + '</span><span class="chip">P: ' + esc(o.p || '1') + '</span></div>';
+  if (o.estadoNexo === 'INCIDENCIA') h += '<div class="inc-info">⚠️ Incidencia: ' + esc(o.incidencia || '') + '<div class="mini" style="color:#991b1b">ADM la resuelve en la página de Incidencias (Restaurar / Eliminar).</div></div>';
+  if (o.tramoPortal && o.tramoPortal.replace(/\s/g, '') !== '' && !/^(12:00-14:00|17:00-19:00)$/.test(o.tramoPortal.replace(/\s/g, ''))) h += '<div class="mini">⚠️ Tramo en el portal: "' + esc(o.tramoPortal) + '" → corregido a ' + esc(o.tramo) + '</div>';
+  if (o.observaciones) h += '<div class="obs"><b>Observaciones:</b> ' + esc(o.observaciones) + '</div>';
+  h += '<div class="fila"><b>Estado</b>' + esc(o.estadoNexo) + (o.estadoWeb ? ' <span class="mini">· portal: ' + esc(o.estadoWeb) + '</span>' : '') + '</div>';
+  if (o.repartidor) h += '<div class="fila"><b>Repartidor</b>🚐 ' + esc(o.repartidor) + (o.asignadoHora ? ' <span class="mini">· ' + esc(o.asignadoHora.slice(0, 16)) + '</span>' : '') + '</div>';
+  if (o.estadoNexo === 'ENTREGADO') h += '<div class="fila"><b>Entregado</b>✅ ' + esc(o.entregaHora || '') + ' · ' + esc(o.entregaUsuario || '') + (o.archivoNexo ? '<div class="mini">' + esc(o.archivoNexo) + '</div>' : '') + '</div>';
+
+  // Captura / foto
+  h += '<div class="cap" id="cap_' + id + '" onclick="ampliar(\'' + id + '\')">' + (o.tieneCaptura || o.tieneFoto ? 'Cargando imagen…' : 'Sin captura') + '</div>';
+
+  // Acciones
+  if (rol.asignar && (o.estadoNexo === 'PENDIENTE' || o.estadoNexo === 'ASIGNADO')) {
+    h += '<div class="asig"><div><select id="rep_' + id + '">' + opcionesRep(o.asignadoA) + '</select></div>' +
+      '<button class="btn azul" onclick="asignar(\'' + id + '\')">' + (o.estadoNexo === 'PENDIENTE' ? 'Asignar repartidor' : 'Reasignar') + '</button></div>';
+  }
+  if (o.estadoNexo === 'ASIGNADO' && (o.asignadoA === USUARIO || rol.editar)) {
+    h += '<div class="duo-btn"><button class="btn rojo" onclick="abrirIncidencia(\'' + id + '\')">⚠️ INCIDENCIA</button>' +
+      '<button class="btn verde" onclick="abrirEntrega(\'' + id + '\')">📷 ENTREGADO</button></div>';
+  }
+  if (rol.editar) h += '<div class="acciones"><button class="btn gris" onclick="abrirEdicion(\'' + id + '\')">✏️ Editar</button></div>';
+  if (o.historial && rol.ver) h += '<details class="hist"><summary>Historial / auditoría</summary><pre>' + esc(o.historial) + '</pre></details>';
+  return h + '</div>';
+}
+
+/* ============ IMÁGENES ============ */
+async function cargarMiniatura(o) {
+  var el = document.getElementById('cap_' + o.id); if (!el) return;
+  var k = o.id + (o.tieneFoto ? '|foto' : '|cap');
+  if (!CAPS[k]) {
+    var r = await api('diaCaptura', { id: o.id }, 2);
+    if (!r.ok) { el.textContent = r.error; return; }
+    CAPS[k] = r;
+  }
+  el = document.getElementById('cap_' + o.id); if (!el) return;
+  el.innerHTML = '<span class="etq">' + (CAPS[k].tipo === 'foto' ? '📷 TICKET' : '🖼️ CAPTURA %DIA') + '</span><img src="' + CAPS[k].dataUrl + '" alt="">';
+}
+var _zoom = 100;
+function ampliar(id) {
+  var o = DATOS.pedidos.filter(function (x) { return x.id === id; })[0]; if (!o) return;
+  var k = id + (o.tieneFoto ? '|foto' : '|cap'); if (!CAPS[k]) return;
+  _zoom = 100;
+  document.getElementById('zoomTit').textContent = (CAPS[k].tipo === 'foto' ? 'Ticket · ' : 'Captura %DIA · ') + o.cliente;
+  document.getElementById('zoomCont').innerHTML = '<img id="zoomImg" src="' + CAPS[k].dataUrl + '">';
+  document.getElementById('mZoom').classList.add('on');
+}
+function zoom(d) { _zoom = Math.max(100, Math.min(400, _zoom + d * 50)); var i = document.getElementById('zoomImg'); if (i) i.style.width = _zoom + '%'; }
+
+/* ============ ACCIONES ============ */
+function copiar(t) {
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(function () { msg('Número copiado: ' + t, 'ok', 2500); });
+}
+function llamada(id, t) { api('diaRegistrarLlamada', { id: id, telefono: t }); }
+
+async function fijarTienda(id) {
+  var t = document.getElementById('ti_' + id).value;
+  if (!t) { msg('Elige una tienda.', 'err'); return; }
+  spin(true); var r = await api('diaFijarTienda', { id: id, tienda: t }); spin(false);
+  if (!r.ok) { msg(r.error, 'err'); return; }
+  msg('Tienda guardada. Los próximos pedidos de ese centro se asignarán solos a ' + t + '.', 'ok');
+  cargar(true);
+}
+async function asignar(id) {
+  var o = DATOS.pedidos.filter(function (x) { return x.id === id; })[0] || {};
+  var rep = document.getElementById('rep_' + id).value;
+  if (!o.tienda) { msg('Primero indica la TIENDA del pedido (obligatoria).', 'err'); return; }
+  if (!rep) { msg('Elige un repartidor.', 'err'); return; }
+  spin(true, 'Asignando…'); var r = await api('diaAsignar', { id: id, repartidor: rep }); spin(false);
+  if (!r.ok) { msg(r.error, 'err'); return; }
+  msg(r.sinCambios ? 'Sin cambios.' : 'Pedido asignado a ' + r.pedido.repartidor + '.', 'ok');
+  cargar(true);
+}
+
+/* ---- Entrega ---- */
+var ENT_ID = null, ENT_FOTO = null;
+function abrirEntrega(id) {
+  var o = DATOS.pedidos.filter(function (x) { return x.id === id; })[0] || {};
+  ENT_ID = id; ENT_FOTO = null;
+  document.getElementById('entTit').textContent = 'Entregar · ' + (o.cliente || '') + ' · ' + (o.albaran || '');
+  document.getElementById('fotoPrev').style.display = 'none';
+  document.getElementById('btnConfEnt').disabled = true;
+  document.getElementById('fotoFile').value = '';
+  document.getElementById('mEnt').classList.add('on');
+}
+document.getElementById('fotoFile').addEventListener('change', async function (ev) {
+  var f = ev.target.files && ev.target.files[0]; if (!f) return;
+  spin(true, 'Preparando foto…');
+  try { ENT_FOTO = await reducir(f, 1600); } catch (e) { spin(false); msg('No se pudo leer la foto.', 'err'); return; }
+  spin(false);
+  var p = document.getElementById('fotoPrev'); p.src = ENT_FOTO; p.style.display = 'block';
+  document.getElementById('btnConfEnt').disabled = false;
+});
+function reducir(file, max) {
+  return new Promise(function (res, rej) {
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function () {
+      var s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      var c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+      var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('img')); };
+    img.src = url;
+  });
+}
+async function confirmarEntrega() {
+  if (!ENT_ID || !ENT_FOTO) return;
+  spin(true, 'Subiendo ticket y cerrando el pedido…');
+  var r = await api('diaEntregar', { id: ENT_ID, imagenBase64: ENT_FOTO }, 3);
+  spin(false);
+  if (!r.ok) { msg('❌ ' + r.error, 'err', 12000); return; }
+  cerrar('mEnt');
+  msg(r.yaEntregado ? '✅ Este pedido ya estaba entregado.' : '✅ Pedido ENTREGADO. Ticket archivado: ' + r.archivo, 'ok', 9000);
+  delete CAPS[ENT_ID + '|cap'];
+  cargar(true);
+}
+
+/* ---- Edición (ADM) ---- */
+var ED_ID = null;
+function abrirEdicion(id) {
+  var o = DATOS.pedidos.filter(function (x) { return x.id === id; })[0]; if (!o) return;
+  ED_ID = id;
+  document.getElementById('edAlb').textContent = o.albaran;
+  document.getElementById('edTienda').innerHTML = opcionesTiendas(o.tienda);
+  document.getElementById('edFecha').value = o.fecha || '';
+  document.getElementById('edTramo').value = o.tramo === '12-14H' ? '12-14H' : '17-19H';
+  document.getElementById('edCliente').value = o.cliente || '';
+  document.getElementById('edDir').value = o.direccion || '';
+  document.getElementById('edTel').value = (o.telefonos || []).join(' ');
+  document.getElementById('edSeco').value = o.seco || '';
+  document.getElementById('edFresco').value = o.fresco || '';
+  document.getElementById('edCong').value = o.congelado || '';
+  document.getElementById('edObs').value = o.observaciones || '';
+  document.getElementById('edRep').innerHTML = opcionesRep(o.asignadoA, '— Sin repartidor —');
+  var est = document.getElementById('edEst');
+  var cerrado = o.estadoNexo === 'ENTREGADO' || o.estadoNexo === 'INCIDENCIA';
+  est.value = cerrado ? 'ASIGNADO' : o.estadoNexo;
+  est.disabled = cerrado;
+  document.getElementById('edRep').disabled = cerrado;
+  document.getElementById('mEdit').classList.add('on');
+}
+async function guardarEdicion() {
+  var o = DATOS.pedidos.filter(function (x) { return x.id === ED_ID; })[0]; if (!o) return;
+  var campos = {
+    tienda: document.getElementById('edTienda').value, fecha: document.getElementById('edFecha').value,
+    tramo: document.getElementById('edTramo').value, cliente: document.getElementById('edCliente').value,
+    direccion: document.getElementById('edDir').value, telefonos: document.getElementById('edTel').value,
+    seco: document.getElementById('edSeco').value, fresco: document.getElementById('edFresco').value,
+    congelado: document.getElementById('edCong').value, observaciones: document.getElementById('edObs').value,
+    repartidor: document.getElementById('edRep').value
+  };
+  if (o.estadoNexo !== 'ENTREGADO' && o.estadoNexo !== 'INCIDENCIA') {
+    var est = document.getElementById('edEst').value;
+    var repCambia = campos.repartidor !== (o.asignadoA || '');
+    if (est === 'PENDIENTE' && campos.repartidor && repCambia) est = 'ASIGNADO';   // eligió repartidor → asignado
+    if (est === 'ASIGNADO' && !campos.repartidor && repCambia) est = 'PENDIENTE';  // quitó el repartidor → pendiente
+    if (est === 'PENDIENTE') campos.repartidor = '';
+    campos.estado = est;
+  } else { delete campos.repartidor; }
+  spin(true, 'Guardando…'); var r = await api('diaEditar', { id: ED_ID, campos: campos }); spin(false);
+  if (!r.ok) { msg(r.error, 'err'); return; }
+  cerrar('mEdit');
+  msg(r.sinCambios ? 'Sin cambios.' : 'Pedido actualizado.', 'ok');
+  cargar(true);
+}
+
+/* ---- Búsqueda manual ---- */
+// En SEGUNDO PLANO: no muestra spinner ni bloquea nada. Los pedidos nuevos aparecen
+// solos en la lista (se consulta cada 15 s mientras dura la búsqueda).
+async function buscarAhora(silencioso) {
+  document.getElementById('btnBuscar').disabled = true;
+  document.getElementById('busqBg').classList.add('on');
+  var r = await api('diaBuscarAhora', {});
+  if (!r.ok) {
+    document.getElementById('busqBg').classList.remove('on');
+    document.getElementById('btnBuscar').disabled = false;
+    if (!silencioso) msg(r.error, 'err');
+    return;
+  }
+  if (!silencioso) msg(r.mensaje, 'info', 6000);
+  programar(15000);
+}
+
+/* ============ INCIDENCIAS (idéntico a Nexo-tickets) ============ */
+var TIPOS = {
+  CLIENTE_AUSENTE:      { etiqueta: 'Cliente ausente',            fotosMax: 2, obs: false },
+  DIRECCION_INCORRECTA: { etiqueta: 'Dirección incorrecta',       fotosMax: 0, obs: true },
+  PRODUCTO_FALTANTE:    { etiqueta: 'Producto faltante o dañado', fotosMax: 3, obs: true },
+  COMPRA_RECHAZADA:     { etiqueta: 'Compra rechazada',           fotosMax: 0, obs: true },
+  FRIO_OLVIDADO:        { etiqueta: 'Frío olvidado',              fotosMax: 0, obs: true }
+};
+var incId = null, incTipo = null, incFotos = [], incIntentos = [], incTimer = null;
+function claveIntentos(id) { return 'nexo_dia_intentos_' + id; }
+function abrirIncidencia(id) {
+  var o = DATOS.pedidos.filter(function (x) { return x.id === id; })[0];
+  if (!o || o.estadoNexo !== 'ASIGNADO') { msg('Este pedido no está pendiente en tu ruta.', 'err'); return; }
+  incId = id; incTipo = null; incFotos = []; clearInterval(incTimer);
+  // Las tentativas de "Cliente ausente" se guardan en el teléfono por si se cierra la página.
+  try { incIntentos = JSON.parse(localStorage.getItem(claveIntentos(id)) || '[]'); } catch (e) { incIntentos = []; }
+  document.getElementById('incTitulo').textContent = 'Incidencia · %DIA · Albarán ' + (o.albaran || '');
+  document.getElementById('incTipos').innerHTML = Object.keys(TIPOS).map(function (k) {
+    return '<button class="tipo" id="t_' + k + '" onclick="elegirTipo(\'' + k + '\')">' + TIPOS[k].etiqueta + '</button>';
+  }).join('');
+  ['incAusente', 'incObsWrap', 'incFotoWrap'].forEach(function (x) { document.getElementById(x).style.display = 'none'; });
+  document.getElementById('incObs').value = '';
+  document.getElementById('incMini').innerHTML = '';
+  document.getElementById('mInc').classList.add('on');
+  if (incIntentos.length) elegirTipo('CLIENTE_AUSENTE');
+}
+function cerrarInc() { clearInterval(incTimer); cerrar('mInc'); }
+function elegirTipo(k) {
+  incTipo = k; incFotos = []; clearInterval(incTimer);
+  Object.keys(TIPOS).forEach(function (x) { document.getElementById('t_' + x).classList.toggle('on', x === k); });
+  var d = TIPOS[k];
+  document.getElementById('incObsWrap').style.display = 'block';
+  document.getElementById('incObs').placeholder = d.obs ? 'Observaciones (obligatorio)' + (k === 'COMPRA_RECHAZADA' ? ' — motivo del rechazo' : '') : 'Observaciones (opcional)';
+  document.getElementById('incFotoWrap').style.display = d.fotosMax ? 'block' : 'none';
+  document.getElementById('btnIncFoto').textContent = k === 'CLIENTE_AUSENTE' ? '📷 Foto del portal (opcional)' : '📷 Añadir foto (máx. ' + d.fotosMax + ')';
+  document.getElementById('incMini').innerHTML = '';
+  var a = document.getElementById('incAusente');
+  if (k === 'CLIENTE_AUSENTE') { a.style.display = 'block'; pintarAusente(); } else a.style.display = 'none';
+}
+function pintarAusente() {
+  var n = incIntentos.length;
+  var h = '<button class="intento" onclick="nuevoIntento()" ' + (n >= 3 ? 'disabled' : '') + '>📞 Registrar tentativa (' + n + '/3)</button>';
+  if (n) h += '<div class="cuenta" id="cuenta"></div>';
+  document.getElementById('incAusente').innerHTML = h;
+  tick();
+  clearInterval(incTimer); if (n) incTimer = setInterval(tick, 1000);
+}
+function nuevoIntento() {
+  if (incIntentos.length < 3) {
+    incIntentos.push(Date.now());
+    try { localStorage.setItem(claveIntentos(incId), JSON.stringify(incIntentos)); } catch (e) {}
+    pintarAusente();
+  }
+}
+function faltaEspera() { return incIntentos.length ? Math.max(0, incIntentos[0] + 10 * 60 * 1000 - Date.now()) : 1; }
+function tick() {
+  var c = document.getElementById('cuenta'); if (!c) return;
+  var f = faltaEspera(), n = incIntentos.length;
+  var t = incIntentos.map(function (x) { return new Date(x).toLocaleTimeString('es-ES'); }).join(' · ');
+  if (n < 3) c.textContent = 'Tentativas: ' + t;
+  else if (f > 0) c.textContent = 'Tentativas: ' + t + ' — espera ' + Math.floor(f / 60000) + ':' + String(Math.floor(f % 60000 / 1000)).padStart(2, '0') + ' para poder registrar.';
+  else c.textContent = 'Tentativas: ' + t + ' — ✅ espera de 10 min cumplida.';
+}
+document.getElementById('incFile').addEventListener('change', async function (ev) {
+  var f = ev.target.files[0]; ev.target.value = '';
+  if (!f || !incTipo) return;
+  if (incFotos.length >= TIPOS[incTipo].fotosMax) { msg('Máximo de fotos alcanzado.', 'err'); return; }
+  var d = await reducir(f, 1400);
+  incFotos.push(d);
+  document.getElementById('incMini').innerHTML = incFotos.map(function (x) { return '<img src="' + x + '">'; }).join('');
+});
+async function enviarIncidencia() {
+  if (!incTipo) { msg('Elige el tipo de incidencia.', 'err'); return; }
+  var d = TIPOS[incTipo], obs = document.getElementById('incObs').value.trim();
+  if (d.obs && !obs) { alert('Escribe las observaciones.'); return; }
+  if (incTipo === 'CLIENTE_AUSENTE') {
+    if (incIntentos.length < 3) { alert('Hacen falta 3 tentativas de contacto.'); return; }
+    if (faltaEspera() > 0) { alert('Aún no han pasado 10 minutos desde la primera tentativa.'); return; }
+  }
+  spin(true, 'Registrando incidencia…');
+  var r = await api('diaRegistrarIncidencia', { id: incId, tipo: incTipo, observaciones: obs, intentos: incTipo === 'CLIENTE_AUSENTE' ? incIntentos : [], fotos: incFotos }, 2);
+  spin(false);
+  if (!r.ok) { alert(r.error); return; }
+  try { localStorage.removeItem(claveIntentos(incId)); } catch (e) {}
+  cerrarInc(); msg('Incidencia registrada. Se ha avisado a Embolsado y ADM.', 'ok'); cargar(true);
+}
+
+/* ============ INICIO ============ */
+// Al abrir la página se lanza siempre una búsqueda manual (si quien entra gestiona pedidos).
+// La lista y la búsqueda arrancan a la vez; la búsqueda nunca hace esperar al usuario.
+(async function () {
+  await cargar(false);
+  if (DATOS.rol && DATOS.rol.ver && !DATOS.buscando) buscarAhora(true);
+})();
+// Refresca la alerta de "30 minutos" cada minuto aunque no haya cambios en el servidor.
+setInterval(function () { if (!document.querySelector('.modal.on')) pintar(); }, 60000);
+</script>
+</body>
+</html>

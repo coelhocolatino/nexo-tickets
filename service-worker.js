@@ -1,7 +1,7 @@
 // ==============================
 // Nexo · SAD Tickets - Service Worker v5
 // ==============================
-const CACHE_NAME = "nexo-tickets-v21";
+const CACHE_NAME = "nexo-tickets-v22";
 
 const ASSETS = [
   "./",
@@ -17,7 +17,9 @@ const ASSETS = [
   "./boton_asignar.png",
   "./boton_embolsado.png",
   "./boton_actualizar_pedidos.png",
-  "./boton_config.png"
+  "./boton_config.png",
+  "./boton_dia.png",
+  "./dia.html"
 ];
 
 // Instalación
@@ -104,4 +106,10 @@ self.addEventListener("fetch", (event) => {
       })
     );
   }
+});
+
+// Avisos %DIA: al tocar la notificación se abre la página de pedidos %DIA
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(self.clients.openWindow("./dia.html"));
 });

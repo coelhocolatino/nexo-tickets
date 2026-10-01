@@ -81,7 +81,9 @@ function pintar() {
   l.innerHTML = v.map(function (i) {
     var h = '<div class="inc ' + esc(i['ESTADO']) + '"><div class="t"><span>' + esc(i['TIPO']) + '</span><span class="est">' + esc(i['ESTADO']) + '</span></div>';
     h += '<div class="l"><b>Fecha/hora:</b> ' + esc(i['FECHA']) + ' ' + esc(i['HORA']) + ' · <b>Usuario:</b> ' + esc(i['USUARIO']) + '</div>';
-    h += '<div class="l"><b>Caja:</b> ' + esc(i['CAJA']) + ' · <b>Ticket:</b> ' + esc(i['TICKET']) + '</div>';
+    h += i['CAJA'] === '%DIA'
+      ? '<div class="l"><b>Pedido %DIA</b> · <b>Albarán:</b> ' + esc(i['TICKET']) + '</div>'
+      : '<div class="l"><b>Caja:</b> ' + esc(i['CAJA']) + ' · <b>Ticket:</b> ' + esc(i['TICKET']) + '</div>';
     h += '<div class="l"><b>Cliente:</b> ' + esc(i['NOMBRE']) + ' · <b>Tel:</b> ' + (i['TELEFONO'] ? '<a href="tel:' + esc(i['TELEFONO']) + '">' + esc(i['TELEFONO']) + '</a>' : '—') + '</div>';
     h += '<div class="l"><b>Dirección:</b> ' + esc(i['DIRECCION']) + '</div>';
     if (i['OBSERVACIONES']) h += '<div class="l"><b>Observaciones:</b> ' + esc(i['OBSERVACIONES']) + '</div>';
@@ -99,9 +101,21 @@ function pintar() {
   }).join('');
 }
 
+/* Incidencias de pedidos %DIA (ID RESERVA = "DIA-…"): se resuelven en el backend NEXO · DIA. */
+var DIA_URL = 'https://script.google.com/macros/s/AKfycbwrX90CKa7GQki-DUDZFpdGVlGIXZvmiHsRKCEW7ZwBbYkKfYPr3R1kx96Uz9GKL_0m/exec';
+function apiDia(accion, extra) {
+  return fetch(PROXY + '?url=' + encodeURIComponent(DIA_URL), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign({ accion: accion, usuario: USUARIO }, extra || {}))
+  }).then(function (r) { return r.json(); }).catch(function () { return { ok: false, error: 'Sin conexión con el servidor.' }; });
+}
 async function accion(a, idInc, pregunta) {
   if (!confirm(pregunta)) return;
-  var r = await api(a, { idIncidencia: idInc });
+  var fila = datos.filter(function (i) { return i['ID INCIDENCIA'] === idInc; })[0] || {};
+  var esDia = /^DIA-/.test(fila['ID RESERVA'] || '');
+  var r = esDia
+    ? await apiDia(a === 'restaurarPedido' ? 'diaRestaurar' : 'diaEliminar', { idIncidencia: idInc })
+    : await api(a, { idIncidencia: idInc });
   if (r.ok) { msg('Hecho.', 'ok'); cargar(); } else msg(r.error, 'err');
 }
 

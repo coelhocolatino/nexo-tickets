@@ -32,6 +32,14 @@ body { margin:0; min-height:100vh; background:linear-gradient(180deg,var(--bg1),
 .vacio { text-align:center; opacity:.85; padding:30px 10px; }
 .card { background:#fff; color:#0f172a; border-radius:16px; padding:12px 12px 14px; margin-bottom:10px; position:relative; box-shadow:0 6px 18px rgba(0,0,0,.25); }
 .card.cobro { background:var(--amarillo); }
+/* Pedidos %DIA (rosa) */
+.card.dia { background:#fce7f3; border:2px solid #f9a8d4; }
+.card.dia.alerta { border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.55); }
+.card.dia.tarde { border-color:#dc2626; box-shadow:0 0 0 3px rgba(220,38,38,.55); }
+.card.dia .tag { background:#be185d; color:#fff; }
+.dia-aviso { margin-top:6px; border-radius:8px; padding:5px 8px; font-size:12px; font-weight:800; background:#fef3c7; color:#92400e; }
+.card.dia.tarde .dia-aviso { background:#fee2e2; color:#991b1b; }
+.b-dia { display:block; text-align:center; margin-top:10px; padding:11px; border-radius:10px; background:#16a34a; color:#fff; font-weight:800; text-decoration:none; }
 .card .cab { display:flex; align-items:center; gap:8px; font-weight:800; font-size:15px; }
 .card .cab .chk { width:24px; height:24px; accent-color:#0077cc; flex:0 0 auto; }
 .card .cab .grow { flex:1; }
@@ -185,6 +193,33 @@ function cerrar(id) { document.getElementById(id).classList.remove('on'); }
 
 /* ============ ESTADO ============ */
 var tab = 'disp', disp = [], ruta = [], sel = {}, tramos = [];
+/* Pedidos %DIA asignados a mí (backend NEXO · DIA) — se muestran en rosa en "Asignados" */
+var DIA_URL = 'https://script.google.com/macros/s/AKfycbwrX90CKa7GQki-DUDZFpdGVlGIXZvmiHsRKCEW7ZwBbYkKfYPr3R1kx96Uz9GKL_0m/exec', diaRuta = [];
+function apiDia(accion, datos) {
+  if (/^PEGAR_AQUI/.test(DIA_URL)) return Promise.resolve({ ok: true, pedidos: [] });
+  var body = Object.assign({ accion: accion, usuario: USUARIO }, datos || {});
+  return fetch(PROXY + '?url=' + encodeURIComponent(DIA_URL), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  }).then(function (r) { return r.json(); }).catch(function () { return { ok: false, pedidos: [] }; });
+}
+function diaCardHTML(o) {
+  var hoy = new Date(), hoyIso = hoy.getFullYear() + '-' + ('0' + (hoy.getMonth() + 1)).slice(-2) + '-' + ('0' + hoy.getDate()).slice(-2);
+  var al = '', falta = o.finTramo == null ? null : o.finTramo - (hoy.getHours() * 60 + hoy.getMinutes());
+  if (o.fecha && o.fecha < hoyIso) al = 'tarde'; else if (o.fecha === hoyIso && falta != null) al = falta <= 0 ? 'tarde' : falta <= 30 ? 'alerta' : '';
+  var f = String(o.fecha || '').split('-');
+  var h = '<div class="card dia' + (al ? ' ' + al : '') + '">';
+  h += '<div class="cab"><span class="grow">%DIA · ' + esc(o.tienda || '') + '</span><span class="tag">' + esc(o.tramo) + '</span></div>';
+  if (al) h += '<div class="dia-aviso">' + (al === 'tarde' ? '⏰ Tramo terminado — pedido sin entregar' : '⚠️ Quedan menos de 30 min del tramo') + '</div>';
+  h += '<div class="fila"><b>Entrega</b>' + (f.length === 3 ? f[2] + '/' + f[1] + '/' + f[0] : esc(o.fecha)) + ' · ' + esc(o.tramo) + '</div>';
+  h += '<div class="fila"><b>Cliente</b>' + esc(o.cliente || '—') + '</div>';
+  (o.telefonos || []).forEach(function (t) { h += '<div class="fila"><b>Teléfono</b><a class="tel" href="tel:' + esc(t) + '">📞 ' + esc(t) + '</a></div>'; });
+  h += '<div class="fila"><b>Dirección</b>' + esc(o.direccion || '—') + '</div>';
+  h += '<div class="chips"><span class="chip">Albarán ' + esc(o.albaran) + '</span><span class="chip">Seco ' + esc(o.seco || 0) + '</span><span class="chip">Fresco ' + esc(o.fresco || 0) + '</span><span class="chip">Congelado ' + esc(o.congelado || 0) + '</span></div>';
+  if (o.observaciones) h += '<div class="fila"><b>Observaciones</b>' + esc(o.observaciones) + '</div>';
+  h += '<div class="acciones" style="padding-right:0"><a class="b-dia" style="flex:1;background:#dc2626;margin-top:0" href="dia.html?id=' + encodeURIComponent(o.id) + '&inc=1">INCIDENCIA</a>' +
+       '<a class="b-dia" style="flex:1;margin-top:0" href="dia.html?id=' + encodeURIComponent(o.id) + '">📷 ENTREGADO</a></div>';
+  return h + '</div>';
+}
 
 function cambiarTab(t) {
   tab = t; sel = {};
@@ -197,16 +232,18 @@ async function cargar(inicial) {
   spin(true);
   var rr = await api('listarMiRuta');
   var rd = await api('listarDisponibles');
+  var rdia = await apiDia('diaListar', { vista: 'mios' });
   spin(false);
+  diaRuta = rdia && rdia.ok ? (rdia.pedidos || []).filter(function (o) { return o.estadoNexo === 'ASIGNADO' && o.asignadoA === String(USUARIO).toLowerCase(); }) : [];
   if (!rr.ok) { msg(rr.error, 'err'); }
   if (!rd.ok) { msg(rd.error, 'err'); }
   ruta = rr.ok ? rr.pedidos : [];
   disp = rd.ok ? rd.pedidos : [];
   tramos = rd.ok ? rd.tramos : [];
-  document.getElementById('tabRuta').textContent = 'Asignados (' + ruta.length + ')';
+  document.getElementById('tabRuta').textContent = 'Asignados (' + (ruta.length + diaRuta.length) + ')';
   document.getElementById('tabDisp').textContent = 'Disponibles (' + disp.length + ')';
   // Si se viene de subir una foto (?lote=...), se queda en "Asignados".
-  if (inicial) { cambiarTab(ruta.length || /[?&]lote=/.test(location.search) ? 'ruta' : 'disp'); } else { pintar(); }
+  if (inicial) { cambiarTab(ruta.length || diaRuta.length || /[?&]lote=/.test(location.search) ? 'ruta' : 'disp'); } else { pintar(); }
 }
 
 function cardHTML(o, conCheck, conAcc) {
@@ -235,7 +272,7 @@ function pintar() {
     actualizarBarra();
   } else {
     info.textContent = 'Pedidos asignados a ti, pendientes de entrega.';
-    l.innerHTML = ruta.length ? ruta.map(function (o) { return cardHTML(o, false, true); }).join('') : '<div class="vacio">No tienes pedidos pendientes en tu ruta.</div>';
+    l.innerHTML = (ruta.length || diaRuta.length) ? ruta.map(function (o) { return cardHTML(o, false, true); }).join('') + diaRuta.map(diaCardHTML).join('') : '<div class="vacio">No tienes pedidos pendientes en tu ruta.</div>';
     barra.style.display = 'none';
   }
 }
