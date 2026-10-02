@@ -1,4 +1,20 @@
 <!DOCTYPE html>
+<!-- Nexo Tickets — incidencias.html
+     Cambios 2026-10-02 (informar incidencia directa):
+     1) Botón «➕ Informar incidencia» para TODOS los usuarios: permite
+        registrar una incidencia desde aquí, sin tener el pedido en «Pedidos
+        asignados». Pasos:
+          1. Foto del ticket (obligatoria): sacar foto o subir una imagen.
+          2. El servidor la lee (OCR) y el usuario CONFIRMA o corrige los datos
+             (caja, nº de ticket, cliente, teléfono, dirección).
+          3. Procedimiento normal: tipo de incidencia, tentativas (cliente
+             ausente = 3 tentativas y 10 min), observaciones y fotos.
+        Si el ticket coincide con un pedido aún no entregado, ese pedido queda
+        en INCIDENCIA; si no, se registra igualmente sin tocar ningún pedido.
+     2) ADM: botón «CERRAR» en las incidencias que no tienen pedido vinculado
+        (las que sí lo tienen siguen con RESTAURAR / ELIMINAR).
+     Requiere el Embolsado.gs del 2026-10-02 (acciones leerTicketIncidencia,
+     buscarPedidoIncidencia, registrarIncidenciaDirecta y cerrarIncidencia). -->
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
@@ -37,11 +53,56 @@ body { margin:0; background:#f1f5f9; color:#0f172a; padding:14px 12px 40px; }
 .acc button { flex:1; padding:10px; border:0; border-radius:10px; font-weight:800; color:#fff; }
 .r { background:#16a34a; } .e { background:#dc2626; }
 .vacio { text-align:center; color:#64748b; padding:30px; }
+.inc.CERRADA { border-left-color:#0369a1; opacity:.8; }
+.inc.CERRADA .est { background:#e0f2fe; color:#075985; }
+.inc .tag { display:inline-block; font-size:11px; font-weight:800; padding:2px 8px; border-radius:8px; background:#e0f2fe; color:#075985; margin-top:6px; }
+.c { background:#0369a1; }
+/* ===== Informar incidencia (2026-10-02) ===== */
+.nueva { display:block; width:100%; padding:14px; border:0; border-radius:12px; background:#dc2626; color:#fff; font-size:16px; font-weight:800;
+  margin-bottom:12px; box-shadow:0 4px 12px rgba(220,38,38,.3); }
+.nueva:active { transform:scale(.98); }
+.modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:flex-start; justify-content:center; overflow:auto; padding:16px 10px; z-index:50; }
+.modal.on { display:flex; }
+.modal .box { background:#fff; color:#0f172a; border-radius:16px; padding:14px; width:100%; max-width:440px; }
+.modal h2 { margin:0 0 4px; font-size:17px; color:#003366; }
+.pasos { display:flex; gap:6px; margin:8px 0 12px; }
+.pasos span { flex:1; text-align:center; font-size:11px; font-weight:800; padding:6px 2px; border-radius:8px; background:#e2e8f0; color:#64748b; }
+.pasos span.on { background:#003366; color:#fff; }
+.pasos span.ok { background:#dcfce7; color:#166534; }
+.ayuda { font-size:13px; color:#475569; margin:0 0 10px; }
+.btn-grande { display:block; width:100%; padding:16px; border:0; border-radius:12px; font-size:16px; font-weight:800; margin-bottom:10px; }
+.b-azul { background:#0077cc; color:#fff; } .b-gris { background:#e2e8f0; color:#0f172a; } .b-rojo { background:#dc2626; color:#fff; } .b-osc { background:#003366; color:#fff; }
+.foto-ticket { width:100%; max-height:230px; object-fit:contain; background:#0f172a; border-radius:10px; display:block; margin-bottom:6px; }
+.foto-ticket.grande { max-height:none; }
+.mini-ayuda { font-size:11px; color:#64748b; text-align:center; margin-bottom:8px; }
+.campo { margin-bottom:8px; }
+.campo label { display:block; font-size:12px; font-weight:800; color:#475569; margin-bottom:3px; }
+.campo input, .campo textarea, #nvObs { width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:10px; font-size:16px; background:#fff; color:#0f172a; }
+.campo textarea { min-height:60px; resize:vertical; }
+#nvObs { min-height:70px; font-size:15px; }
+.dos { display:flex; gap:8px; } .dos .campo { flex:1; min-width:0; }
+.aviso { font-size:13px; padding:8px 10px; border-radius:10px; margin-bottom:8px; }
+.aviso.w { background:#fef3c7; color:#92400e; } .aviso.i { background:#e0f2fe; color:#075985; } .aviso.g { background:#dcfce7; color:#166534; }
+.resumen { font-size:14px; font-weight:800; margin-bottom:8px; }
+.tipo { display:block; width:100%; text-align:left; padding:12px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; margin-bottom:8px; font-weight:700; font-size:14px; color:#0f172a; }
+.tipo.on { border-color:#0077cc; background:#e0f2fe; }
+.fila-btn { display:flex; gap:8px; margin-top:10px; }
+.fila-btn button { flex:1; padding:13px; border:0; border-radius:10px; font-weight:800; font-size:14px; }
+.miniaturas { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.miniaturas img { width:64px; height:64px; object-fit:cover; border-radius:8px; }
+.ausente button.intento { width:100%; padding:12px; border:0; border-radius:10px; background:#f59e0b; color:#fff; font-weight:800; margin-bottom:8px; }
+.ausente button.intento:disabled { opacity:.55; }
+.ausente .cuenta { font-size:13px; margin-bottom:8px; }
+.btn-foto { width:100%; padding:11px; border:1px dashed #64748b; border-radius:10px; background:#f8fafc; font-weight:700; margin-top:8px; color:#0f172a; }
+#spin { position:fixed; inset:0; background:rgba(0,20,40,.75); color:#fff; display:none; align-items:center; justify-content:center; z-index:99;
+  font-weight:800; font-size:16px; text-align:center; padding:20px; }
+#spin.on { display:flex; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top"><a href="index.html">←</a><h1 id="titulo">Incidencias de entrega</h1><span class="badge" id="badge" style="display:none"></span></div>
+  <button class="nueva" id="btnNueva" onclick="abrirNueva()">➕ Informar incidencia</button>
   <div class="filtros">
     <button id="fAb" class="on" onclick="filtro('ABIERTA')">Abiertas</button>
     <button id="fTo" onclick="filtro('TODAS')">Todas</button>
@@ -49,6 +110,64 @@ body { margin:0; background:#f1f5f9; color:#0f172a; padding:14px 12px 40px; }
   <div id="msg"></div>
   <div id="lista"><div class="vacio">Cargando…</div></div>
 </div>
+
+<!-- Informar incidencia (2026-10-02): foto del ticket -> confirmar datos -> incidencia -->
+<div class="modal" id="mNueva"><div class="box">
+  <h2>Informar incidencia</h2>
+  <div class="pasos"><span id="ps1">1 · Foto del ticket</span><span id="ps2">2 · Confirmar datos</span><span id="ps3">3 · Incidencia</span></div>
+
+  <!-- Paso 1 -->
+  <div id="nvP1">
+    <p class="ayuda">Hace falta la <b>foto del ticket</b> del pedido. Que se lea bien la parte de arriba (caja y nº de ticket) y los datos del cliente.</p>
+    <button class="btn-grande b-azul" id="btnCam" onclick="document.getElementById('nvCam').click()">📷 Sacar foto</button>
+    <button class="btn-grande b-gris" id="btnArch" onclick="document.getElementById('nvArch').click()">🖼️ Subir foto</button>
+    <button class="btn-grande b-gris" onclick="cerrarNueva()">Cancelar</button>
+  </div>
+
+  <!-- Paso 2 -->
+  <div id="nvP2" style="display:none">
+    <img class="foto-ticket" id="nvFoto" alt="Foto del ticket" onclick="this.classList.toggle('grande')" />
+    <div class="mini-ayuda">Toca la foto para verla más grande</div>
+    <div id="nvAvisos"></div>
+    <p class="ayuda">Comprueba que los datos coinciden con el ticket y corrige lo que haga falta.</p>
+    <div class="dos">
+      <div class="campo"><label for="nvCaja">Caja *</label><input id="nvCaja" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="000" /></div>
+      <div class="campo"><label for="nvTicket">Nº de ticket *</label><input id="nvTicket" inputmode="numeric" maxlength="12" autocomplete="off" /></div>
+    </div>
+    <div class="campo"><label for="nvNombre">Cliente</label><input id="nvNombre" autocomplete="off" /></div>
+    <div class="campo"><label for="nvTel">Teléfono</label><input id="nvTel" inputmode="tel" autocomplete="off" /></div>
+    <div class="campo"><label for="nvDir">Dirección</label><textarea id="nvDir"></textarea></div>
+    <div class="fila-btn">
+      <button class="b-gris" onclick="repetirFoto()">Repetir foto</button>
+      <button class="b-osc" id="btnConfirmar" onclick="confirmarDatos()">Confirmar datos</button>
+    </div>
+    <div class="fila-btn"><button class="b-gris" onclick="cerrarNueva()">Cancelar</button></div>
+  </div>
+
+  <!-- Paso 3 -->
+  <div id="nvP3" style="display:none">
+    <div class="resumen" id="nvResumen"></div>
+    <div id="nvPedido"></div>
+    <div id="nvTipos"></div>
+    <div id="nvAusente" class="ausente" style="display:none"></div>
+    <div id="nvObsWrap" style="display:none"><textarea id="nvObs" placeholder="Observaciones"></textarea></div>
+    <div id="nvFotoWrap" style="display:none">
+      <button class="btn-foto" id="btnNvFoto" onclick="document.getElementById('nvFotoInc').click()">📷 Añadir foto</button>
+      <div class="miniaturas" id="nvMini"></div>
+    </div>
+    <div class="fila-btn">
+      <button class="b-gris" onclick="pasoNueva(2)">Atrás</button>
+      <button class="b-rojo" id="btnRegistrar" onclick="registrarNueva(false)">Registrar</button>
+    </div>
+    <div class="fila-btn"><button class="b-gris" onclick="cerrarNueva()">Cancelar</button></div>
+  </div>
+
+  <input type="file" id="nvCam" accept="image/*" capture="environment" style="display:none" />
+  <input type="file" id="nvArch" accept="image/*" style="display:none" />
+  <input type="file" id="nvFotoInc" accept="image/*" capture="environment" style="display:none" />
+</div></div>
+<div id="spin">Procesando…</div>
+
 <script>
 /* URL /exec del NUEVO Apps Script del módulo Embolsado (la misma que en asignar.html) */
 var EMBOLSADO_URL = 'https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoDisEn4qrGWh0tEGfGHn4NXoEqP1ShODyIWQ1bzYyWfcuz_Pqh/exec';
@@ -93,7 +212,12 @@ function pintar() {
     if (i['URL CARPETA FOTOS']) links.push('<a target="_blank" rel="noopener" href="' + esc(i['URL CARPETA FOTOS']) + '">Fotos incidencia</a>');
     if (links.length) h += '<div class="l">' + links.join(' · ') + '</div>';
     if (i['RESUELTO POR']) h += '<div class="l"><b>Resuelto por:</b> ' + esc(i['RESUELTO POR']) + ' · ' + esc(i['RESUELTO HORA']) + '</div>';
-    if (esAdmin && i['ESTADO'] === 'ABIERTA') {
+    // 2026-10-02: incidencias informadas desde esta página (con foto del ticket).
+    if (i['ORIGEN'] === 'DIRECTA') h += '<span class="tag">Informada con foto del ticket' + (i['ID RESERVA'] ? '' : ' · sin pedido vinculado') + '</span>';
+    if (esAdmin && i['ESTADO'] === 'ABIERTA' && !i['ID RESERVA']) {
+      // Sin pedido vinculado no hay nada que restaurar ni eliminar: ADM solo la cierra.
+      h += '<div class="acc"><button class="c" onclick="accion(\'cerrarIncidencia\',\'' + esc(i['ID INCIDENCIA']) + '\',\'¿Cerrar esta incidencia? No está vinculada a ningún pedido.\')">CERRAR</button></div>';
+    } else if (esAdmin && i['ESTADO'] === 'ABIERTA') {
       var id = esc(i['ID INCIDENCIA']);
       h += '<div class="acc"><button class="r" onclick="accion(\'restaurarPedido\',\'' + id + '\',\'¿Restaurar el pedido? Volverá a estar disponible para reparto.\')">RESTAURAR</button><button class="e" onclick="accion(\'eliminarPedido\',\'' + id + '\',\'¿ELIMINAR el pedido? Quedará excluido.\')">ELIMINAR</button></div>';
     }
@@ -132,6 +256,189 @@ async function cargar() {
   abiertasPrev = ab;
   document.title = (ab ? '(' + ab + ') ' : '') + 'Nexo · Incidencias';
   pintar();
+}
+
+/* =====================================================================
+   INFORMAR INCIDENCIA (2026-10-02)
+   Paso 1: foto del ticket (cámara o archivo) -> leerTicketIncidencia (OCR)
+   Paso 2: el usuario confirma/corrige -> buscarPedidoIncidencia
+   Paso 3: tipo + tentativas + observaciones + fotos -> registrarIncidenciaDirecta
+   Mismas reglas que la incidencia desde la tarjeta del pedido (asignar.html).
+   ===================================================================== */
+var TIPOS = {
+  CLIENTE_AUSENTE:      { etiqueta: 'Cliente ausente',            fotosMax: 2, obs: false },
+  DIRECCION_INCORRECTA: { etiqueta: 'Dirección incorrecta',       fotosMax: 0, obs: true },
+  PRODUCTO_FALTANTE:    { etiqueta: 'Producto faltante o dañado', fotosMax: 3, obs: true },
+  COMPRA_RECHAZADA:     { etiqueta: 'Compra rechazada',           fotosMax: 0, obs: true },
+  FRIO_OLVIDADO:        { etiqueta: 'Frío olvidado',              fotosMax: 0, obs: true }
+};
+var nv = null, nvTimer = null, nvOcupado = false;
+
+function spin(on, texto) { var s = document.getElementById('spin'); s.textContent = texto || 'Procesando…'; s.classList.toggle('on', !!on); }
+function el(id) { return document.getElementById(id); }
+
+function abrirNueva() {
+  clearInterval(nvTimer);
+  nv = { paso: 1, foto: '', fileId: '', datos: null, pedido: null, tipo: null, fotos: [], intentos: [] };
+  ['nvCaja', 'nvTicket', 'nvNombre', 'nvTel', 'nvDir', 'nvObs'].forEach(function (x) { el(x).value = ''; });
+  el('nvAvisos').innerHTML = ''; el('nvFoto').removeAttribute('src'); el('nvFoto').classList.remove('grande');
+  pasoNueva(1);
+  el('mNueva').classList.add('on');
+}
+function cerrarNueva(sinPreguntar) {
+  if (!nv) return;
+  if (!sinPreguntar && nv.paso > 1 && !confirm('¿Cancelar? Se perderá lo que has rellenado.')) return;
+  clearInterval(nvTimer); nv = null;
+  el('mNueva').classList.remove('on');
+}
+function pasoNueva(n) {
+  if (!nv) return;
+  nv.paso = n;
+  [1, 2, 3].forEach(function (k) {
+    el('nvP' + k).style.display = k === n ? 'block' : 'none';
+    el('ps' + k).className = k === n ? 'on' : (k < n ? 'ok' : '');
+  });
+  el('mNueva').scrollTop = 0;
+}
+function repetirFoto() { if (nv) { nv.foto = ''; nv.fileId = ''; pasoNueva(1); } }
+
+/** Reduce la foto antes de subirla (lado mayor = max px) y la devuelve como dataURL JPEG. */
+function reducir(file, max, calidad) {
+  return new Promise(function (res, rej) {
+    var img = new Image(), url = URL.createObjectURL(file);
+    img.onload = function () {
+      var s = Math.min(1, max / Math.max(img.width, img.height));
+      var c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', calidad || 0.75));
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('No se pudo leer la foto')); };
+    img.src = url;
+  });
+}
+
+/* ---- Paso 1: foto del ticket ---- */
+async function fotoTicketElegida(ev) {
+  var f = ev.target.files[0]; ev.target.value = '';
+  if (!f || !nv || nvOcupado) return;
+  nvOcupado = true;
+  try {
+    spin(true, 'Leyendo el ticket…');
+    nv.foto = await reducir(f, 1800, 0.85);
+    var r = await api('leerTicketIncidencia', { imagenBase64: nv.foto });
+    if (!nv) return;
+    if (!r.ok) { alert(r.error || 'No se pudo leer la foto.'); return; }
+    nv.fileId = r.fileId;
+    var d = r.datos || {};
+    el('nvFoto').src = nv.foto;
+    el('nvCaja').value = d.caja || ''; el('nvTicket').value = d.ticket || '';
+    el('nvNombre').value = d.nombre || ''; el('nvTel').value = d.telefono || ''; el('nvDir').value = d.direccion || '';
+    var av = (r.avisos || []).slice();
+    if (!d.caja || !d.ticket) av.push('No se ha podido leer ' + (!d.caja && !d.ticket ? 'la caja ni el nº de ticket' : (!d.caja ? 'la caja' : 'el nº de ticket')) + '. Escríbelo a mano mirando el ticket.');
+    el('nvAvisos').innerHTML = av.map(function (a) { return '<div class="aviso w">⚠️ ' + esc(a) + '</div>'; }).join('');
+    pasoNueva(2);
+  } catch (e) {
+    alert('No se pudo usar esa foto. Prueba otra vez.');
+  } finally { nvOcupado = false; spin(false); }
+}
+el('nvCam').addEventListener('change', fotoTicketElegida);
+el('nvArch').addEventListener('change', fotoTicketElegida);
+
+/* ---- Paso 2: confirmar datos ---- */
+function fechaCorta(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '')); return m ? m[3] + '/' + m[2] : String(iso || ''); }
+async function confirmarDatos() {
+  if (!nv || nvOcupado) return;
+  var caja = el('nvCaja').value.replace(/\D/g, ''), ticket = el('nvTicket').value.trim();
+  if (!caja || caja.length > 3) { alert('Escribe la caja (3 dígitos). Está arriba en el ticket, tras «Caja:».'); el('nvCaja').focus(); return; }
+  if (!ticket.replace(/\D/g, '')) { alert('Escribe el nº de ticket.'); el('nvTicket').focus(); return; }
+  nvOcupado = true; spin(true, 'Comprobando el pedido…');
+  var r = await api('buscarPedidoIncidencia', { caja: caja, ticket: ticket });
+  nvOcupado = false; spin(false);
+  if (!nv) return;
+  if (!r.ok) { alert(r.error); return; }
+  nv.datos = { caja: r.caja, ticket: r.ticket, nombre: el('nvNombre').value.trim(), telefono: el('nvTel').value.trim(), direccion: el('nvDir').value.trim() };
+  nv.pedido = r.pedido || { encontrado: false };
+  el('nvCaja').value = r.caja;
+  el('nvResumen').textContent = 'Caja ' + r.caja + ' · Ticket ' + r.ticket + (nv.datos.nombre ? ' · ' + nv.datos.nombre.toUpperCase() : '');
+  var p = nv.pedido, h = '';
+  if (r.duplicada) h += '<div class="aviso w">⚠️ Ya hay una incidencia abierta de este ticket (' + esc(r.duplicada.tipo) + ', ' + esc(r.duplicada.usuario) + ', ' + esc(r.duplicada.fecha) + ' ' + esc(r.duplicada.hora) + ').</div>';
+  if (p.encontrado && p.abierto) {
+    h += '<div class="aviso g">📦 Pedido encontrado: entrega ' + esc(fechaCorta(p.fecha)) + ' · ' + esc(p.franja) + (p.asignado ? ' · asignado a ' + esc(p.asignado) : ' · sin asignar') +
+         '. Al registrar quedará en <b>INCIDENCIA</b>.</div>';
+  } else if (p.encontrado) {
+    h += '<div class="aviso i">ℹ️ Este pedido ya figura como <b>' + esc(p.entregaEstado) + '</b>. La incidencia se registrará sin modificar el pedido.</div>';
+  } else {
+    h += '<div class="aviso i">ℹ️ No hay ningún pedido en Reservas con esa caja y ticket. La incidencia se registrará igualmente con los datos del ticket.</div>';
+  }
+  el('nvPedido').innerHTML = h;
+  // tipos (se conserva lo elegido si se vuelve atrás y se confirma de nuevo)
+  el('nvTipos').innerHTML = Object.keys(TIPOS).map(function (k) {
+    return '<button class="tipo' + (nv.tipo === k ? ' on' : '') + '" id="nt_' + k + '" onclick="elegirTipoNv(\'' + k + '\')">' + TIPOS[k].etiqueta + '</button>';
+  }).join('');
+  if (!nv.tipo) ['nvAusente', 'nvObsWrap', 'nvFotoWrap'].forEach(function (x) { el(x).style.display = 'none'; });
+  pasoNueva(3);
+}
+
+/* ---- Paso 3: tipo, tentativas, observaciones, fotos ---- */
+function elegirTipoNv(k) {
+  if (!nv) return;
+  if (nv.tipo === 'CLIENTE_AUSENTE' && k !== 'CLIENTE_AUSENTE' && nv.intentos.length && !confirm('Se perderán las tentativas registradas. ¿Cambiar de tipo?')) return;
+  if (nv.tipo !== k) { nv.fotos = []; nv.intentos = []; }
+  nv.tipo = k; clearInterval(nvTimer);
+  Object.keys(TIPOS).forEach(function (x) { el('nt_' + x).classList.toggle('on', x === k); });
+  var d = TIPOS[k];
+  el('nvObsWrap').style.display = 'block';
+  el('nvObs').placeholder = d.obs ? 'Observaciones (obligatorio)' + (k === 'COMPRA_RECHAZADA' ? ' — motivo del rechazo' : '') : 'Observaciones (opcional)';
+  el('nvFotoWrap').style.display = d.fotosMax ? 'block' : 'none';
+  el('btnNvFoto').textContent = k === 'CLIENTE_AUSENTE' ? '📷 Foto del portal (opcional)' : '📷 Añadir foto (máx. ' + d.fotosMax + ')';
+  pintarMiniNv();
+  var a = el('nvAusente');
+  if (k === 'CLIENTE_AUSENTE') { a.style.display = 'block'; pintarAusenteNv(); } else a.style.display = 'none';
+}
+function pintarMiniNv() { el('nvMini').innerHTML = nv.fotos.map(function (x) { return '<img src="' + x + '" alt="">'; }).join(''); }
+function pintarAusenteNv() {
+  var n = nv.intentos.length;
+  var h = '<button class="intento" onclick="nuevoIntentoNv()" ' + (n >= 3 ? 'disabled' : '') + '>📞 Registrar tentativa (' + n + '/3)</button>';
+  if (n) h += '<div class="cuenta" id="nvCuenta"></div>';
+  el('nvAusente').innerHTML = h;
+  tickNv();
+  clearInterval(nvTimer); if (n) nvTimer = setInterval(tickNv, 1000);
+}
+function nuevoIntentoNv() { if (nv && nv.intentos.length < 3) { nv.intentos.push(Date.now()); pintarAusenteNv(); } }
+function faltaEsperaNv() { return nv && nv.intentos.length ? Math.max(0, nv.intentos[0] + 10 * 60 * 1000 - Date.now()) : 1; }
+function tickNv() {
+  var c = el('nvCuenta'); if (!c || !nv) return;
+  var f = faltaEsperaNv(), n = nv.intentos.length;
+  var t = nv.intentos.map(function (x) { return new Date(x).toLocaleTimeString('es-ES'); }).join(' · ');
+  if (n < 3) c.textContent = 'Tentativas: ' + t;
+  else if (f > 0) c.textContent = 'Tentativas: ' + t + ' — espera ' + Math.floor(f / 60000) + ':' + String(Math.floor(f % 60000 / 1000)).padStart(2, '0') + ' para poder registrar.';
+  else c.textContent = 'Tentativas: ' + t + ' — ✅ espera de 10 min cumplida.';
+}
+el('nvFotoInc').addEventListener('change', async function (ev) {
+  var f = ev.target.files[0]; ev.target.value = '';
+  if (!f || !nv || !nv.tipo) return;
+  if (nv.fotos.length >= TIPOS[nv.tipo].fotosMax) { alert('Máximo de fotos alcanzado.'); return; }
+  try { nv.fotos.push(await reducir(f, 1400, 0.75)); pintarMiniNv(); } catch (e) { alert('No se pudo usar esa foto.'); }
+});
+
+async function registrarNueva(forzar) {
+  if (!nv || nvOcupado) return;
+  if (!nv.tipo) { alert('Elige el tipo de incidencia.'); return; }
+  var d = TIPOS[nv.tipo], obs = el('nvObs').value.trim();
+  if (d.obs && !obs) { alert('Escribe las observaciones.'); el('nvObs').focus(); return; }
+  if (nv.tipo === 'CLIENTE_AUSENTE') {
+    if (nv.intentos.length < 3) { alert('Hacen falta 3 tentativas de contacto.'); return; }
+    if (faltaEsperaNv() > 0) { alert('Aún no han pasado 10 minutos desde la primera tentativa.'); return; }
+  }
+  nvOcupado = true; spin(true, 'Registrando la incidencia…');
+  var r = await api('registrarIncidenciaDirecta', { fileId: nv.fileId, datos: nv.datos, tipo: nv.tipo, observaciones: obs, intentos: nv.intentos, fotos: nv.fotos, forzar: !!forzar });
+  nvOcupado = false; spin(false);
+  if (!nv) return;
+  if (!r.ok && r.requiereConfirmacion) { if (confirm(r.error)) return registrarNueva(true); return; }
+  if (!r.ok) { alert(r.error); return; }
+  cerrarNueva(true);
+  msg('Incidencia registrada. Se ha avisado a Embolsado y ADM.' + (r.vinculada ? ' El pedido queda en INCIDENCIA.' : ''), 'ok');
+  filtro('ABIERTA'); cargar();
 }
 
 if (EMBOLSADO_URL.indexOf('PEGAR_AQUI') === 0) msg('Falta configurar EMBOLSADO_URL en incidencias.html', 'err');
