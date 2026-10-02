@@ -17,7 +17,16 @@
      2) Fecha y Franja horaria ocupan la misma línea, para todos.
      3) Botones laterales apilados en una sola columna (para ADM se suman
         Embolsado, Actualizar pedidos y Configuración). Incidencias y Pedidos
-        asignados siguen donde estaban. -->
+        asignados siguen donde estaban.
+
+     Cambios 2026-10-02 (v2.12.0):
+     1) Los usuarios del departamento EMBOLSADO (columna DEPARTAMENTO de la
+        hoja USUARIOS) no ven este index: se les envía a su página de inicio
+        propia, inicio-embolsado.html (logo + Reservas / Incidencias /
+        Embolsado / Informe). Los ADM siguen viendo este index aunque su
+        departamento sea EMBOLSADO. El departamento llega en la sesión
+        (login.html + main.gs de NEXO SCRIPT del 2026-10-02); si la sesión
+        es anterior y no lo trae, se consulta una vez al backend. -->
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
@@ -243,6 +252,13 @@ button:active { transform:scale(.97); }
     if (typeof u.tiendaPre === 'undefined') {
       sessionStorage.removeItem('sad_user');
       window.location.replace('login.html');
+      return;
+    }
+    // Departamento EMBOLSADO (2026-10-02): tiene su propia página de inicio.
+    // Los ADM se quedan en este index.
+    if (String(u.departamento || '').toUpperCase().trim() === 'EMBOLSADO' &&
+        String(u.nivel || '').toLowerCase().trim() !== 'admin') {
+      window.location.replace('inicio-embolsado.html');
     }
   } catch(e) {
     sessionStorage.removeItem('sad_user');
@@ -303,7 +319,7 @@ button:active { transform:scale(.97); }
       <span class="nivel-tag" id="nivelTag">—</span>
       &nbsp;·&nbsp;Salir
     </div>
-    <div class="app-version">SAD Ticket Upload v2.11.0</div>
+    <div class="app-version">SAD Ticket Upload v2.12.0</div>
   </div>
 
   <form id="ticketForm" novalidate>
@@ -465,6 +481,29 @@ if (ES_ADMIN) {
     setTimeout(clearMsg, 6000);
   });
 }
+/* Departamento EMBOLSADO (2026-10-02): si la sesión es anterior a este cambio
+   (o se entró con un login.html viejo en caché) no trae el departamento. Se
+   consulta UNA vez al backend, se guarda en la sesión y, si el usuario es de
+   EMBOLSADO y no es ADM, se le envía a su página de inicio. Si el backend
+   todavía no devuelve el departamento (main.gs sin actualizar), no pasa nada:
+   se queda en este index como hasta ahora. */
+(function () {
+  if (!sesion || !sesion.usuario || typeof sesion.departamento !== 'undefined') return;
+  postProxy(window.BACKEND_URL, { accion: 'verificarUsuario', usuario: sesion.usuario }).then(function (d) {
+    if (!d || !d.encontrado || typeof d.departamento === 'undefined') return;
+    sesion.departamento = String(d.departamento || '').toUpperCase().trim();
+    try {
+      sessionStorage.setItem('sad_user', JSON.stringify(sesion));
+      var ls = JSON.parse(localStorage.getItem('sad_user') || 'null');
+      if (ls && ls.usuario === sesion.usuario) {
+        ls.departamento = sesion.departamento;
+        localStorage.setItem('sad_user', JSON.stringify(ls));
+      }
+    } catch (e) {}
+    if (sesion.departamento === 'EMBOLSADO' && !ES_ADMIN) window.location.replace('inicio-embolsado.html');
+  }).catch(function () {});
+})();
+
 /* Incidencias (2026-10-02): el botón aparece para TODOS los usuarios.
    Embolsado y ADM ven todas; cada repartidor ve solo las suyas (el filtro
    lo aplica el backend del Módulo Embolsado: listarIncidencias /

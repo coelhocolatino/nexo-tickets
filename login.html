@@ -431,6 +431,12 @@ function guardarSesion(data) {
     timestamp: Date.now(),
     expiry   : Date.now() + SESSION_TTL   // ← expiración 6 h
   };
+  // DEPARTAMENTO (2026-10-02): index.html lo usa para enviar a los usuarios de
+  // EMBOLSADO a su página de inicio (inicio-embolsado.html). Solo se guarda si
+  // el backend lo devolvió; si no (main.gs sin actualizar), index.html lo
+  // consulta por su cuenta.
+  const depto = (usuarioActual.departamento != null) ? usuarioActual.departamento : data.departamento;
+  if (depto != null) sesion.departamento = String(depto).toUpperCase().trim();
   // Guardar en localStorage (persistente 6h) y sessionStorage (compatibilidad con index.html)
   localStorage.setItem(SESSION_KEY, JSON.stringify(sesion));
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(sesion));
@@ -592,6 +598,7 @@ async function verificarUsuario() {
       nivel    : data.nivel    || 'usuario 1',
       tiendaPre: data.tiendaPre || '',
       informe  : data.informe   || '',
+      departamento: data.departamento,   // 2026-10-02 (undefined si el backend aún no lo envía)
       tienePwd : data.tienePwd
     };
     setLoading(btn, false);
@@ -627,6 +634,7 @@ async function hacerLogin() {
       usuarioActual.nombre   = data.nombre   || usuarioActual.nombre;
       usuarioActual.tiendaPre = data.tiendaPre || usuarioActual.tiendaPre || '';
       usuarioActual.informe   = data.informe   || usuarioActual.informe   || '';
+      if (data.departamento != null) usuarioActual.departamento = data.departamento; // 2026-10-02
       guardarSesion(data);
       showMsg('msg2', '✅ Acceso concedido.', 'success');
       setLoading(btn, false);
@@ -662,6 +670,7 @@ async function registrarPassword() {
       usuarioActual.nombre   = data.nombre   || usuarioActual.nombre;
       usuarioActual.tiendaPre = data.tiendaPre || usuarioActual.tiendaPre || '';
       usuarioActual.informe   = data.informe   || usuarioActual.informe   || '';
+      if (data.departamento != null) usuarioActual.departamento = data.departamento; // 2026-10-02
       guardarSesion(data);
       showMsg('msg3', '✅ Contraseña creada.', 'success');
       setLoading(btn, false);
@@ -802,7 +811,8 @@ usuarioActual = {
   nombre   : data.nombre    || bio.nombre,
   nivel    : data.nivel     || bio.nivel,
   tiendaPre: data.tiendaPre || bio.tiendaPre || '',
-  informe  : data.informe   || bio.informe   || ''
+  informe  : data.informe   || bio.informe   || '',
+  departamento: data.departamento   // 2026-10-02
 };
 
 // Refrescar también la foto guardada en el teléfono, para no repetir
