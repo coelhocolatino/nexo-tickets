@@ -26,7 +26,19 @@
         Embolsado / Informe). Los ADM siguen viendo este index aunque su
         departamento sea EMBOLSADO. El departamento llega en la sesión
         (login.html + main.gs de NEXO SCRIPT del 2026-10-02); si la sesión
-        es anterior y no lo trae, se consulta una vez al backend. -->
+        es anterior y no lo trae, se consulta una vez al backend.
+
+     Cambios 2026-10-02 (v2.13.0):
+     1) El botón %DIA está SIEMPRE visible (antes nacía oculto en cada carga
+        y solo aparecía cuando respondía el servidor, así que al volver de
+        dia.html desaparecía unos segundos — o un minuto entero si esa
+        consulta fallaba).
+     2) El contador amarillo se pinta al instante con el último número
+        guardado (dia.html lo mantiene al día) y luego se confirma con el
+        servidor. Repartidor: pedidos %DIA asignados a él y aún sin entregar.
+        Gestores: pedidos %DIA sin asignar (como antes).
+     3) Si la consulta falla, reintenta a los 4, 8 y 12 s en vez de esperar
+        al minuto siguiente. -->
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
@@ -81,8 +93,8 @@ body {
 .side-stack a.redondo { border-radius:50%; }
 .side-stack .solo-adm { display:none; }
 .side-stack.adm .solo-adm { display:block; }
-/* Botón %DIA (pedidos tienda online DIA) + contador amarillo */
-.side-stack a.btn-dia { display:none; }
+/* Botón %DIA (pedidos tienda online DIA) + contador amarillo.
+   Siempre visible (v2.13.0): ya no depende de la respuesta del servidor. */
 .btn-dia .num { position:absolute; top:-7px; right:-7px; min-width:20px; height:20px; padding:0 5px; border-radius:999px;
   background:#facc15; color:#1f2937; font-size:11px; font-weight:900; display:none; align-items:center; justify-content:center;
   border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.35); }
@@ -319,7 +331,7 @@ button:active { transform:scale(.97); }
       <span class="nivel-tag" id="nivelTag">—</span>
       &nbsp;·&nbsp;Salir
     </div>
-    <div class="app-version">SAD Ticket Upload v2.12.0</div>
+    <div class="app-version">SAD Ticket Upload v2.13.0</div>
   </div>
 
   <form id="ticketForm" novalidate>
@@ -553,43 +565,71 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 /* ===== Pedidos %DIA: botón + contador (amarillo) + vibración =====
-   Gestores (asignar_DIA / ADM / Embolsado / Reservas): nº de pedidos %DIA sin asignar.
-   Repartidores: el botón aparece solo si tienen pedidos %DIA asignados (nº pendientes). */
+   El botón está SIEMPRE visible (v2.13.0). El contador amarillo muestra:
+   · Repartidores: sus pedidos %DIA asignados y todavía sin entregar.
+   · Gestores (asignar_DIA / ADM / Embolsado / Reservas): pedidos %DIA sin asignar.
+   Se pinta al instante con el último número guardado en este móvil (dia.html
+   lo actualiza cada vez que carga la lista, entrega o registra incidencia) y
+   después se confirma con el servidor. */
 var DIA_URL = 'https://script.google.com/macros/s/AKfycbwrX90CKa7GQki-DUDZFpdGVlGIXZvmiHsRKCEW7ZwBbYkKfYPr3R1kx96Uz9GKL_0m/exec';
 (function () {
   if (!sesion || !sesion.usuario || /^PEGAR_AQUI/.test(DIA_URL)) return;
   var btn = document.getElementById('btnDia'), num = document.getElementById('numDia');
   var clave = 'nexo_dia_cnt_' + String(sesion.usuario).toLowerCase();
+  function leerGuardado() {
+    try { var v = parseInt(localStorage.getItem(clave) || '-1', 10); return isNaN(v) ? -1 : v; } catch (e) { return -1; }
+  }
+  function pintarNum(n) {
+    num.textContent = n > 99 ? '99+' : String(n);
+    num.style.display = n > 0 ? 'flex' : 'none';
+  }
+  // 1) Al instante, sin esperar red: el último número conocido.
+  pintarNum(Math.max(0, leerGuardado()));
+
+  // 2) Confirmar con el servidor. Si falla, reintentos rápidos (4, 8 y 12 s).
+  var enCurso = false, fallos = 0, reintento = null;
   async function refrescarDia() {
+    if (enCurso) return;
+    enCurso = true;
+    var bien = false;
     try {
       var r = await postProxy(DIA_URL, { accion: 'diaResumen', usuario: sesion.usuario });
-      if (!r || !r.ok) return;
-      var gestor = r.rol && r.rol.ver;
-      var n = gestor ? (r.nuevos || 0) : (r.misPendientes || 0);
-      btn.style.display = (gestor || n > 0) ? 'block' : 'none';
-      ajustarCamposAlStack();
-      num.textContent = n > 99 ? '99+' : String(n);
-      num.style.display = n > 0 ? 'flex' : 'none';
-      var antes = parseInt(localStorage.getItem(clave) || '-1', 10);
-      if (antes >= 0 && n > antes) {
-        btn.classList.remove('nuevo'); void btn.offsetWidth; btn.classList.add('nuevo');
-        try { if (navigator.vibrate) navigator.vibrate([300, 120, 300, 120, 300]); } catch (e) {}
-        var t = gestor ? (n - antes) + ' pedido(s) %DIA nuevo(s)' : 'Tienes ' + (n - antes) + ' pedido(s) %DIA asignado(s)';
-        setMsg('🔔 ' + t, '#facc15'); setTimeout(clearMsg, 8000);
-        try {
-          if ('Notification' in window && Notification.permission === 'granted' && navigator.serviceWorker) {
-            navigator.serviceWorker.getRegistration().then(function (reg) {
-              if (reg) reg.showNotification('Nexo · %DIA', { body: t, icon: 'boton_dia.png', vibrate: [300, 120, 300], tag: 'nexo-dia' });
-            });
-          }
-        } catch (e) {}
+      if (r && r.ok) {
+        bien = true;
+        var gestor = r.rol && r.rol.ver;
+        var n = gestor ? (r.nuevos || 0) : (r.misPendientes || 0);
+        pintarNum(n);
+        var antes = leerGuardado();
+        if (antes >= 0 && n > antes) {
+          btn.classList.remove('nuevo'); void btn.offsetWidth; btn.classList.add('nuevo');
+          try { if (navigator.vibrate) navigator.vibrate([300, 120, 300, 120, 300]); } catch (e) {}
+          var t = gestor ? (n - antes) + ' pedido(s) %DIA nuevo(s)' : 'Tienes ' + (n - antes) + ' pedido(s) %DIA asignado(s)';
+          setMsg('🔔 ' + t, '#facc15'); setTimeout(clearMsg, 8000);
+          try {
+            if ('Notification' in window && Notification.permission === 'granted' && navigator.serviceWorker) {
+              navigator.serviceWorker.getRegistration().then(function (reg) {
+                if (reg) reg.showNotification('Nexo · %DIA', { body: t, icon: 'boton_dia.png', vibrate: [300, 120, 300], tag: 'nexo-dia' });
+              });
+            }
+          } catch (e) {}
+        }
+        try { localStorage.setItem(clave, String(n)); } catch (e) {}
       }
-      localStorage.setItem(clave, String(n));
     } catch (e) { /* sin conexión: se deja el último valor */ }
+    enCurso = false;
+    clearTimeout(reintento);
+    if (bien) fallos = 0;
+    else if (fallos < 3) { fallos++; reintento = setTimeout(refrescarDia, 4000 * fallos); }
   }
   refrescarDia();
   setInterval(refrescarDia, 60000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) refrescarDia(); });
+  window.addEventListener('online', function () { fallos = 0; refrescarDia(); });
+  // Volver con el botón "atrás" del móvil (página restaurada de memoria):
+  // repinta con lo que haya dejado dia.html y vuelve a consultar.
+  window.addEventListener('pageshow', function (ev) {
+    if (ev.persisted) { pintarNum(Math.max(0, leerGuardado())); fallos = 0; refrescarDia(); }
+  });
 })();
 
 function cerrarSesion() {

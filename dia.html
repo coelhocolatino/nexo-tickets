@@ -272,6 +272,7 @@ async function cargar(silencioso) {
   var r = await api('diaListar', VISTA ? { vista: VISTA } : {}, 2);
   if (!r.ok) { if (!silencioso) msg(r.error, 'err'); programar(60000); return; }
   avisarNovedades(r);
+  guardarContador(r);
   var firma = JSON.stringify([r.pedidos, r.vista, r.rol]);
   var cambio = firma !== _firma; _firma = firma;
   DATOS = r;
@@ -293,6 +294,18 @@ async function cargar(silencioso) {
   if (cambio || FOCO) pintar();
   if (ABRIR_INC && FOCO) { var fi = FOCO; ABRIR_INC = false; setTimeout(function () { abrirIncidencia(fi); }, 300); }
   programar(r.buscando ? 15000 : 60000);
+}
+/* Contador del botón %DIA de index.html: se deja guardado aquí el número
+   real (repartidor: sus pedidos asignados sin entregar; gestor: los que
+   están sin asignar) para que index lo pinte al instante al volver, sin
+   esperar al servidor. Misma clave que usa index.html. */
+function guardarContador(r) {
+  if (!USUARIO || !r || !Array.isArray(r.pedidos)) return;
+  var gestor = r.rol && r.rol.ver;
+  if (gestor && r.vista !== 'activos') return;   // "todos" (45 días) no sirve para contar
+  var busca = gestor ? 'PENDIENTE' : 'ASIGNADO';
+  var n = r.pedidos.filter(function (o) { return o.estadoNexo === busca; }).length;
+  try { localStorage.setItem('nexo_dia_cnt_' + USUARIO, String(n)); } catch (e) {}
 }
 function contar() {
   var c = { pend: 0, asig: 0, ent: 0 };
