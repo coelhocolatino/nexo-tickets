@@ -1,0 +1,2527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<base target="_top">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<script>
+/* Defensiva (2026-09-22): si el wrapper de Apps Script llega a inyectar o
+   duplicar otra etiqueta viewport, nos quedamos solo con la primera y
+   forzamos el contenido correcto, para que el navegador nunca vea dos
+   declaraciones en conflicto. */
+(function () {
+  var VP_CONTENT = 'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+  var tags = document.querySelectorAll('meta[name="viewport"]');
+  for (var i = 1; i < tags.length; i++) { tags[i].parentNode.removeChild(tags[i]); }
+  if (tags.length > 0) { tags[0].setAttribute('content', VP_CONTENT); }
+})();
+</script>
+<title>Nexo · Embolsado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Big+Shoulders+Display:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+html, body { margin:0; padding:0; overflow-x:clip; width:100%; max-width:100vw; }
+.screen { display:none; }
+#spinnerOverlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.5); z-index:9999; }
+#spinnerOverlay.show { display:flex; }
+#spinnerOverlay .ring { width:48px; height:48px; border:5px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin_shared 1s linear infinite; }
+@keyframes spin_shared { to { transform:rotate(360deg); } }
+
+/* ══════════ PANTALLA: LOGIN ══════════ */
+#screenLogin {
+--blue:#2563eb; --blue-light:#3b82f6;
+--orange:#f97316; --orange-light:#fb923c;
+--bg:#07080f;
+--surface:rgba(255,255,255,.06);
+--border:rgba(255,255,255,.10);
+--text:#f1f5f9; --muted:#94a3b8;
+--radius:16px;
+--font:'Nunito', system-ui, sans-serif;
+}
+
+#screenLogin *, #screenLogin *::before, #screenLogin *::after { box-sizing:border-box; margin:0; padding:0; }
+#screenLogin.active {
+font-family:var(--font);
+background:var(--bg);
+color:var(--text);
+min-height:100vh; min-height:100dvh;
+display:flex; flex-direction:column; align-items:center; justify-content:center;
+padding:24px 16px 48px;
+position:relative; overflow-x:hidden; max-width:100vw;
+}
+#screenLogin .blob { position:fixed; border-radius:50%; pointer-events:none; z-index:0; }
+#screenLogin .blob-blue { top:-140px; left:-80px; width:420px; height:420px;
+background:radial-gradient(circle, rgba(37,99,235,.22) 0%, transparent 70%); }
+#screenLogin .blob-orange { bottom:-120px; right:-60px; width:360px; height:360px;
+background:radial-gradient(circle, rgba(249,115,22,.18) 0%, transparent 70%); }
+#screenLogin .logo-wrap { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; margin-bottom:22px; }
+#screenLogin .logo-img { width:220px; max-width:65vw; height:auto; background:#fff; border-radius:24px; padding:14px 22px;
+filter: drop-shadow(0 0 24px rgba(249,115,22,.35)) drop-shadow(0 0 12px rgba(37,99,235,.25)); }
+#screenLogin .module-tag { margin-top:12px; font-size:.78rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+color:var(--blue-light); background:rgba(37,99,235,.14); border:1px solid rgba(37,99,235,.3);
+padding:5px 14px; border-radius:99px; }
+#screenLogin .card { position:relative; z-index:1; width:100%; max-width:380px; background:var(--surface); border:1px solid var(--border);
+border-radius:24px; padding:28px 24px 32px; backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+box-shadow:0 24px 64px rgba(0,0,0,.55); }
+#screenLogin .card-title { font-size:1.1rem; font-weight:800; margin-bottom:22px; }
+#screenLogin .card-title em { font-style:normal; color:var(--blue-light); }
+#screenLogin .step { display:none; flex-direction:column; gap:14px; }
+#screenLogin .step.active { display:flex; }
+#screenLogin .field { display:flex; flex-direction:column; gap:5px; }
+#screenLogin label { font-size:.78rem; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+#screenLogin input[type="text"], #screenLogin input[type="password"] {
+width:100%; background:rgba(255,255,255,.08); border:1.5px solid var(--border); border-radius:var(--radius);
+color:var(--text); font-family:var(--font); font-size:1rem; font-weight:600; padding:13px 16px; outline:none;
+transition: border-color .18s, box-shadow .18s, background .18s; -webkit-appearance:none; appearance:none; }
+#screenLogin input:focus { border-color:var(--blue-light); background:rgba(255,255,255,.11); box-shadow:0 0 0 3px rgba(59,130,246,.22); }
+#screenLogin input::placeholder { color:#3d4e66; }
+#screenLogin .pwd-wrap { position:relative; }
+#screenLogin .pwd-wrap input { padding-right:48px; }
+#screenLogin .pwd-eye { position:absolute; right:13px; top:50%; transform:translateY(-50%); background:none; border:none;
+cursor:pointer; color:var(--muted); font-size:1rem; line-height:1; padding:5px; border-radius:6px; }
+#screenLogin .btn { width:100%; border:none; border-radius:var(--radius); font-family:var(--font); font-size:1rem; font-weight:800;
+padding:14px; cursor:pointer; letter-spacing:.02em; transition:transform .12s, box-shadow .18s, opacity .15s; }
+#screenLogin .btn:active { transform:scale(.97); }
+#screenLogin .btn:disabled { opacity:.65; cursor:not-allowed; transform:none; }
+#screenLogin .btn-primary { background:linear-gradient(135deg, var(--blue), var(--blue-light)); color:#fff; box-shadow:0 6px 20px rgba(37,99,235,.38); }
+#screenLogin .btn-orange { background:linear-gradient(135deg, var(--orange), var(--orange-light)); color:#fff; box-shadow:0 6px 20px rgba(249,115,22,.38); }
+#screenLogin .btn-ghost { background:transparent; color:var(--muted); font-size:.85rem; font-weight:600; box-shadow:none; padding:8px; margin-top:-6px; }
+#screenLogin .msg { display:none; font-size:.88rem; font-weight:700; border-radius:10px; padding:10px 14px; text-align:center; line-height:1.4; }
+#screenLogin .msg.show { display:block; }
+#screenLogin .msg.error { background:rgba(239,68,68,.12);  color:#fca5a5; border:1px solid rgba(239,68,68,.25); }
+#screenLogin .msg.success { background:rgba(34,197,94,.12);  color:#86efac; border:1px solid rgba(34,197,94,.25); }
+#screenLogin .msg.warn { background:rgba(251,191,36,.12); color:#fde68a; border:1px solid rgba(251,191,36,.25); }
+#screenLogin .strength-bar { height:4px; border-radius:99px; background:rgba(255,255,255,.08); overflow:hidden; margin-top:4px; }
+#screenLogin .strength-fill { height:100%; width:0%; border-radius:99px; transition: width .3s, background .3s; }
+#screenLogin .req-list { display:flex; flex-direction:column; gap:4px; margin-top:-4px; }
+#screenLogin .req-item { display:flex; align-items:center; gap:7px; font-size:.77rem; font-weight:600; color:var(--muted); }
+#screenLogin .req-item.ok { color:#86efac; }
+#screenLogin .req-icon { font-size:.65rem; width:12px; text-align:center; }
+#screenLogin .hint { font-size:.76rem; color:var(--muted); text-align:center; line-height:1.5; }
+@keyframes spin_lg { to { transform:rotate(360deg); } }
+#screenLogin .spinner { display:inline-block; width:15px; height:15px; border:2.5px solid rgba(255,255,255,.35);
+border-top-color:#fff; border-radius:50%; animation:spin_lg .65s linear infinite; vertical-align:middle; margin-right:7px; }
+@supports (-webkit-touch-callout: none) {
+#screenLogin input { font-size:16px !important; }
+#screenLogin .btn { font-size:16px !important; }
+}
+
+/* ══════════ PANTALLAS: LISTA DE RESERVAS, PENDIENTES E INFORME ══════════
+   Rediseño visual (2026-10-07), según el modelo "Nexo Embolsado — modelo de
+   rediseño": fondo claro, cabecera blanca, tipografía Big Shoulders Display
+   (títulos y números) + Hanken Grotesk (texto), tarjeta de reserva tipo
+   "ticket" con el nº de pedido en un panel oscuro con piloto de estado.
+   Móvil: una columna, fecha y franjas fijas arriba al bajar, botón
+   "Nueva reserva" fijo abajo. Tableta (≥700px): tarjetas en dos columnas.
+   Escritorio (≥1100px): panel lateral fijo + tarjetas en dos columnas. */
+.pantalla-lista, #modalExcluir {
+--ink:#0B2447; --muted:#4F6078; --bg:#E8EDF3; --surface:#FBFCFA; --bar:#FEFEFE;
+--line:#CBD5E2; --chip:#E1E7EF; --soft:#DCE7FB; --soft-ink:#17409E; --field:#EEF2F7;
+--on-ink:#F3F7FC; --cap:#B9C7DD; --off:#5B6B84;
+--green:#15803D; --green-soft:#D7F2E1; --amber:#B45309; --red:#B42318; --cobro:#FFF1A6;
+--font:'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+--display:'Big Shoulders Display', 'Arial Narrow', sans-serif;
+}
+.pantalla-lista *, .pantalla-lista *::before, .pantalla-lista *::after { box-sizing:border-box; -webkit-font-smoothing:antialiased; font-family:var(--font); }
+.pantalla-lista.active {
+display:block; margin:0; min-height:100vh; min-height:100dvh;
+background:var(--bg); color:var(--ink);
+overflow-x:clip; width:100%; max-width:100vw;
+}
+.pantalla-lista button { font-family:var(--font); }
+.pantalla-lista svg { flex-shrink:0; }
+
+/* Cabecera blanca: [logo · Embolsado] ........ [usuario  Salir] */
+.emb-bar { display:flex; align-items:center; gap:8px; height:60px; padding:0 12px; background:var(--bar); box-shadow:0 1px 0 var(--line); }
+.emb-bar .emb-home { display:flex; align-items:center; gap:10px; min-height:44px; text-decoration:none; }
+.emb-bar .emb-home img { display:block; height:40px; width:auto; }
+.emb-bar .emb-home span { font-size:13px; font-weight:700; color:var(--muted); }
+.emb-bar .emb-user { margin-left:auto; display:flex; align-items:center; gap:4px; font-size:13px; font-weight:700; min-width:0; }
+.emb-bar .emb-user #badgeNombre { max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.emb-bar .emb-salir { min-height:44px; padding:0 12px; border:0; background:transparent; color:var(--ink); font-weight:800; font-size:13px;
+text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+.emb-bar .emb-volver { width:44px; height:44px; border:0; border-radius:12px; background:var(--soft); color:var(--soft-ink); display:grid; place-items:center; cursor:pointer; flex-shrink:0; }
+.emb-bar h1 { margin:0; font-family:var(--display); font-weight:800; font-size:24px; line-height:1; }
+@media (min-width:700px) { .emb-bar h1 { font-size:30px; } }
+
+.emb-layout { padding:16px 16px 112px; }
+.emb-side { display:contents; } /* móvil/tableta: sus hijos van en la página, así la fecha y las franjas quedan fijas arriba hasta el final de la lista */
+.emb-side > * + * { margin-top:12px; }
+.emb-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.emb-head h1 { margin:0; font-family:var(--display); font-weight:800; font-size:36px; line-height:1; }
+.emb-resumen { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.pantalla-lista .total-reservas { font-size:15px; font-weight:700; color:var(--ink); }
+.btn-suave { min-height:44px; padding:0 12px; white-space:nowrap; flex-shrink:0; border:0; border-radius:12px; background:var(--soft); color:var(--soft-ink);
+font-weight:800; font-size:14px; display:inline-flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; }
+.btn-suave:active, .btn-tinta:active { transform:scale(.97); }
+.btn-tinta { min-height:56px; border:0; border-radius:16px; background:var(--ink); color:var(--on-ink); font-weight:800; font-size:17px;
+display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; }
+.pantalla-lista .btn-pendientes { min-height:36px; border:0; background:var(--chip); color:var(--ink); padding:6px 12px; border-radius:999px;
+font-size:13px; font-weight:800; cursor:pointer; }
+.pantalla-lista .btn-pendientes.alerta { background:#FBBF24; color:#3F2D00; }
+
+/* Fecha + día + actualizar, y las franjas: fijas arriba al bajar (móvil). */
+.emb-controles { position:sticky; top:0; z-index:20; display:flex; flex-direction:column; gap:10px;
+margin:0 -16px; padding:8px 16px 10px; background:var(--bg); }
+.emb-fecha { display:grid; grid-template-columns:minmax(0,1fr) auto 48px; gap:8px; }
+.emb-fecha input[type="date"] { min-width:0; width:100%; height:48px; border:1.5px solid var(--line); border-radius:12px; background:var(--surface);
+color:var(--ink); font:700 16px var(--font); padding:0 12px; outline:none; }
+.emb-fecha input[type="date"]:focus { border-color:var(--soft-ink); }
+.pantalla-lista .dia-semana-label { height:48px; padding:0 14px; border-radius:12px; background:var(--ink); color:var(--on-ink);
+font-weight:800; font-size:14px; display:grid; place-items:center; white-space:nowrap; }
+.pantalla-lista .dia-semana-label:empty { display:none; }
+.btn-icono { width:48px; height:48px; border:0; border-radius:12px; background:var(--soft); color:var(--soft-ink); display:grid; place-items:center; cursor:pointer; padding:0; }
+.btn-icono:active { transform:scale(.94); }
+
+/* Franjas horarias: ocupación en "pips", estado abierto/cerrado. Tocar filtra. */
+.emb-rail { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; }
+.pantalla-lista .chip { appearance:none; cursor:pointer; color:var(--ink); background:var(--surface); border:1.5px solid var(--line); border-radius:14px;
+padding:8px 6px; min-height:92px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; min-width:0; }
+.pantalla-lista .chip.activo { border:2px solid var(--ink); }
+.pantalla-lista .chip:active { transform:scale(.97); }
+.pantalla-lista .chip .franja-label { font-size:12px; font-weight:700; color:var(--muted); }
+.pantalla-lista .chip .franja-count { font-family:var(--display); font-weight:800; font-size:26px; line-height:1; }
+.pantalla-lista .chip .franja-count small { font-family:var(--display); font-size:16px; font-weight:600; color:var(--muted); }
+.pantalla-lista .chip .pips { display:grid; gap:2px; width:100%; }
+.pantalla-lista .chip .pips i { display:block; height:10px; border-radius:2px; background:var(--line); }
+.pantalla-lista .chip .pips i.on { background:var(--green); }
+.pantalla-lista .chip.lleno .pips i.on { background:var(--red); }
+.pantalla-lista .chip.cerrado .pips i.on { background:var(--ink); }
+.pantalla-lista .chip .franja-estado { display:flex; align-items:center; gap:3px; font-size:11px; font-weight:700; color:var(--muted); }
+.pantalla-lista .chip.lleno .franja-estado { color:var(--red); }
+
+.pantalla-lista .aviso-vuelta-hoy { display:none; align-items:center; justify-content:center; gap:6px;
+background:#FDE047; color:#78350F; border-radius:10px; padding:8px 10px; font-size:13px; font-weight:800; }
+.pantalla-lista .aviso-vuelta-hoy.show { display:flex; }
+.emb-side-acciones { display:none; flex-direction:column; gap:12px; }
+
+/* Mensajes (éxito / error / aviso) */
+.pantalla-lista #msgGlobal, .pantalla-lista #msgGlobalPendientes, .pantalla-lista #msgGlobalInforme {
+display:none; text-align:center; font-size:14px; font-weight:700; padding:10px 12px; border-radius:12px; margin:0; background:var(--green-soft); color:var(--green); }
+.pantalla-lista #msgGlobal.show, .pantalla-lista #msgGlobalPendientes.show, .pantalla-lista #msgGlobalInforme.show { display:block; }
+.pantalla-lista .show.error { background:#FDE4E1 !important; color:var(--red) !important; }
+.pantalla-lista .show.warn { background:#FEF3C7 !important; color:var(--amber) !important; }
+
+/* Rejilla de tarjetas */
+.emb-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; align-items:start; margin-top:12px; }
+.pantalla-lista .empty-state { grid-column:1 / -1; text-align:center; padding:36px 10px; color:var(--muted); font-weight:700; font-size:15px;
+background:var(--surface); border-radius:20px; }
+.fin-lista { text-align:center; padding:16px; color:var(--muted); font-weight:700; font-size:13px; }
+
+/* Barra inferior fija: Nueva reserva + volver arriba */
+.emb-bottom { position:fixed; left:0; right:0; bottom:0; z-index:30; display:flex; justify-content:center; gap:12px;
+padding:24px 16px calc(16px + env(safe-area-inset-bottom)); background:linear-gradient(to top, var(--bg) 65%, rgba(232,237,243,0)); pointer-events:none; }
+.emb-bottom > * { pointer-events:auto; }
+.emb-bottom .btn-tinta { flex:1; max-width:520px; }
+.btn-arriba { width:56px; height:56px; border:1.5px solid var(--line); border-radius:16px; background:var(--surface); color:var(--ink);
+display:grid; place-items:center; cursor:pointer; padding:0; flex-shrink:0; }
+.btn-arriba:active { transform:scale(.94); }
+
+/* ── Tarjeta de reserva ("ticket") ── */
+.pantalla-lista .reserva-card { position:relative; width:100%; background:var(--surface); color:var(--ink); border-radius:20px; padding:16px;
+display:flex; flex-direction:column; gap:12px; overflow:hidden; }
+.pantalla-lista .reserva-card.cobro { background:var(--cobro); }
+.pantalla-lista .reserva-card.excluida { opacity:.55; }
+.pantalla-lista .alerta-pedido { align-self:flex-start; display:inline-flex; align-items:center; gap:6px; margin-bottom:-2px;
+background:#FEF3C7; color:var(--amber); border-radius:99px; padding:4px 10px; font-size:12px; font-weight:800; }
+.tk-top { display:grid; grid-template-columns:112px minmax(0,1fr); gap:12px; }
+.tk-pedido { position:relative; background:var(--ink); border-radius:10px; min-height:120px; display:flex; flex-direction:column; align-items:center;
+justify-content:space-between; padding:10px 6px 8px; cursor:text; }
+.tk-lamp { display:block; width:36px; height:8px; border-radius:99px; background:var(--off); }
+.st-ok .tk-lamp { background:#22C55E; box-shadow:0 0 14px 3px rgba(34,197,94,.55); }
+.st-wait .tk-lamp { background:#FBBF24; box-shadow:0 0 14px 3px rgba(251,191,36,.5); }
+.tk-pedido input { width:100%; border:0; background:transparent; text-align:center; color:var(--on-ink); outline:none; padding:0;
+font-family:var(--display); font-weight:800; font-size:58px; line-height:1; font-variant-numeric:tabular-nums; }
+.tk-pedido input.l4 { font-size:46px; } .tk-pedido input.l6 { font-size:34px; } .tk-pedido input.l8 { font-size:24px; }
+.tk-pedido input::placeholder { color:var(--off); opacity:1; }
+.tk-pedido:focus-within { box-shadow:0 0 0 3px #7FA6F5; }
+.tk-pedido input.saved { color:#86EFAC; }
+.tk-cap { font-size:12px; font-weight:700; color:var(--cap); }
+.tk-main { display:flex; flex-direction:column; gap:8px; min-width:0; }
+.tk-meta { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700; color:var(--muted); padding-right:4px; flex-wrap:wrap; }
+.tk-slot { background:var(--chip); color:var(--ink); padding:3px 8px; border-radius:6px; font-weight:800; }
+.tk-status { display:inline-flex; align-items:center; gap:5px; font-weight:800; color:var(--muted); }
+.tk-status::before { content:''; display:block; width:8px; height:8px; border-radius:50%; background:currentColor; }
+.st-ok .tk-status { color:var(--green); } .st-wait .tk-status { color:var(--amber); }
+.tk-hora { margin-left:auto; }
+.tk-cliente { width:100%; border:0; border-bottom:1.5px solid var(--line); background:transparent; color:var(--ink);
+font:800 20px/1.15 var(--font); padding:6px 0; text-transform:uppercase; outline:none; border-radius:0; }
+.tk-cliente:focus { border-bottom-color:var(--soft-ink); }
+.tk-caja-row { display:flex; align-items:flex-end; gap:8px; }
+.tk-caja { flex:1; min-width:0; }
+.tk-label { display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:2px; }
+.tk-caja select { width:100%; height:52px; border-radius:10px; border:1.5px solid var(--line); background:var(--field); color:var(--ink);
+font:700 26px/1 var(--display); padding:0 10px; text-align:center; text-align-last:center; outline:none; -webkit-appearance:none; appearance:none; }
+.reserva-card.cobro .tk-caja select, .reserva-card.cobro .tk-campo input { background:rgba(255,255,255,.65); }
+.tk-icono { flex:0 0 48px; width:48px; height:52px; border-radius:12px; border:0; background:var(--soft); color:var(--soft-ink); display:grid; place-items:center; cursor:pointer; padding:0; }
+.tk-icono.set { background:var(--green-soft); color:var(--green); }
+.tk-icono:active { transform:scale(.94); }
+.tk-perf { position:relative; height:0; margin:4px -16px; border-top:2px dashed var(--line); }
+.tk-perf::before, .tk-perf::after { content:''; position:absolute; top:-11px; width:20px; height:20px; border-radius:50%; background:var(--bg); }
+.tk-perf::before { left:-10px; } .tk-perf::after { right:-10px; }
+.tk-bottom { display:grid; grid-template-columns:112px minmax(0,1fr); gap:12px; align-items:end; }
+.tk-campo input { width:100%; height:44px; border-radius:10px; border:1.5px solid var(--line); background:var(--field); color:var(--ink);
+font:800 17px/1 var(--font); padding:0 10px; outline:none; }
+.tk-need { margin:0; align-self:center; font-size:13px; font-weight:700; color:var(--amber); line-height:1.3; }
+.pantalla-lista .reserva-card select.saved, .pantalla-lista .reserva-card input.saved:not(.tk-pedido-input) { border-color:#22C55E; }
+.pantalla-lista .reserva-card input:focus, .pantalla-lista .reserva-card select:focus { border-color:var(--soft-ink); }
+.input-mayus { text-transform:uppercase; }
+
+.pantalla-lista .actions-row { display:flex; gap:8px; }
+.pantalla-lista .action-btn { flex:1 1 0; min-height:52px; min-width:0; padding:0 4px; border:0; border-radius:12px; font-weight:800; font-size:15px; line-height:1;
+display:flex; align-items:center; justify-content:center; gap:5px; cursor:pointer; white-space:nowrap; }
+.pantalla-lista .action-btn:active { transform:scale(.97); }
+.pantalla-lista .btn-confirm { flex-grow:1.35; background:var(--green); color:#fff; }
+.st-ok .btn-confirm { background:var(--green-soft); color:var(--green); }
+.pantalla-lista .btn-edit { background:var(--soft); color:var(--soft-ink); }
+.pantalla-lista .btn-exclude { background:transparent; box-shadow:inset 0 0 0 1.5px var(--red); color:var(--red); }
+
+.tk-hist { font-size:13px; color:var(--muted); }
+.tk-hist summary { cursor:pointer; font-weight:700; padding:6px 0; min-height:32px; display:flex; align-items:center; gap:6px; list-style:none; }
+.tk-hist summary::-webkit-details-marker { display:none; }
+.tk-hist summary::after { content:'▾'; font-size:12px; transition:transform .15s; }
+.tk-hist[open] summary::after { transform:rotate(180deg); }
+.tk-hist ul { list-style:none; margin:4px 0 0; padding:0 0 0 12px; border-left:2px solid var(--line); display:flex; flex-direction:column; gap:4px; }
+.tk-hist li { display:flex; gap:8px; }
+.tk-hist li b { font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; }
+
+/* ── Pendientes e Informe: misma cabecera y fondo ── */
+.emb-sub { display:flex; flex-direction:column; gap:12px; padding:16px 16px 40px; max-width:1180px; margin:0 auto; }
+.emb-sub .emb-resumen { min-height:48px; }
+.pantalla-lista .informe-fecha-box { display:flex; align-items:center; flex-wrap:wrap; gap:8px; background:var(--surface); border-radius:16px; padding:12px;
+font-size:14px; font-weight:700; color:var(--ink); }
+.pantalla-lista .informe-fecha-box input[type="date"] { flex:1; min-width:150px; height:48px; border:1.5px solid var(--line); border-radius:12px; background:var(--surface);
+color:var(--ink); font:700 16px var(--font); padding:0 12px; }
+.pantalla-lista .informe-hint { font-size:13px; color:var(--muted); margin:0; line-height:1.4; }
+.pantalla-lista .informe-item { display:flex; align-items:flex-start; gap:12px; cursor:pointer; background:var(--surface); color:var(--ink); border-radius:16px; padding:14px 16px; }
+.pantalla-lista .informe-item input[type="checkbox"] { width:22px; height:22px; margin-top:2px; flex-shrink:0; accent-color:var(--ink); }
+.pantalla-lista .informe-item .informe-info { flex:1; font-size:14px; line-height:1.5; color:var(--muted); }
+.pantalla-lista .informe-item .informe-info strong { color:var(--ink); font-size:16px; }
+#listaInforme { display:flex; flex-direction:column; gap:10px; }
+.pantalla-lista .btn-generar, .pantalla-lista .btn-enviar-informe { width:100%; min-height:56px; border:0; border-radius:16px; font-weight:800; font-size:17px; cursor:pointer; }
+.pantalla-lista .btn-generar { background:var(--green); color:#fff; }
+.pantalla-lista .btn-enviar-informe { background:var(--ink); color:var(--on-ink); }
+.pantalla-lista .btn-generar:disabled, .pantalla-lista .btn-enviar-informe:disabled { opacity:.5; cursor:not-allowed; }
+.pantalla-lista .btn-generar:active, .pantalla-lista .btn-enviar-informe:active { transform:scale(.98); }
+.pantalla-lista .btn-recuperar-informe { display:block; width:100%; text-align:center; background:none; border:none; color:var(--muted); font-weight:600; font-size:13px;
+text-decoration:underline; text-underline-offset:3px; cursor:pointer; padding:12px 0 2px; }
+.pantalla-lista .panel-recuperar-informe { display:none; flex-direction:column; gap:8px; background:var(--surface); border-radius:16px; padding:14px; }
+.pantalla-lista .panel-recuperar-informe.show { display:flex; }
+.pantalla-lista .panel-recuperar-informe .panel-recuperar-info { font-size:13px; color:var(--muted); line-height:1.4; }
+.pantalla-lista .panel-recuperar-informe select { height:48px; padding:0 10px; border-radius:12px; border:1.5px solid var(--line); font-size:16px; color:var(--ink); background:var(--surface); }
+.pantalla-lista .panel-recuperar-informe .btn-ejecutar-recuperar { min-height:48px; background:var(--amber); color:#fff; border:none; border-radius:12px; font-weight:800; font-size:15px; cursor:pointer; }
+
+/* ── Confirmar al excluir: hoja inferior (móvil) / diálogo (pantallas anchas) ── */
+#modalExcluir { align-items:flex-end; padding:0; background:rgba(11,36,71,.62); }
+#modalExcluir .sheet { width:100%; max-width:520px; background:var(--surface); color:var(--ink); border-radius:24px 24px 0 0;
+padding:12px 20px calc(24px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:16px; font-family:var(--font); }
+#modalExcluir .sheet * { font-family:var(--font); box-sizing:border-box; }
+#modalExcluir .asa { align-self:center; width:40px; height:5px; border-radius:99px; background:var(--line); }
+#modalExcluir h2 { margin:0; font-family:var(--display); font-weight:800; font-size:34px; line-height:1; }
+#modalExcluir .ex-resumen { display:grid; grid-template-columns:84px minmax(0,1fr); gap:12px; align-items:center; padding:12px; border-radius:14px; background:var(--bg); }
+#modalExcluir .ex-num { background:var(--ink); border-radius:10px; min-height:64px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+#modalExcluir .ex-num b { font-family:var(--display); font-weight:800; font-size:40px; line-height:1; color:var(--on-ink); }
+#modalExcluir .ex-num span { font-size:11px; font-weight:700; color:var(--cap); }
+#modalExcluir .ex-cliente { font-size:18px; font-weight:800; line-height:1.15; overflow-wrap:anywhere; }
+#modalExcluir .ex-detalle { font-size:13px; font-weight:600; color:var(--muted); }
+#modalExcluir p { margin:0; font-size:15px; line-height:1.45; }
+#modalExcluir .ex-botones { display:flex; gap:12px; }
+#modalExcluir .ex-botones button { flex:1 1 0; min-height:56px; border:0; border-radius:14px; font-weight:800; font-size:17px; cursor:pointer;
+display:flex; align-items:center; justify-content:center; gap:8px; }
+#modalExcluir .ex-cancelar { background:var(--soft); color:var(--soft-ink); }
+#modalExcluir .ex-excluir { background:var(--red); color:#fff; }
+
+/* ── Tableta ── */
+@media (min-width:700px) {
+.emb-bar { padding:0 24px; }
+.emb-layout { padding:24px 24px 120px; }
+.emb-head h1 { font-size:44px; }
+.emb-controles { display:grid; grid-template-columns:300px minmax(0,1fr); gap:16px; margin:0 -24px; padding:8px 24px 12px; }
+.emb-fecha { grid-template-columns:minmax(0,1fr) 48px; align-content:start; }
+.emb-fecha .dia-semana-label { grid-column:1 / -1; grid-row:2; height:40px; }
+.emb-grid, #listaPendientes { grid-template-columns:repeat(2, minmax(0,1fr)); }
+.emb-sub { padding:24px 24px 48px; }
+#modalExcluir { align-items:center; padding:20px; }
+#modalExcluir .sheet { border-radius:24px; padding-bottom:24px; }
+#modalExcluir .asa { display:none; }
+}
+/* ── Escritorio: panel lateral fijo ── */
+@media (min-width:1100px) {
+.emb-bar { padding:0 40px; }
+.emb-layout { display:grid; grid-template-columns:360px minmax(0,1fr); gap:40px; padding:40px; align-items:start; max-width:1440px; margin:0 auto; }
+.emb-side { display:flex; flex-direction:column; position:sticky; top:24px; gap:16px; }
+.emb-side > * + * { margin-top:0; }
+.emb-head h1 { font-size:52px; line-height:.95; }
+.emb-head .btn-suave { display:none; }
+.emb-controles { position:static; display:flex; margin:0; padding:0; background:none; }
+.emb-fecha { grid-template-columns:minmax(0,1fr) auto 48px; }
+.emb-fecha .dia-semana-label { grid-column:auto; grid-row:auto; height:48px; }
+.emb-rail { grid-template-columns:repeat(2, minmax(0,1fr)); }
+.emb-side-acciones { display:flex; }
+.emb-side-acciones .btn-suave { min-height:48px; font-size:15px; }
+.emb-grid { margin-top:0; gap:24px; }
+.emb-bottom { display:none; }
+.emb-sub { padding:40px; }
+}
+
+/* Modales (ubicación, editar fecha) — viven FUERA de cualquier .screen para
+   poder abrirse tanto desde la Lista como desde Pendientes (2026-09-22:
+   antes el modal de ubicación estaba anidado dentro de #screenLista, así
+   que quedaba oculto si Pendientes era la pantalla activa). Por eso estas
+   reglas ya NO dependen del ancestro .pantalla-lista. */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center;
+justify-content:center; z-index:200; padding:20px; }
+.modal-overlay.show { display:flex; }
+.modal-box { background:#fff; color:#003366; border-radius:18px; padding:20px; width:100%; max-width:380px;
+box-sizing:border-box; font-family:'Nunito', system-ui, -apple-system, sans-serif; }
+.modal-box h3 { margin:0 0 6px; font-size:1rem; }
+.modal-box p.hint { font-size:.78rem; color:#64748b; margin:0 0 14px; line-height:1.5; }
+.modal-box input, .modal-box select { width:100%; border:1.5px solid #e2e8f0; border-radius:10px; padding:11px 12px;
+font-size:max(.92rem,16px); margin-bottom:12px; box-sizing:border-box; font-family:inherit; color:#003366; background:#fff; }
+.modal-label { display:block; font-size:.76rem; font-weight:800; color:#64748b; text-transform:uppercase;
+letter-spacing:.03em; margin:0 0 4px; }
+/* Fecha de EMISIÓN del ticket (Ronda 14, punto 1): visualmente discreta
+   —letra menor, gris claro, separada por una línea— para no confundirla con
+   la fecha de ENTREGA, que es la principal del modal. */
+.modal-emision { margin-top:2px; padding-top:10px; border-top:1px dashed #e2e8f0; }
+.modal-emision .modal-label { font-size:.62rem; font-weight:700; color:#94a3b8; margin-bottom:2px; }
+.modal-emision input { padding:6px 10px; margin-bottom:10px; color:#64748b; border-color:#eef2f7; font-weight:500; }
+.modal-emision .modal-emision-hint { font-size:.62rem; color:#a3afc0; margin:-6px 0 10px; line-height:1.3; }
+.modal-actions { display:flex; gap:8px; margin-top:4px; }
+.modal-btn { flex:1; border:none; border-radius:12px; font-weight:700; padding:12px 14px; font-size:.92rem;
+cursor:pointer; box-shadow:0 8px 20px rgba(0,0,0,.3); }
+.modal-btn:active { transform:scale(.97); }
+.modal-btn-cancel { background:#e2e8f0; color:#334155; box-shadow:none; }
+.modal-btn-primary { background:#2563eb; color:#fff; }
+.modal-btn-maps { width:100%; background:#4285f4; color:#fff; margin-bottom:12px; font-size:.9rem;
+box-shadow:0 8px 20px rgba(0,0,0,.3); border:none; border-radius:12px; padding:12px 14px; font-weight:700; cursor:pointer; }
+.modal-btn-maps:active { transform:scale(.97); }
+/* Ronda 16 (2026-10-02): pregunta SÍ / NO (tramo completo, PEDIDOS_TOTALES,
+   Enviar Informe) — botón ✓ verde y botón ✕ rojo. Va por encima de los demás
+   modales (z-index mayor) porque también se abre desde el de Editar. */
+#modalSiNo { z-index:400; }
+#modalSiNo .modal-box { text-align:center; padding:22px 18px 20px; }
+#modalSiNo .sino-icono { font-size:2.2rem; line-height:1; margin-bottom:8px; }
+#modalSiNo .sino-texto { font-size:1.02rem; font-weight:800; line-height:1.35; color:#003366; white-space:pre-line; margin:0 0 6px; }
+#modalSiNo .sino-detalle { font-size:.8rem; font-weight:600; color:#64748b; white-space:pre-line; margin:0 0 4px; }
+#modalSiNo .sino-botones { display:flex; justify-content:center; gap:34px; margin-top:16px; }
+#modalSiNo .sino-btn { display:flex; flex-direction:column; align-items:center; gap:6px; background:none; border:none; padding:0;
+box-shadow:none; cursor:pointer; font-family:inherit; font-weight:900; font-size:.95rem; width:auto; }
+#modalSiNo .sino-btn .circulo { width:68px; height:68px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+color:#fff; font-size:2.1rem; font-weight:900; line-height:1; box-shadow:0 8px 18px rgba(0,0,0,.28); transition:transform .12s; }
+#modalSiNo .sino-btn:active .circulo { transform:scale(.93); }
+#modalSiNo .sino-si { color:#15803d; }
+#modalSiNo .sino-si .circulo { background:#16a34a; }
+#modalSiNo .sino-no { color:#b91c1c; }
+#modalSiNo .sino-no .circulo { background:#dc2626; }
+
+
+
+/* ══════════ PANTALLA: SOLICITUD DE RESERVAS ══════════ */
+#screenSolicitud {
+--bg1:#003366; --bg2:#0077cc;
+--card-bg:rgba(255,255,255,.12);
+--text-main:#fff; --text-dark:#003366;
+--radius-card:24px; --radius-field:12px;
+--font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+}
+
+#screenSolicitud *, #screenSolicitud *::before, #screenSolicitud *::after { box-sizing:border-box; -webkit-font-smoothing:antialiased; font-family:var(--font); }
+#screenSolicitud.active {
+margin:0; min-height:100vh;
+background:linear-gradient(180deg, var(--bg1), var(--bg2));
+color:var(--text-main);
+display:flex; justify-content:center; align-items:flex-start;
+padding:24px 16px 56px;
+overflow-x:hidden; width:100%; max-width:100vw; box-sizing:border-box;
+}
+#screenSolicitud .card {
+width:100%; max-width:420px; box-sizing:border-box;
+background:var(--card-bg);
+border-radius:var(--radius-card);
+box-shadow:0 16px 40px rgba(0,0,0,.45);
+padding:20px 16px 28px;
+backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+}
+#screenSolicitud .header { text-align:center; margin-bottom:16px; }
+#screenSolicitud .logo { width:170px; max-width:65%; height:auto; display:block; margin:0 auto 10px auto; background:#fff; border-radius:14px; padding:8px 14px; }
+#screenSolicitud .header h1 { font-size:1.05rem; font-weight:800; margin:2px 0 0; }
+#screenSolicitud form { display:flex; flex-direction:column; gap:14px; }
+#screenSolicitud label { font-size:.88rem; font-weight:600; color:var(--text-main); margin-bottom:3px; display:block; }
+#screenSolicitud .control {
+width:100%; border:none; border-radius:var(--radius-field);
+background:#fff; color:var(--text-dark); font-weight:500; padding:13px 12px;
+font-size: max(1rem, 16px); outline:none;
+}
+#screenSolicitud select.control { -webkit-appearance:none; appearance:none; }
+#screenSolicitud .franja-opt-full { color:#94a3b8; }
+/* Botones cuadrados de franja horaria (Ronda 12, 2026-09-24): reemplazan al
+   <select id="franja">; el valor elegido se guarda en un <input type="hidden">
+   para no tocar la validación existente. */
+#screenSolicitud .franja-btns { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; }
+#screenSolicitud .franja-btn { aspect-ratio:1/1; border:none; border-radius:12px; background:#fff; color:var(--text-dark);
+font-weight:800; font-size:.78rem; line-height:1.3; display:flex; flex-direction:column; align-items:center;
+justify-content:center; text-align:center; cursor:pointer; padding:4px; box-shadow:0 4px 12px rgba(0,0,0,.25);
+transition:transform .12s, background .15s, box-shadow .15s; }
+#screenSolicitud .franja-btn:active { transform:scale(.95); }
+#screenSolicitud .franja-btn .franja-btn-count { font-size:.68rem; font-weight:700; margin-top:2px; opacity:.75; }
+#screenSolicitud .franja-btn.activo { background:#fde047; color:#78350f; box-shadow:0 0 0 3px #fff, 0 4px 14px rgba(0,0,0,.35); }
+/* Ronda 16 (2026-10-02): el tramo COMPLETO sigue viéndose "inhabilitado"
+   (gris), pero ya se puede tocar: pide confirmación SÍ / NO antes de añadir.
+   El tramo CERRADO por hora (hoy, ya empezado) sí queda bloqueado de verdad. */
+#screenSolicitud .franja-btn.lleno { background:#e2e8f0; color:#94a3b8; cursor:pointer; box-shadow:none; }
+#screenSolicitud .franja-btn.lleno.activo { background:#fde047; color:#78350f; box-shadow:0 0 0 3px #fff, 0 4px 14px rgba(0,0,0,.35); }
+#screenSolicitud .franja-btn.cerrado { background:rgba(226,232,240,.55); color:#64748b; cursor:not-allowed; box-shadow:none; opacity:.75; }
+#screenSolicitud .franja-btn.cerrado:active { transform:none; }
+#screenSolicitud button {
+width:100%; border:none; border-radius:var(--radius-field);
+background:#fff; color:var(--text-dark); font-weight:700; padding:15px 14px;
+font-size: max(1rem, 16px); cursor:pointer; box-shadow:0 8px 22px rgba(0,0,0,.38);
+transition:transform .12s, box-shadow .18s;
+}
+#screenSolicitud button:active { transform:scale(.97); }
+#screenSolicitud button:disabled { opacity:.6; cursor:not-allowed; }
+#screenSolicitud .btn-secondary { background:rgba(255,255,255,.16); color:#fff; box-shadow:none; border:1px solid rgba(255,255,255,.3); }
+#screenSolicitud #msg { text-align:center; min-height:1.3em; font-size:.93rem; font-weight:700; margin-top:2px; padding:8px 10px; border-radius:10px; }
+#screenSolicitud .disponibilidad { font-size:.74rem; color:rgba(255,255,255,.7); text-align:center; margin-top:-6px; }
+
+</style>
+</head>
+<body>
+
+<div id="spinnerOverlay"><div class="ring"></div></div>
+
+<!-- Modales globales (fuera de cualquier .screen a propósito, 2026-09-22:
+     así se pueden abrir tanto desde la Lista de Reservas como desde
+     Pendientes, sin depender de cuál de las dos esté "active" en ese
+     momento). -->
+<div class="modal-overlay" id="modalUbicacion">
+<div class="modal-box">
+<h3>📍 Ubicación del cliente</h3>
+<p class="hint">Abre Google Maps, localiza al cliente, copia el enlace (Compartir → Copiar enlace) y pégalo aquí.</p>
+<button class="modal-btn-maps" onclick="abrirGoogleMaps()">🌍 Abrir Google Maps</button>
+<input type="text" id="inputUbicacion" placeholder="Pega aquí el enlace o coordenadas" />
+<div class="modal-actions">
+<button class="modal-btn modal-btn-cancel" onclick="cerrarModalUbicacion()">Cancelar</button>
+<button class="modal-btn modal-btn-primary" onclick="guardarUbicacion()">Guardar</button>
+</div>
+</div>
+</div>
+
+<!-- Modal Editar fecha de entrega y franja (punto 1, 2026-09-22; ampliado
+     el mismo día a pedido de Wanderson para incluir también la franja).
+     Ronda 14 (2026-09-28): añade, en letra menor y discreta, la FECHA DE
+     EMISIÓN del ticket (por defecto el día en que se creó la reserva). -->
+<div class="modal-overlay" id="modalEditarFecha">
+<div class="modal-box">
+<h3>📅 Editar fecha y franja</h3>
+<p class="hint">La fecha debe estar entre hoy y los próximos 7 días.</p>
+<label class="modal-label" for="inputFechaEditar">Fecha de entrega</label>
+<input type="date" id="inputFechaEditar" onchange="pintarFranjasEditar()" />
+<label class="modal-label" for="selectFranjaEditar">Franja horaria</label>
+<select id="selectFranjaEditar"></select>
+<div class="modal-emision">
+<label class="modal-label" for="inputFechaEmisionEditar">Fecha de emisión del ticket</label>
+<input type="date" id="inputFechaEmisionEditar" />
+<div class="modal-emision-hint">Solo cámbiala si el ticket se emitió otro día. No puede ser posterior a hoy.</div>
+</div>
+<div class="modal-actions">
+<button class="modal-btn modal-btn-cancel" onclick="cerrarModalEditarFecha()">Cancelar</button>
+<button class="modal-btn modal-btn-primary" onclick="guardarFechaEditada()">Guardar</button>
+</div>
+</div>
+</div>
+
+<!-- ══════ MÓDULO EMBOLSADO: modal de revisión del ticket ══════ -->
+<input type="file" id="fileTicket" accept="image/*" capture="environment" style="display:none" />
+<div class="modal-overlay" id="modalTicket">
+<div class="modal-box ancho">
+<h3>📷 Datos del ticket</h3>
+<p class="hint">Revisa los datos leídos antes de guardar.</p>
+<div id="revAvisos"></div>
+<div class="rev-grid">
+<div><label class="modal-label">Fecha</label><input id="rev_fecha" /></div>
+<div><label class="modal-label">Hora</label><input id="rev_hora" /></div>
+<div><label class="modal-label">Nº ticket</label><input id="rev_ticket" inputmode="numeric" /></div>
+<div><label class="modal-label">Caja</label><input id="rev_caja" inputmode="numeric" maxlength="3" /></div>
+<div><label class="modal-label">Cód. cliente</label><input id="rev_cliente_id" /></div>
+<div><label class="modal-label">Teléfono</label><input id="rev_telefono" inputmode="tel" /></div>
+<div class="full"><label class="modal-label">Nombre y apellidos</label><input id="rev_nombre" class="input-mayus" /></div>
+<div class="full"><label class="modal-label">Dirección</label><input id="rev_direccion" class="input-mayus" /></div>
+<div><label class="modal-label">Ascensor (SI/NO)</label><input id="rev_ascensor" class="input-mayus" /></div>
+<div><label class="modal-label">Nº cajas</label><input id="rev_n_cajas" inputmode="numeric" /></div>
+<div><label class="modal-label">Nevera (N)</label><input id="rev_nevera" inputmode="numeric" /></div>
+<div><label class="modal-label">Fríos (F)</label><input id="rev_frios" inputmode="numeric" /></div>
+<div><label class="modal-label">Congelados (C)</label><input id="rev_congelados" inputmode="numeric" /></div>
+<div><label class="modal-label">Día de entrega</label><input id="rev_dia_entrega" class="input-mayus" /></div>
+<div class="full"><label class="modal-label">Tramo (informado en la reserva)</label><input id="rev_tramo" /></div>
+</div>
+<div class="modal-actions">
+<button class="modal-btn modal-btn-cancel" onclick="cerrarModalTicket()">Cancelar</button>
+<button class="modal-btn modal-btn-primary" onclick="guardarTicketClick(false)">Guardar</button>
+</div>
+</div>
+</div>
+
+<!-- Ronda 16 (2026-10-02): pregunta SÍ (✓ verde) / NO (✕ rojo). -->
+<div class="modal-overlay" id="modalSiNo">
+<div class="modal-box">
+<div class="sino-icono" id="siNoIcono">⚠️</div>
+<p class="sino-texto" id="siNoTexto"></p>
+<p class="sino-detalle" id="siNoDetalle"></p>
+<div class="sino-botones">
+<button type="button" class="sino-btn sino-si" onclick="responderSiNo(true)"><span class="circulo">✓</span>SÍ</button>
+<button type="button" class="sino-btn sino-no" onclick="responderSiNo(false)"><span class="circulo">✕</span>NO</button>
+</div>
+</div>
+</div>
+
+<!-- Rediseño 2026-10-07: confirmar al excluir (hoja inferior en móvil,
+     diálogo centrado en pantallas anchas). Sustituye al confirm() nativo. -->
+<div class="modal-overlay" id="modalExcluir" onclick="if (event.target === this) cerrarModalExcluir()">
+<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="excluirTitulo">
+<span class="asa" aria-hidden="true"></span>
+<h2 id="excluirTitulo">¿Excluir esta reserva?</h2>
+<div class="ex-resumen">
+<div class="ex-num"><b id="exPedido">—</b><span id="exPedidoCap">pedido</span></div>
+<div style="display:flex;flex-direction:column;gap:4px;min-width:0;"><span class="ex-cliente" id="exCliente">—</span><span class="ex-detalle" id="exDetalle"></span></div>
+</div>
+<p>Se quitará de la lista de reservas y el cupo de la franja quedará libre.</p>
+<div class="ex-botones">
+<button type="button" class="ex-cancelar" onclick="cerrarModalExcluir()">Cancelar</button>
+<button type="button" class="ex-excluir" onclick="ejecutarExcluir()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13"/></svg>Excluir</button>
+</div>
+</div>
+</div>
+
+<div id="screenLogin" class="screen">
+<div class="blob blob-blue"></div>
+<div class="blob blob-orange"></div>
+
+<div class="logo-wrap">
+<img class="logo-img" src="https://raw.githubusercontent.com/coelhocolatino/nexo-tickets/main/nexo-logo-full.png" alt="Nexo" />
+<div class="module-tag">Módulo de Reservas</div>
+</div>
+
+<div class="card" role="main">
+
+<div class="step active" id="step1">
+<div class="card-title">Acceso al <em>módulo</em></div>
+<div class="field">
+<label for="inputUsuario">Usuario</label>
+<input type="text" id="inputUsuario" placeholder="Tu nombre de usuario"
+autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" />
+</div>
+<div class="msg" id="msg1" role="alert"></div>
+<button class="btn btn-primary" id="btnContinuar" onclick="verificarUsuario()">Continuar →</button>
+<p class="hint">Usa el mismo usuario de Nexo Tickets</p>
+</div>
+
+<div class="step" id="step2login">
+<div class="card-title">Hola, <em id="nombreMostrado">—</em> 👋</div>
+<div class="field">
+<label for="inputPassword">Contraseña</label>
+<div class="pwd-wrap">
+<input type="password" id="inputPassword" placeholder="Tu contraseña" autocomplete="current-password" />
+<button class="pwd-eye" type="button" onclick="togglePwd('inputPassword', this)">👁</button>
+</div>
+</div>
+<div class="msg" id="msg2" role="alert"></div>
+<button class="btn btn-primary" id="btnLogin" onclick="hacerLoginClick()">Entrar</button>
+<button class="btn btn-ghost" type="button" onclick="volver()">← Cambiar usuario</button>
+</div>
+
+<div class="step" id="step2registro">
+<div class="card-title">Bienvenido, <em id="nombreNuevo">—</em> 🎉</div>
+<p class="hint" style="text-align:left;">Es tu primer acceso a este módulo. Crea tu contraseña de Nexo.</p>
+<div class="field">
+<label for="inputPwdNueva">Nueva contraseña</label>
+<div class="pwd-wrap">
+<input type="password" id="inputPwdNueva" placeholder="Mínimo 6 caracteres" autocomplete="new-password" oninput="checkStrength()" />
+<button class="pwd-eye" type="button" onclick="togglePwd('inputPwdNueva', this)">👁</button>
+</div>
+<div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+</div>
+<div class="field">
+<label for="inputPwdConfirm">Confirmar contraseña</label>
+<div class="pwd-wrap">
+<input type="password" id="inputPwdConfirm" placeholder="Repite la contraseña" autocomplete="new-password" />
+<button class="pwd-eye" type="button" onclick="togglePwd('inputPwdConfirm', this)">👁</button>
+</div>
+</div>
+<div class="req-list">
+<div class="req-item" id="req-len"><span class="req-icon">○</span>Mínimo 6 caracteres</div>
+<div class="req-item" id="req-num"><span class="req-icon">○</span>Al menos un número</div>
+<div class="req-item" id="req-upper"><span class="req-icon">○</span>Al menos una mayúscula</div>
+</div>
+<div class="msg" id="msg3" role="alert"></div>
+<button class="btn btn-orange" id="btnRegistrar" onclick="registrarPasswordClick()">Crear contraseña y entrar</button>
+<button class="btn btn-ghost" type="button" onclick="volver()">← Volver</button>
+</div>
+
+</div>
+</div>
+
+<div id="screenLista" class="screen pantalla-lista">
+<header class="emb-bar">
+<a class="emb-home" href="https://coelhocolatino.github.io/nexo-tickets/inicio-embolsado.html" target="_top" aria-label="Ir al inicio de Embolsado"><img src="https://raw.githubusercontent.com/coelhocolatino/nexo-tickets/main/nexo-logo-full.png" alt="Nexo" /><span>Embolsado</span></a>
+<div class="emb-user"><span id="badgeNombre">—</span><button type="button" class="emb-salir" id="userBadge" onclick="cerrarSesion()">Salir</button></div>
+</header>
+
+<div class="emb-layout">
+<aside class="emb-side">
+<div class="emb-head">
+<h1>Lista de reservas</h1>
+<button type="button" class="btn-suave" onclick="abrirInformeDiario()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5"/></svg>Informe diario</button>
+</div>
+
+<div class="emb-resumen">
+<span class="total-reservas" id="totalReservasLabel">0 reservas</span>
+<button type="button" class="btn-pendientes" id="btnPendientes" onclick="abrirPendientes()">Pendientes: 0</button>
+</div>
+
+<div class="emb-controles">
+<div class="emb-fecha">
+<input type="date" id="inputFecha" aria-label="Fecha de entrega" onchange="cargarReservas()" />
+<span class="dia-semana-label" id="diaSemanaLabel"></span>
+<button type="button" class="btn-icono" aria-label="Actualizar lista" title="Actualizar" onclick="cargarReservas()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5"/></svg></button>
+</div>
+<div class="emb-rail" id="chipsFranjas" role="group" aria-label="Franjas horarias"></div>
+</div>
+
+<div class="aviso-vuelta-hoy" id="avisoVueltaHoy"></div>
+
+<div class="emb-side-acciones">
+<button type="button" class="btn-tinta" onclick="irASolicitud()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva reserva</button>
+<button type="button" class="btn-suave" onclick="abrirInformeDiario()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5"/></svg>Informe diario</button>
+</div>
+
+<div id="msgGlobal" role="status"></div>
+</aside>
+
+<main>
+<div id="listaReservas" class="emb-grid"></div>
+<div class="fin-lista">— Fin de la lista —</div>
+</main>
+</div>
+
+<div class="emb-bottom">
+<button type="button" class="btn-tinta" onclick="irASolicitud()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva reserva</button>
+<button type="button" class="btn-arriba" id="btnArriba" aria-label="Volver arriba" title="Volver arriba" onclick="volverArriba()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+</div>
+</div>
+
+<!-- Pantalla PENDIENTES: todas las reservas en PENDIENTE, de cualquier
+     fecha, en tarjetas editables (Cliente/Dirección, Caja, Pedido,
+     Ubicación, Confirmar/Cancelar/Excluir) — no un popup de solo lectura,
+     para poder resolver el pendiente ahí mismo sin cambiar de fecha. -->
+<div id="screenPendientes" class="screen pantalla-lista">
+<header class="emb-bar">
+<button type="button" class="emb-volver" aria-label="Volver a la lista" title="Volver a la Lista" onclick="volverDePendientes()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+<h1>Pendientes de recoger en caja</h1>
+</header>
+<div class="emb-sub">
+<div class="emb-resumen">
+<span class="total-reservas" id="totalPendientesLabel">0 pendientes</span>
+<button type="button" class="btn-icono" aria-label="Actualizar" title="Actualizar" onclick="cargarPendientes()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5"/></svg></button>
+</div>
+<div id="msgGlobalPendientes" role="status"></div>
+<div id="listaPendientes" class="emb-grid"></div>
+</div>
+</div>
+
+<!-- Pantalla INFORME DIARIO (puntos 7-14, 2026-09-22). Ronda 14
+     (2026-09-28): el informe ya NO se arma por fecha de ENTREGA sino por
+     FECHA DE EMISIÓN del ticket — se elige el día de emisión arriba, se
+     listan los pedidos CONFIRMADO de ese día que todavía no se informaron
+     (todos premarcados) y el PDF sale con ese día como "FECHA DE EMISIÓN". -->
+<div id="screenInforme" class="screen pantalla-lista">
+<header class="emb-bar">
+<button type="button" class="emb-volver" aria-label="Volver a la lista" title="Volver a la Lista" onclick="volverDeInforme()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+<h1>Informe diario</h1>
+</header>
+<div class="emb-sub" style="max-width:720px;">
+<div class="informe-fecha-box">
+<label for="inputFechaEmisionInforme">Fecha de emisión:</label>
+<input type="date" id="inputFechaEmisionInforme" onchange="cambiarFechaEmisionInforme()" />
+<span class="dia-semana-label" id="informeDiaSemana"></span>
+</div>
+<p class="informe-hint">Solo aparecen los pedidos confirmados emitidos ese día que aún no están en ningún informe.</p>
+
+<div class="emb-resumen">
+<span class="total-reservas" id="totalInformeLabel">0 seleccionados</span>
+<button type="button" class="btn-icono" aria-label="Actualizar" title="Actualizar" onclick="cargarInforme()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5"/></svg></button>
+</div>
+
+<div id="msgGlobalInforme" role="status"></div>
+
+<div id="listaInforme"></div>
+
+<button type="button" class="btn-generar" id="btnGenerarInforme" onclick="generarInformeClick()" disabled>Generar informe (PDF)</button>
+<!-- Ronda 16 (2026-10-02): envía por correo al grupo de la hoja CORREOS el
+     informe ya generado de la fecha de emisión elegida arriba. -->
+<button type="button" class="btn-enviar-informe" id="btnEnviarInforme" onclick="enviarInformeClick()">Enviar informe</button>
+
+<!-- Recuperación manual (2026-09-22): por si un informe se queda "atascado"
+     (marcado como informado sin haber llegado a generar el PDF, p.ej. por
+     un permiso sin autorizar) — ver liberarInformeAtascado en Code.gs. -->
+<button type="button" class="btn-recuperar-informe" onclick="toggleRecuperarInforme()">Recuperar informe</button>
+<div class="panel-recuperar-informe" id="panelRecuperarInforme">
+<div class="panel-recuperar-info">Si un informe se quedó marcado sin haber salido el PDF, elige aquí su fecha de emisión para que solo los pedidos emitidos ese día vuelvan a aparecer arriba y puedas generarlos de nuevo.</div>
+<select id="selectFechaRecuperar" aria-label="Fecha de emisión a recuperar"></select>
+<button type="button" class="btn-ejecutar-recuperar" onclick="ejecutarRecuperarInforme()">Ejecutar</button>
+</div>
+</div>
+</div>
+
+<div id="screenSolicitud" class="screen">
+<div class="card">
+<div class="header">
+<img class="logo" src="https://raw.githubusercontent.com/coelhocolatino/nexo-tickets/main/nexo-logo-full.png" alt="Nexo" />
+<h1>📝 Solicitud de Reserva</h1>
+</div>
+
+<form id="solicitudForm" novalidate>
+<div>
+<label for="fechaSolicitud">Fecha</label>
+<input class="control" type="date" id="fechaSolicitud" name="fechaSolicitud" onchange="cargarDisponibilidad()" required />
+<div class="disponibilidad" id="diaSemanaSolicitud" style="margin-top:6px;"></div>
+</div>
+
+<div>
+<label for="franjaBtns">Franja Horaria</label>
+<div class="franja-btns" id="franjaBtns"><div class="disponibilidad" style="grid-column:1 / -1;">Cargando...</div></div>
+<input type="hidden" id="franja" name="franja" required />
+</div>
+
+<div>
+<label for="clienteDireccion">Cliente / Dirección</label>
+<input class="control input-mayus" type="text" id="clienteDireccion" name="clienteDireccion"
+placeholder="Nombre o referencia del cliente" required />
+</div>
+
+<div>
+<label for="caja">Caja</label>
+<select class="control" id="caja" name="caja" required>
+<option value="" disabled selected>Selecciona caja...</option>
+</select>
+</div>
+
+<div id="msg"></div>
+
+<button type="button" id="btnConfirmar" onclick="confirmarSolicitud()">✓ Confirmar</button>
+<button type="button" class="btn-secondary" onclick="cancelarSolicitud()">✕ Cancelar</button>
+</form>
+</div>
+</div>
+
+<script>
+/* Usuario recibido por ?u= al abrir el módulo (leído y saneado en el
+   servidor, ver doGet en Code.gs — no se puede leer de forma fiable con
+   window.location.search desde dentro del iframe de Apps Script). */
+var USUARIO_URL = "<?= usuarioParam ?>";
+
+/* ══════════════════════════════════════════════════════════════
+   ESTADO COMPARTIDO Y NAVEGACIÓN ENTRE PANTALLAS
+   (todo vive en una sola página: cambiar de "pantalla" es solo
+   mostrar/ocultar un <div>, nunca navegar — así se evita el bloqueo
+   de seguridad del sandbox de Apps Script al hacer
+   window.top.location desde un callback asíncrono)
+   ══════════════════════════════════════════════════════════════ */
+var SESSION_KEY = 'nexo_reservas_user';
+var SESSION_TTL = 23 * 60 * 60 * 1000; // 23 horas
+var sesion = null;
+
+/* Botón "volver arriba" (Ronda 15): visible solo en la Lista y tras desplazarse un poco. */
+function volverArriba() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+function actualizarBtnArriba() {
+var b = document.getElementById('btnArriba');
+var lista = document.getElementById('screenLista');
+if (!b || !lista) return;
+var visible = lista.classList.contains('active') && (window.pageYOffset || document.documentElement.scrollTop) > 300;
+b.classList.toggle('show', visible);
+}
+window.addEventListener('scroll', actualizarBtnArriba, { passive: true });
+
+function mostrarPantalla(nombre) {
+document.querySelectorAll('.screen').forEach(function (s) { s.classList.remove('active'); });
+document.getElementById('screen' + nombre).classList.add('active');
+actualizarBtnArriba();
+}
+
+function mostrarSpinner(v) { document.getElementById('spinnerOverlay').classList.toggle('show', v); }
+
+function hoyISO() {
+var d = new Date();
+var mm = String(d.getMonth() + 1).padStart(2, '0');
+var dd = String(d.getDate()).padStart(2, '0');
+return d.getFullYear() + '-' + mm + '-' + dd;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RONDA 16 (2026-10-02) — reglas de hora de los tramos + pregunta SÍ/NO
+   ══════════════════════════════════════════════════════════════ */
+
+/** Fecha y minuto del día AHORA en hora de Madrid (la misma que usa el
+ *  servidor), aunque el teléfono esté en otra zona horaria. */
+function ahoraMadrid_() {
+try {
+var partes = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+var o = {};
+partes.forEach(function (x) { o[x.type] = x.value; });
+if (o.year && o.month && o.day && o.hour !== undefined) {
+return { hoy: o.year + '-' + o.month + '-' + o.day, min: (Number(o.hour) % 24) * 60 + Number(o.minute) };
+    }
+  } catch (e) {}
+var d = new Date();
+return { hoy: hoyISO(), min: d.getHours() * 60 + d.getMinutes() };
+}
+
+/** "16-19H" → 960 (minuto del día en que empieza el tramo); -1 si no se reconoce. */
+function inicioFranjaMin_(franja) {
+var m = /^(\d{1,2})-(\d{1,2})H$/i.exec(String(franja || '').trim());
+return m ? Number(m[1]) * 60 : -1;
+}
+
+/** ¿Ya no se puede añadir nada a ese día/tramo? — día anterior a hoy, o
+ *  tramo de HOY cuya hora de inicio ya llegó (16-19H → desde las 16:00).
+ *  Solo es la parte visual: el servidor vuelve a comprobarlo al grabar. */
+function franjaCerrada(fechaISO, franja) {
+var a = ahoraMadrid_();
+if (!fechaISO) return false;
+if (fechaISO < a.hoy) return true;
+if (fechaISO > a.hoy) return false;
+var ini = inicioFranjaMin_(franja);
+return ini >= 0 && a.min >= ini;
+}
+
+/** Pregunta con botón SÍ (✓ verde) y NO (✕ rojo). opciones: { icono, detalle }. */
+var _siNoCallbacks = null;
+function preguntarSiNo(texto, onSi, onNo, opciones) {
+opciones = opciones || {};
+_siNoCallbacks = { si: onSi, no: onNo };
+document.getElementById('siNoIcono').textContent = opciones.icono || '⚠️';
+document.getElementById('siNoTexto').textContent = texto || '';
+var det = document.getElementById('siNoDetalle');
+det.textContent = opciones.detalle || '';
+det.style.display = opciones.detalle ? '' : 'none';
+document.getElementById('modalSiNo').classList.add('show');
+}
+function responderSiNo(si) {
+document.getElementById('modalSiNo').classList.remove('show');
+var cb = _siNoCallbacks; _siNoCallbacks = null;
+if (!cb) return;
+var fn = si ? cb.si : cb.no;
+if (typeof fn === 'function') fn();
+}
+var TEXTO_TRAMO_COMPLETO = 'ESTE TRAMO ESTÁ COMPLETO! ¿SEGURO QUE DESEA AÑADIR ESTA RESERVA?';
+
+/* ── Vuelta automática a la fecha de hoy ──────────────────────────────
+   Siempre que se añade un pedido a un día posterior, la página vuelve a la
+   fecha actual 30 s después (para que el siguiente pedido no se apunte por
+   descuido en el día posterior). Excepción (la decide el servidor en
+   crearReserva → seguirEnDiaPosterior): si el tramo 19-22H de hoy está
+   completo o ya pasaron las 18:00, se puede seguir en el día posterior.
+   Si a los 30 s el usuario está en plena Solicitud de otra reserva, no se le
+   cambia la fecha a mitad: se aplica en cuanto sale de esa pantalla. */
+var VUELTA_HOY_SEG = 30;
+var vueltaHoyFin = 0, vueltaHoyIntervalo = null, vueltaHoyPendiente = false;
+
+function pintarAvisoVueltaHoy() {
+var el = document.getElementById('avisoVueltaHoy');
+if (!el) return;
+var falta = Math.ceil((vueltaHoyFin - Date.now()) / 1000);
+if (vueltaHoyIntervalo && falta > 0) {
+el.textContent = '⏱ Día posterior — vuelve a HOY en ' + falta + ' s';
+el.classList.add('show');
+  } else {
+el.classList.remove('show');
+  }
+}
+function cancelarVueltaAHoy() {
+if (vueltaHoyIntervalo) { clearInterval(vueltaHoyIntervalo); vueltaHoyIntervalo = null; }
+vueltaHoyFin = 0; vueltaHoyPendiente = false;
+pintarAvisoVueltaHoy();
+}
+function programarVueltaAHoy() {
+cancelarVueltaAHoy();
+vueltaHoyFin = Date.now() + VUELTA_HOY_SEG * 1000;
+vueltaHoyIntervalo = setInterval(function () {
+// Si el usuario ya volvió a hoy por su cuenta, no hay nada que hacer.
+if (document.getElementById('inputFecha').value <= hoyISO()) { cancelarVueltaAHoy(); return; }
+if (Date.now() >= vueltaHoyFin) {
+clearInterval(vueltaHoyIntervalo); vueltaHoyIntervalo = null;
+pintarAvisoVueltaHoy();
+if (document.getElementById('screenSolicitud').classList.contains('active')) { vueltaHoyPendiente = true; return; }
+aplicarVueltaAHoy();
+    } else {
+pintarAvisoVueltaHoy();
+    }
+  }, 500);
+pintarAvisoVueltaHoy();
+}
+/** Pone la fecha de hoy en la Lista y en la Solicitud; recarga la Lista si es la pantalla visible. */
+function aplicarVueltaAHoy() {
+vueltaHoyPendiente = false;
+var hoy = hoyISO();
+var inp = document.getElementById('inputFecha');
+var cambia = inp.value !== hoy;
+inp.value = hoy;
+document.getElementById('fechaSolicitud').value = hoy;
+if (!cambia) return;
+if (document.getElementById('screenLista').classList.contains('active')) {
+cargarReservas();
+mostrarMsg('⏱ Se volvió a la fecha de hoy.', 'warn');
+  }
+}
+
+/* Día de la semana a partir de una fecha ISO (yyyy-MM-dd), calculado en el
+   navegador (hora local) para no depender de una ida y vuelta al servidor
+   cada vez que cambia la fecha. */
+var DIAS_SEMANA_JS = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
+function diaSemanaDeISO(fechaISO) {
+var p = String(fechaISO || '').split('-');
+if (p.length !== 3) return '';
+var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+if (isNaN(d.getTime())) return '';
+return DIAS_SEMANA_JS[d.getDay()];
+}
+function formatearFechaConDia(fechaISO) {
+var p = String(fechaISO || '').split('-');
+if (p.length !== 3) return fechaISO || '';
+return p[2] + '/' + p[1] + '/' + p[0] + ' - ' + diaSemanaDeISO(fechaISO);
+}
+function actualizarDiaSemanaLabel() {
+var fecha = document.getElementById('inputFecha').value;
+var el = document.getElementById('diaSemanaLabel');
+// Rediseño 2026-10-07: "Martes" en vez de "MARTES" (etiqueta oscura junto a la fecha).
+var dia = fecha ? diaSemanaDeISO(fecha) : '';
+if (el) el.textContent = dia ? dia.charAt(0) + dia.slice(1).toLowerCase() : '';
+}
+function actualizarDiaSemanaSolicitud() {
+var fecha = document.getElementById('fechaSolicitud').value;
+var el = document.getElementById('diaSemanaSolicitud');
+if (el) el.textContent = fecha ? diaSemanaDeISO(fecha) : '';
+}
+
+/** Genera <option> para cajas numeradas 001–099, marcando la actual como seleccionada. */
+function opcionesCaja(valorActual) {
+var html = '';
+for (var i = 0; i <= 99; i++) {
+var v = String(i).padStart(3, '0');
+html += '<option value="' + v + '"' + (v === valorActual ? ' selected' : '') + '>' + v + '</option>';
+  }
+return html;
+}
+
+/** Lee la sesión de localStorage; si es válida, actualiza `sesion` y el badge y devuelve true. */
+function cargarSesion() {
+var raw = localStorage.getItem(SESSION_KEY);
+if (raw) {
+try {
+var u = JSON.parse(raw);
+if (u && u.usuario && u.token && u.expiry && Date.now() < u.expiry) {
+sesion = u;
+var badge = document.getElementById('badgeNombre');
+if (badge) badge.textContent = sesion.nombre || sesion.usuario;
+return true;
+      }
+    } catch (e) {}
+  }
+localStorage.removeItem(SESSION_KEY);
+sesion = null;
+return false;
+}
+
+function guardarSesion(usuario, nombre, token) {
+sesion = { usuario: usuario, nombre: nombre || usuario, token: token, expiry: Date.now() + SESSION_TTL };
+localStorage.setItem(SESSION_KEY, JSON.stringify(sesion));
+sessionStorage.setItem(SESSION_KEY, JSON.stringify(sesion));
+var badge = document.getElementById('badgeNombre');
+if (badge) badge.textContent = sesion.nombre;
+}
+
+/* CAMBIO 2026-09-18: antes reiniciaba a la pantalla de login interna del
+   módulo (step1), que quedaba trabada de forma intermitente al re-loguear
+   (mismo síntoma que el login intermitente de Nexo Tickets). Ahora navega
+   directo a login.html de Nexo Tickets, igual que el botón "↩". Se llama
+   desde un onclick directo (no desde un callback asíncrono de
+   google.script.run), así que window.top.location.href es seguro aquí. */
+function cerrarSesion() {
+localStorage.removeItem(SESSION_KEY);
+sessionStorage.removeItem(SESSION_KEY);
+sesion = null;
+window.top.location.href = 'https://coelhocolatino.github.io/nexo-tickets/login.html';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PANTALLA: LOGIN
+   ══════════════════════════════════════════════════════════════ */
+var usuarioActual = null;
+var _busy = false;
+
+function showMsg(id, text, type) {
+var el = document.getElementById(id);
+el.textContent = text; el.className = 'msg show ' + type;
+}
+function hideMsg(id) {
+var el = document.getElementById(id);
+el.textContent = ''; el.className = 'msg';
+}
+function setLoading(btn, loading, text) {
+if (loading) { btn.dataset.orig = btn.innerHTML; btn.innerHTML = '<span class="spinner"></span>' + (text || 'Verificando...'); btn.disabled = true; }
+else { btn.innerHTML = btn.dataset.orig || btn.innerHTML; btn.disabled = false; }
+}
+function showStep(id) {
+document.querySelectorAll('#screenLogin .step').forEach(function (s) { s.classList.remove('active'); });
+document.getElementById(id).classList.add('active');
+}
+function togglePwd(inputId, btn) {
+var inp = document.getElementById(inputId);
+if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+function volver() {
+_busy = false;
+showStep('step1');
+hideMsg('msg1'); hideMsg('msg2'); hideMsg('msg3');
+document.getElementById('inputUsuario').value = '';
+document.getElementById('inputPassword').value = '';
+}
+function checkStrength() {
+var val = document.getElementById('inputPwdNueva').value;
+var hasLen = val.length >= 6, hasNum = /\d/.test(val), hasUpper = /[A-Z]/.test(val);
+setReq('req-len', hasLen); setReq('req-num', hasNum); setReq('req-upper', hasUpper);
+var score = [hasLen, hasNum, hasUpper].filter(Boolean).length;
+var fill = document.getElementById('strengthFill');
+fill.style.width = (score / 3 * 100) + '%';
+fill.style.background = score === 3 ? '#86efac' : score === 2 ? '#fde68a' : '#fca5a5';
+}
+function setReq(id, ok) {
+var el = document.getElementById(id);
+el.className = 'req-item' + (ok ? ' ok' : '');
+el.querySelector('.req-icon').textContent = ok ? '✓' : '○';
+}
+
+function verificarUsuario() {
+if (_busy) return;
+var usuario = document.getElementById('inputUsuario').value.trim();
+if (!usuario) { showMsg('msg1', 'Ingresa tu nombre de usuario', 'warn'); return; }
+_busy = true;
+var btn = document.getElementById('btnContinuar');
+setLoading(btn, true, 'Verificando...');
+hideMsg('msg1');
+
+google.script.run
+    .withSuccessHandler(function (data) {
+if (!data || !data.encontrado) {
+showMsg('msg1', '❌ Usuario no encontrado. Contacta al administrador.', 'error');
+_busy = false; setLoading(btn, false); return;
+      }
+if (data.autorizado === false) {
+showMsg('msg1', '🚫 ' + (data.error || 'No tienes acceso a este módulo.'), 'error');
+_busy = false; setLoading(btn, false); return;
+      }
+if (!data.activo) {
+showMsg('msg1', '🚫 Tu acceso está desactivado. Contacta al administrador.', 'error');
+_busy = false; setLoading(btn, false); return;
+      }
+usuarioActual = { usuario: data.usuario, nombre: data.nombre || usuario, tienePwd: data.tienePwd };
+setLoading(btn, false);
+if (data.tienePwd) {
+document.getElementById('nombreMostrado').textContent = usuarioActual.nombre;
+showStep('step2login');
+setTimeout(function () { document.getElementById('inputPassword').focus(); }, 80);
+      } else {
+document.getElementById('nombreNuevo').textContent = usuarioActual.nombre;
+showStep('step2registro');
+setTimeout(function () { document.getElementById('inputPwdNueva').focus(); }, 80);
+      }
+    })
+    .withFailureHandler(function (err) {
+showMsg('msg1', '⚠️ Error de conexión. Inténtalo de nuevo.', 'error');
+console.error(err);
+_busy = false; setLoading(btn, false);
+    })
+    .verificarUsuario(usuario.toLowerCase());
+}
+
+function irAListaTrasLogin() {
+mostrarPantalla('Lista');
+document.getElementById('inputFecha').value = hoyISO();
+cargarReservas();
+refrescarContadorPendientes();
+}
+
+function hacerLoginClick() {
+if (_busy) return;
+var pwd = document.getElementById('inputPassword').value;
+if (!pwd) { showMsg('msg2', 'Ingresa tu contraseña', 'warn'); return; }
+_busy = true;
+var btn = document.getElementById('btnLogin');
+setLoading(btn, true, 'Entrando...');
+hideMsg('msg2');
+
+google.script.run
+    .withSuccessHandler(function (data) {
+if (data && data.ok) {
+guardarSesion(data.usuario, data.nombre, data.token);
+showMsg('msg2', '✅ Acceso concedido.', 'success');
+setLoading(btn, false); _busy = false;
+setTimeout(irAListaTrasLogin, 300);
+      } else {
+showMsg('msg2', '❌ Contraseña incorrecta. Inténtalo de nuevo.', 'error');
+document.getElementById('inputPassword').value = '';
+setLoading(btn, false); _busy = false;
+setTimeout(function () { document.getElementById('inputPassword').focus(); }, 50);
+      }
+    })
+    .withFailureHandler(function (err) {
+showMsg('msg2', '⚠️ Error de conexión. Inténtalo de nuevo.', 'error');
+console.error(err);
+setLoading(btn, false); _busy = false;
+    })
+    .hacerLogin(usuarioActual.usuario, pwd);
+}
+
+function registrarPasswordClick() {
+if (_busy) return;
+var pwd1 = document.getElementById('inputPwdNueva').value;
+var pwd2 = document.getElementById('inputPwdConfirm').value;
+if (pwd1.length < 6) { showMsg('msg3', '⚠️ La contraseña debe tener al menos 6 caracteres', 'warn'); return; }
+if (pwd1 !== pwd2) { showMsg('msg3', '❌ Las contraseñas no coinciden', 'error'); return; }
+_busy = true;
+var btn = document.getElementById('btnRegistrar');
+setLoading(btn, true, 'Guardando...');
+hideMsg('msg3');
+
+google.script.run
+    .withSuccessHandler(function (data) {
+if (data && data.ok) {
+guardarSesion(data.usuario, data.nombre, data.token);
+showMsg('msg3', '✅ Contraseña creada.', 'success');
+setLoading(btn, false); _busy = false;
+setTimeout(irAListaTrasLogin, 300);
+      } else {
+showMsg('msg3', '❌ ' + (data && data.error || 'Error al guardar. Inténtalo de nuevo.'), 'error');
+setLoading(btn, false); _busy = false;
+      }
+    })
+    .withFailureHandler(function (err) {
+showMsg('msg3', '⚠️ Error de conexión. Inténtalo de nuevo.', 'error');
+console.error(err);
+setLoading(btn, false); _busy = false;
+    })
+    .registrarPassword(usuarioActual.usuario, pwd1);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PANTALLA: LISTA DE RESERVAS
+   ══════════════════════════════════════════════════════════════ */
+var reservasActuales = [];     // reservas de la fecha seleccionada (pantalla Lista)
+var pendientesActuales = [];   // TODAS las reservas en PENDIENTE, cualquier fecha (pantalla Pendientes)
+var idUbicacionEnEdicion = null;
+var franjaFiltro = null;       // null = todas las franjas
+var franjasActuales = [];      // cache para poder re-pintar los chips al filtrar
+var porFranjaActual = {};
+
+function irASolicitud() {
+mostrarPantalla('Solicitud');
+var fechaLista = document.getElementById('inputFecha').value || hoyISO();
+// Ronda 16: no se pueden añadir pedidos a días anteriores — si la Lista
+// está en un día pasado, la Solicitud se abre con la fecha de hoy.
+if (fechaLista < hoyISO()) fechaLista = hoyISO();
+document.getElementById('fechaSolicitud').value = fechaLista;
+actualizarDiaSemanaSolicitud();
+cargarDisponibilidad();
+}
+
+/** targetId por defecto 'msgGlobal' (pantalla Lista); se puede apuntar a otro
+ *  contenedor de mensaje (p.ej. 'msgGlobalPendientes'). */
+function mostrarMsg(text, tipo, targetId) {
+var el = document.getElementById(targetId || 'msgGlobal');
+if (!el) return;
+el.textContent = text; el.className = 'show ' + (tipo || '');
+clearTimeout(el._t);
+el._t = setTimeout(function () { el.className = ''; }, 4000);
+}
+/** Igual que mostrarMsg, pero elige el contenedor según la pantalla activa —
+ *  usado por acciones (guardarCampo/confirmar/excluir) que se disparan tanto
+ *  desde la Lista de Reservas como desde la pantalla de Pendientes. */
+function mostrarMsgActual(text, tipo) {
+var enPendientes = document.getElementById('screenPendientes').classList.contains('active');
+mostrarMsg(text, tipo, enPendientes ? 'msgGlobalPendientes' : 'msgGlobal');
+}
+
+function cargarReservas() {
+var fecha = document.getElementById('inputFecha').value || hoyISO();
+actualizarDiaSemanaLabel();
+mostrarSpinner(true);
+google.script.run
+    .withSuccessHandler(function (data) {
+mostrarSpinner(false);
+if (!data || !data.ok) { mostrarMsg('Error al cargar reservas.', 'error'); return; }
+reservasActuales = data.reservas;
+renderChips(data.franjas, data.porFranja);
+renderLista(reservasActuales);
+actualizarTotalReservas(data.total);
+    })
+    .withFailureHandler(function (err) {
+mostrarSpinner(false);
+mostrarMsg('⚠️ Error de conexión: ' + err, 'error');
+    })
+    .listarReservas(fecha);
+}
+
+/** Texto "Total: X reservas" (o "X/Y" si hay límite) junto a los chips de franja. */
+function actualizarTotalReservas(total) {
+var el = document.getElementById('totalReservasLabel');
+if (!el) return;
+total = total || { usadas: 0, limite: 0 };
+el.textContent = total.usadas + (total.limite ? ' de ' + total.limite : '') + (total.usadas === 1 && !total.limite ? ' reserva' : ' reservas');
+}
+
+/** Contador global (independiente de la fecha) de reservas PENDIENTE —
+ *  liviano, se llama cada 30s y tras cada acción relevante. */
+function refrescarContadorPendientes() {
+google.script.run
+    .withSuccessHandler(function (data) {
+if (!data || !data.ok) return;
+pintarBotonPendientes(data.total);
+    })
+    .withFailureHandler(function (err) { console.error(err); })
+    .contarPendientesGlobal();
+}
+function pintarBotonPendientes(total) {
+var btn = document.getElementById('btnPendientes');
+if (!btn) return;
+btn.textContent = 'Pendientes: ' + total;
+btn.classList.toggle('alerta', total > 0);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PANTALLA: PENDIENTES DE RECOGER EN CAJA
+   Lista completa (no un popup) de TODAS las reservas en PENDIENTE, de
+   cualquier fecha, con las mismas tarjetas editables de la Lista de
+   Reservas — para resolver todo (asignar caja, informar pedido, confirmar,
+   excluir) sin tener que ir cambiando de fecha.
+   ══════════════════════════════════════════════════════════════ */
+function abrirPendientes() {
+mostrarPantalla('Pendientes');
+cargarPendientes();
+}
+function volverDePendientes() {
+mostrarPantalla('Lista');
+cargarReservas();
+refrescarContadorPendientes();
+}
+function cargarPendientes() {
+mostrarSpinner(true);
+google.script.run
+    .withSuccessHandler(function (data) {
+mostrarSpinner(false);
+if (!data || !data.ok) { mostrarMsg('Error al cargar pendientes.', 'error', 'msgGlobalPendientes'); return; }
+pendientesActuales = data.pendientes;
+renderPendientes(pendientesActuales);
+actualizarTotalPendientesLabel(pendientesActuales.length);
+pintarBotonPendientes(pendientesActuales.length);
+    })
+    .withFailureHandler(function (err) {
+mostrarSpinner(false);
+mostrarMsg('⚠️ Error de conexión: ' + err, 'error', 'msgGlobalPendientes');
+    })
+    .listarPendientesGlobal();
+}
+function actualizarTotalPendientesLabel(n) {
+var el = document.getElementById('totalPendientesLabel');
+if (el) el.textContent = n + (n === 1 ? ' pendiente' : ' pendientes');
+}
+/** Las que ya tienen caja asignada (cliente esperando en caja) van primero,
+ *  por urgencia (hace más tiempo que se asignó la caja, primero); luego las
+ *  que todavía están en "000" (reserva a futuro), por hora de reserva. */
+function compararPendientes(a, b) {
+var aEnCaja = a.caja && a.caja !== '000';
+var bEnCaja = b.caja && b.caja !== '000';
+if (aEnCaja !== bEnCaja) return aEnCaja ? -1 : 1;
+if (aEnCaja) return (a.horaCajaTs || 0) - (b.horaCajaTs || 0);
+return (a._horaReservaTs || 0) - (b._horaReservaTs || 0);
+}
+function renderPendientes(items) {
+var cont = document.getElementById('listaPendientes');
+if (!items || !items.length) {
+cont.innerHTML = '<div class="empty-state">No hay pedidos pendientes 🎉</div>';
+return;
+  }
+var ordenados = items.slice().sort(compararPendientes);
+var html = '';
+ordenados.forEach(function (r) { html += tarjetaReservaHTML(r, true); });
+cont.innerHTML = html;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PANTALLA: INFORME DIARIO (puntos 7-14 del pedido de Wanderson,
+   2026-09-22).
+
+   RONDA 14 (2026-09-28): el informe se genera por FECHA DE EMISIÓN del
+   ticket, no por fecha de entrega. Se elige el día de emisión arriba
+   (por defecto hoy); la lista muestra solo los pedidos CONFIRMADO emitidos
+   ese día que todavía no se incluyeron en un informe (todos premarcados;
+   se pueden desmarcar a mano). El PDF sale con ese día como "FECHA DE
+   EMISIÓN" y cada pedido conserva su propia FECHA ENTREGA. Los pedidos
+   incluidos quedan marcados en el servidor y no vuelven a aparecer aquí.
+   `fechaReferenciaInforme` ahora guarda la FECHA DE EMISIÓN elegida.
+   ══════════════════════════════════════════════════════════════ */
+var confirmadosInforme = [];
+var fechaReferenciaInforme = '';
+// Ronda 16: último informe generado en esta sesión { fecha, marca, total },
+// para poder enviarlo por correo tal cual con "Enviar Informe".
+var ultimoInformeGenerado = null;
+var DIAS_SEMANA_CAP_JS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+function formatearFechaCompraLarga(fechaISO) {
+var p = String(fechaISO || '').split('-');
+if (p.length !== 3) return fechaISO || '';
+var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+if (isNaN(d.getTime())) return fechaISO;
+return DIAS_SEMANA_CAP_JS[d.getDay()] + ', ' + p[2] + '/' + p[1] + '/' + p[0].slice(2);
+}
+
+function actualizarDiaSemanaInforme() {
+var el = document.getElementById('informeDiaSemana');
+if (el) el.textContent = fechaReferenciaInforme ? diaSemanaDeISO(fechaReferenciaInforme) : '';
+}
+
+function abrirInformeDiario() {
+var inp = document.getElementById('inputFechaEmisionInforme');
+inp.max = hoyISO();
+inp.value = hoyISO();
+fechaReferenciaInforme = inp.value;
+actualizarDiaSemanaInforme();
+mostrarPantalla('Informe');
+cargarInforme();
+}
+function cambiarFechaEmisionInforme() {
+var v = document.getElementById('inputFechaEmisionInforme').value;
+if (!v) return;
+fechaReferenciaInforme = v;
+actualizarDiaSemanaInforme();
+cargarInforme();
+}
+function volverDeInforme() {
+mostrarPantalla('Lista');
+cargarReservas();
+refrescarContadorPendientes();
+}
+function cargarInforme() {
+mostrarSpinner(true);
+google.script.run
+    .withSuccessHandler(function (data) {
+mostrarSpinner(false);
+if (!data || !data.ok) { mostrarMsg((data && data.error) || 'Error al cargar el informe.', 'error', 'msgGlobalInforme'); return; }
+confirmadosInforme = data.confirmados;
+renderInforme();
+    })
+    .withFailureHandler(function (err) {
+mostrarSpinner(false);
+mostrarMsg('⚠️ Error de conexión: ' + err, 'error', 'msgGlobalInforme');
+    })
+    .listarConfirmadosParaInforme(fechaReferenciaInforme);
+}
+function renderInforme() {
+var cont = document.getElementById('listaInforme');
+if (!confirmadosInforme.length) {
+cont.innerHTML = '<div class="empty-state">No hay pedidos confirmados emitidos el ' + escapeAttr(formatearFechaCompraLarga(fechaReferenciaInforme)) + ' pendientes de informar 🎉</div>';
+actualizarTotalInformeLabel();
+return;
+  }
+var html = '';
+confirmadosInforme.forEach(function (r) {
+// Ronda 12 (2026-09-24): todas las casillas salen marcadas por defecto —
+// se pueden desmarcar a mano las que no se quieran incluir.
+var marcado = true;
+html += '<label class="informe-item">' +
+'<input type="checkbox" data-id="' + escapeAttr(r.id) + '"' + (marcado ? ' checked' : '') + ' onchange="actualizarTotalInformeLabel()" />' +
+'<span class="informe-info">' +
+'<strong>' + escapeAttr(r.clienteDireccion || '—') + '</strong><br>' +
+'Fecha entrega: ' + escapeAttr(formatearFechaConDia(r.fecha)) + '<br>' +
+'Caja ' + escapeAttr(r.caja || '—') + ' · Pedido ' + escapeAttr(r.pedido || '—') +
+'</span>' +
+'</label>';
+  });
+cont.innerHTML = html;
+actualizarTotalInformeLabel();
+}
+function actualizarTotalInformeLabel() {
+var checks = document.querySelectorAll('#listaInforme input[type="checkbox"]:checked');
+var n = checks.length;
+var lbl = document.getElementById('totalInformeLabel');
+if (lbl) lbl.textContent = n + (n === 1 ? ' seleccionado' : ' seleccionados');
+var btn = document.getElementById('btnGenerarInforme');
+if (btn) btn.disabled = (n === 0);
+}
+function base64APdfBlob_(base64) {
+var byteChars = atob(base64);
+var byteNumbers = new Array(byteChars.length);
+for (var i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+return new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+}
+function generarInformeClick() {
+var ids = [];
+document.querySelectorAll('#listaInforme input[type="checkbox"]:checked').forEach(function (c) { ids.push(c.getAttribute('data-id')); });
+if (!ids.length) { mostrarMsg('Selecciona al menos un pedido.', 'error', 'msgGlobalInforme'); return; }
+
+// Punto 3 (2026-09-22): al generar, los pedidos incluidos quedan marcados
+// en el servidor y ya no se pueden volver a incluir en otro informe — se
+// avisa antes, como con Excluir.
+var texto = ids.length === 1
+    ? 'Al generar este informe, este pedido ya no se podrá incluir en otro informe. ¿Continuar?'
+    : 'Al generar este informe, estos ' + ids.length + ' pedidos ya no se podrán incluir en otro informe. ¿Continuar?';
+if (!confirm(texto)) return;
+
+// Ronda 16 (2026-10-02): antes de generar se pregunta si se quiere anotar
+// el total de pedidos seleccionados en PEDIDOS_TOTALES (columna TRAVESIA,
+// fila de la fecha de emisión del informe). NO se suma: primero se mira
+// qué hay ya anotado ese día y, si hay otro valor, se pregunta si se desea
+// SOBRESCRIBIR. Con NO, el informe se genera igual y PEDIDOS_TOTALES no se toca.
+var fechaInforme = fechaReferenciaInforme;
+var n = ids.length;
+var detalleBase = 'Columna TRAVESIA · ' + formatearFechaCompraLarga(fechaInforme);
+function preguntarAnadir(detalleExtra) {
+preguntarSiNo(
+'¿Deseas añadir el total de pedidos seleccionados (' + n + ') a PEDIDOS_TOTALES?',
+function () { ejecutarGenerarInforme_(ids, fechaInforme, { anadir: true }); },
+function () { ejecutarGenerarInforme_(ids, fechaInforme, {}); },
+      { icono: '📊', detalle: detalleBase + (detalleExtra || '') }
+    );
+  }
+mostrarSpinner(true);
+google.script.run
+    .withSuccessHandler(function (pt) {
+mostrarSpinner(false);
+if (!pt || !pt.ok) { preguntarAnadir('\nNo se pudo consultar el valor actual: si ya hay uno, no se cambiará.'); return; }
+var actual = Number(pt.valor) || 0;
+if (actual === 0) { preguntarAnadir(''); return; }
+if (actual === n) { ejecutarGenerarInforme_(ids, fechaInforme, { yaAnotado: actual }); return; }
+preguntarSiNo(
+'PEDIDOS_TOTALES ya tiene ' + actual + ' en TRAVESIA para ese día.\n¿Desea sobrescribirlo con ' + n + '?',
+function () { ejecutarGenerarInforme_(ids, fechaInforme, { anadir: true, sobrescribir: true }); },
+function () { ejecutarGenerarInforme_(ids, fechaInforme, { mantenido: actual }); },
+        { icono: '📊', detalle: detalleBase + '\nSÍ: queda ' + n + ' · NO: se mantiene ' + actual + '.\nEl informe se genera en ambos casos.' }
+      );
+    })
+    .withFailureHandler(function () {
+mostrarSpinner(false);
+preguntarAnadir('\nNo se pudo consultar el valor actual: si ya hay uno, no se cambiará.');
+    })
+    .consultarPedidosTotalesTravesia(fechaInforme, sesion.usuario);
+}
+
+/** pt: { anadir, sobrescribir } → qué hacer con PEDIDOS_TOTALES; { mantenido | yaAnotado } solo para el mensaje. */
+function ejecutarGenerarInforme_(ids, fechaInforme, pt) {
+pt = pt || {};
+var btn = document.getElementById('btnGenerarInforme');
+btn.disabled = true;
+mostrarSpinner(true);
+google.script.run
+    .withSuccessHandler(function (res) {
+mostrarSpinner(false);
+if (res && res.ok) {
+var blob = base64APdfBlob_(res.base64);
+var url = URL.createObjectURL(blob);
+var a = document.createElement('a');
+a.href = url; a.download = res.nombreArchivo || 'informe.pdf';
+document.body.appendChild(a); a.click(); document.body.removeChild(a);
+setTimeout(function () { URL.revokeObjectURL(url); }, 15000);
+
+// Ya quedaron marcados como informados en el servidor: los sacamos
+// también de esta lista para que no se puedan volver a marcar.
+var incluidos = {};
+ids.forEach(function (id) { incluidos[id] = true; });
+confirmadosInforme = confirmadosInforme.filter(function (r) { return !incluidos[r.id]; });
+renderInforme();
+
+ultimoInformeGenerado = { fecha: res.fecha || fechaInforme, marca: res.marca || '', total: res.total };
+
+var msgTxt = '✅ Informe generado (' + res.total + (res.total === 1 ? ' pedido).' : ' pedidos).');
+var tipoMsg = '';
+var rpt = res.pedidosTotales;
+if (pt.anadir) {
+if (rpt && rpt.ok && rpt.accion === 'sobrescrito') msgTxt += ' PEDIDOS_TOTALES · TRAVESIA: ' + rpt.previo + ' → ' + rpt.nuevo + ' (sobrescrito).';
+else if (rpt && rpt.ok) msgTxt += ' PEDIDOS_TOTALES · TRAVESIA: ' + rpt.nuevo + '.';
+else if (rpt && rpt.requiereSobrescribir) { msgTxt += ' ⚠️ PEDIDOS_TOTALES ya tenía ' + rpt.previo + ' y NO se modificó.'; tipoMsg = 'warn'; }
+else { msgTxt += ' ⚠️ No se pudo actualizar PEDIDOS_TOTALES' + (rpt && rpt.error ? ': ' + rpt.error : '.'); tipoMsg = 'warn'; }
+        } else if (pt.mantenido) {
+msgTxt += ' PEDIDOS_TOTALES no se modificó (se mantiene ' + pt.mantenido + ').';
+        } else if (pt.yaAnotado) {
+msgTxt += ' PEDIDOS_TOTALES ya tenía ' + pt.yaAnotado + '.';
+        }
+mostrarMsgLargo_(msgTxt, tipoMsg, 'msgGlobalInforme');
+
+// Opción "Enviar Informe": se ofrece nada más generar.
+var g = res.grupoCorreo;
+if (g && g.total > 0) {
+preguntarSiNo(
+'¿Enviar este informe por correo al grupo «' + (g.grupo || 'CORREOS') + '»?',
+function () { ejecutarEnviarInforme_(ultimoInformeGenerado.fecha, ultimoInformeGenerado.marca); },
+null,
+            { icono: '📧', detalle: res.total + (res.total === 1 ? ' pedido' : ' pedidos') + ' · ' + g.total + (g.total === 1 ? ' destinatario' : ' destinatarios') + '\nTambién puedes enviarlo luego con el botón «Enviar Informe».' }
+          );
+        }
+      } else {
+btn.disabled = false;
+mostrarMsg(res && res.error || 'No se pudo generar el informe.', 'error', 'msgGlobalInforme');
+      }
+    })
+    .withFailureHandler(function (err) {
+mostrarSpinner(false);
+btn.disabled = false;
+mostrarMsg('⚠️ Error de conexión: ' + err, 'error', 'msgGlobalInforme');
+    })
+    .generarInformeDiario(fechaInforme, ids, sesion.usuario, { anadirPedidosTotales: !!pt.anadir, sobrescribirPedidosTotales: !!pt.sobrescribir });
+}
+
+/** Como mostrarMsg, pero el aviso se queda 12 s (resultado del informe / envío). */
+function mostrarMsgLargo_(text, tipo, targetId) {
+mostrarMsg(text, tipo, targetId);
+var el = document.getElementById(targetId || 'msgGlobal');
+if (!el) return;
+clearTimeout(el._t);
+el._t = setTimeout(function () { el.className = ''; }, 12000);
+}
+
+/* ── Ronda 16 (2026-10-02): ENVIAR INFORME por correo ───────────────────
+   Envía el PDF del Informe Diario a los integrantes del grupo de la hoja
+   CORREOS (planilla DATABASE, B1 = nombre del grupo, B2:B = correos).
+   - Si se acaba de generar un informe de la fecha elegida, se envía ese.
+   - Si no, se envía el informe de la fecha de emisión elegida arriba con
+     todos los pedidos de ese día que ya estén en algún informe.
+   Siempre pide confirmación antes (va a destinatarios externos). */
+function enviarInformeClick() {
+var fecha = document.getElementById('inputFechaEmisionInforme').value || fechaReferenciaInforme;
+if (!fecha) { mostrarMsg('Elige la fecha de emisión.', 'error', 'msgGlobalInforme'); return; }
+var marca = (ultimoInformeGenerado && ultimoInformeGenerado.fecha === fecha) ? ultimoInformeGenerado.marca : '';
+mostrarSpinner(true);
+google.script.run
+    .withSuccessHandler(function (g) {
+mostrarSpinner(false);
+if (!g || !g.ok) { mostrarMsg((g && g.error) || 'No se pudo leer el grupo de correo.', 'error', 'msgGlobalInforme'); return; }
+if (!g.total) { mostrarMsg('La hoja CORREOS no tiene ningún correo (columna B, desde B2).', 'error', 'msgGlobalInforme'); return; }
+preguntarSiNo(
+'¿Enviar el Informe Diario del ' + formatearFechaCompraLarga(fecha) + ' al grupo «' + (g.grupo || 'CORREOS') + '»?',
+function () { ejecutarEnviarInforme_(fecha, marca); },
+null,
+        { icono: '📧', detalle: g.total + (g.total === 1 ? ' destinatario' : ' destinatarios') + (marca ? '\nSe envía el informe que acabas de generar.' : '\nSe envían los pedidos de ese día ya incluidos en un informe.') }
+      );
+    })
+    .withFailureHandler(function (err) { mostrarSpinner(false); mostrarMsg('⚠️ Error de conexión: ' + err, 'error', 'msgGlobalInforme'); })
+    .infoGrupoCorreoInforme(sesion.usuario);
+}
+function ejecutarEnviarInforme_(fecha, marca) {
+var btn = document.getElementById('btnEnviarInforme');
+if (btn) btn.disabled = true;
+mostrarSpinner(true);
+google.script.run
+    .withSuccessHandler(function (res) {
+mostrarSpinner(false);
+if (btn) btn.disabled = false;
+if (res && res.ok) {
+mostrarMsgLargo_('📧 Informe enviado a ' + res.destinatarios + (res.destinatarios === 1 ? ' destinatario' : ' destinatarios') +
+    ' del grupo «' + (res.grupo || 'CORREOS') + '» (' + res.total + (res.total === 1 ? ' pedido).' : ' pedidos).'), '', 'msgGlobalInforme');
+      } else {
+mostrarMsgLargo_((res && res.error) || 'No se pudo enviar el informe.', 'error', 'msgGlobalInforme');
+      }
+    })
+    .withFailureHandler(function (err) {
+mostrarSpinner(false);
+if (btn) btn.disabled = false;
+mostrarMsg('⚠️ Error de conexión: ' + err, 'error', 'msgGlobalInforme');
+    })
+    .enviarInformeDiario(fecha, sesion.usuario, marca || '');
+}
+
+/**
+ * Recuperación manual (2026-09-22): botón discreto al final de Informe
+ * Diario para desmarcar pedidos que se quedaron "atascados" (marcados
+ * como informados sin que llegara a salir el PDF, ver liberarInformeAtascado
+ * en Code.gs). Ronda 14: el desplegable lista FECHAS DE EMISIÓN (no fechas
+ * de compra/referencia), y liberar una fecha afecta SOLO a los pedidos
+ * emitidos ese día — antes se liberaban también pedidos de otros días que
+ * se habían incluido en el mismo informe.
+ */
+function toggleRecuperarInforme() {
+var panel = document.getElementById('panelRecuperarInforme');
+var abrir = !panel.classList.contains('show');
+panel.classList.toggle('show', abrir);
+if (abrir) cargarFechasRecuperarInforme();
+}
+function cargarFechasRecuperarInforme() {
+var select = document.getElementById('selectFechaRecuperar');
+select.innerHTML = '<option value="">Cargando…</option>';
+google.script.run
+    .withSuccessHandler(function (data) {
+if (!data || !data.ok || !data.fechas.length) {
+select.innerHTML = '<option value="">(no hay informes marcados)</option>';
+return;
+      }
+select.innerHTML = data.fechas.map(function (f) {
+return '<option value="' + escapeAttr(f.fecha) + '">' +
+    escapeAttr(formatearFechaCompraLarga(f.fecha)) + ' — ' + f.total + (f.total === 1 ? ' pedido' : ' pedidos') +
+    '</option>';
+      }).join('');
+    })
+    .withFailureHandler(function (err) {
+select.innerHTML = '<option value="">Error: ' + err + '</option>';
+    })
+    .listarFechasInformadas();
+}
+function ejecutarRecuperarInforme() {
+var select = document.getElementById('selectFechaRecuperar');
+var fecha = select.value;
+if (!fecha) { mostrarMsg('Elige una fecha.', 'error', 'msgGlobalInforme'); return; }
+
+var texto = 'Esto hará que los pedidos emitidos el ' + formatearFechaCompraLarga(fecha) +
+    ' que ya estaban marcados como informados vuelvan a aparecer en Informe Diario para poder incluirlos otra vez — incluso si su PDF sí llegó a generarse bien. No afecta a pedidos emitidos otros días. ¿Continuar?';
+if (!confirm(texto)) return;
+
+mostrarSpinner(true);
+google.script.run
+    .withSuccessHandler(function (res) {
+mostrarSpinner(false);
+if (res && res.ok) {
+mostrarMsg('✅ Se liberaron ' + res.liberados + ' pedido(s).', '', 'msgGlobalInforme');
+document.getElementById('panelRecuperarInforme').classList.remove('show');
+// Se muestra directamente el día recuperado, para ver solo esos pedidos.
+document.getElementById('inputFechaEmisionInforme').value = fecha;
+fechaReferenciaInforme = fecha;
+actualizarDiaSemanaInforme();
+cargarInforme();
+      } else {
+mostrarMsg(res && res.error || 'No se pudo recuperar el informe.', 'error', 'msgGlobalInforme');
+      }
+    })
+    .withFailureHandler(function (err) {
+mostrarSpinner(false);
+mostrarMsg('⚠️ Error de conexión: ' + err, 'error', 'msgGlobalInforme');
+    })
+    .liberarInformeAtascado(fecha, sesion.usuario);
+}
+
+/** Toca un cuadro de franja: filtra la lista a esa franja; tocarlo de nuevo quita el filtro. */
+function toggleFiltroFranja(franja) {
+franjaFiltro = (franjaFiltro === franja) ? null : franja;
+renderChips(franjasActuales, porFranjaActual);
+renderLista(reservasActuales);
+}
+
+/** Total de pedidos por franja horaria sobre el límite permitido — tocar un cuadro filtra la lista. */
+function renderChips(franjas, porFranja) {
+franjasActuales = franjas;
+porFranjaActual = porFranja;
+// Ronda 16: el tramo ya cerrado por hora (o cualquier tramo de un día
+// pasado) se sigue viendo y filtrando, pero marcado con 🔒 CERRADO.
+var fechaLista = document.getElementById('inputFecha').value || hoyISO();
+var html = '';
+franjas.forEach(function (f) {
+var d = porFranja[f] || { usadas: 0, limite: 0 };
+var lleno = d.limite > 0 && d.usadas >= d.limite;
+var activo = franjaFiltro === f;
+var cerrado = franjaCerrada(fechaLista, f);
+// Rediseño 2026-10-07: cada franja muestra la ocupación como una fila de
+// "pips" (uno por plaza del límite) y el estado Abierto / Completo / Cerrado.
+var nPips = Math.min(d.limite || 0, 20);
+var pips = '';
+for (var i = 0; i < nPips; i++) pips += '<i' + (i < d.usadas ? ' class="on"' : '') + '></i>';
+var estado = cerrado ? ICONO_CANDADO + 'Cerrado' : (lleno ? 'Completo' : 'Abierto');
+html += '<button type="button" class="chip' + (lleno ? ' lleno' : '') + (cerrado ? ' cerrado' : '') + (activo ? ' activo' : '') + '"' +
+    ' aria-pressed="' + activo + '"' + (cerrado ? ' title="Tramo cerrado: ya no admite pedidos"' : '') + ' onclick="toggleFiltroFranja(\'' + f + '\')">' +
+'<span class="franja-label">' + etiquetaFranja(f) + '</span>' +
+'<span class="franja-count">' + d.usadas + (d.limite ? '<small>/' + d.limite + '</small>' : '') + '</span>' +
+    (nPips ? '<span class="pips" aria-hidden="true" style="grid-template-columns:repeat(' + nPips + ',minmax(0,1fr))">' + pips + '</span>' : '') +
+'<span class="franja-estado">' + estado + '</span>' +
+'</button>';
+  });
+document.getElementById('chipsFranjas').innerHTML = html;
+}
+
+/** Lleva 000 (sin caja) o menos de 15 min desde que se asignó la caja: no hace falta avisar. */
+function necesitaAlerta(r) {
+if (!r || r.estado === 'EXCLUIDO') return false;
+if (!r.caja || r.caja === '000') return false;
+if (r.pedido && String(r.pedido).trim()) return false;
+if (!r.horaCajaTs) return false;
+return (Date.now() - r.horaCajaTs) / 60000 > 15;
+}
+
+/** Pendientes de nº de pedido primero (por hora de reserva, de menor a mayor);
+ *  luego el resto ordenado por nº de caja. (Solo para la pantalla Lista —
+ *  la pantalla Pendientes usa compararPendientes.) */
+function compararReservas(a, b) {
+var aPend = !(a.pedido && String(a.pedido).trim());
+var bPend = !(b.pedido && String(b.pedido).trim());
+if (aPend !== bPend) return aPend ? -1 : 1;
+if (aPend) return (a._horaReservaTs || 0) - (b._horaReservaTs || 0);
+return String(a.caja || '').localeCompare(String(b.caja || ''), undefined, { numeric: true });
+}
+
+/** HTML de una tarjeta de reserva editable — compartida por la Lista de
+ *  Reservas (mostrarFecha=false, ya se sabe la fecha por el filtro de
+ *  arriba) y por la pantalla de Pendientes (mostrarFecha=true, porque
+ *  mezcla reservas de distintas fechas).
+ *
+ *  Ronda 14 (2026-09-28): Cliente/Dirección ocupa toda la fila (campo más
+ *  grande); Caja, Pedido y 📍 van juntos debajo; los 3 botones de acción
+ *  van uno debajo del otro. La fecha de EMISIÓN no se muestra en la
+ *  tarjeta (solo se ve/edita en el modal de Editar). */
+/* Rediseño 2026-10-07: iconos de línea (sustituyen a los emojis) y ayudas
+   de la tarjeta "ticket". */
+var ICONO_CANDADO = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="11" width="12" height="9" rx="2"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3"/></svg>';
+var ICONO_MAPA = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg>';
+var ICONO_CAMARA = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13.5" r="3.2"/></svg>';
+var ICONO_CHECK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+var ICONO_LAPIZ = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l1-4L16 5l3 3L8 19z"/></svg>';
+var ICONO_PAPELERA = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13"/></svg>';
+var HTML_ALERTA_PEDIDO = '<span class="alerta-pedido"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Más de 15 min en caja sin nº de pedido</span>';
+
+/** "16-19H" → "16–19h" (como en el modelo de diseño). */
+function etiquetaFranja(f) { return String(f || '').replace('-', '–').replace(/H$/i, 'h'); }
+function tieneCaja(r) { return !!(r.caja && r.caja !== '000'); }
+function tienePedido(r) { return !!(r.pedido && String(r.pedido).trim()); }
+/** Piloto del panel del pedido: verde = confirmado, ámbar = esperando en caja, gris = aún sin caja. */
+function estadoTarjeta(r) { return r.estado === 'CONFIRMADO' ? 'ok' : (tieneCaja(r) ? 'wait' : 'off'); }
+function textoFalta(r) {
+if (r.estado === 'CONFIRMADO' || r.estado === 'EXCLUIDO') return '';
+if (!tieneCaja(r) && !tienePedido(r)) return 'Falta caja y nº de pedido';
+if (!tieneCaja(r)) return 'Falta asignar caja';
+if (!tienePedido(r)) return 'Falta nº de pedido';
+return '';
+}
+/** Tamaño de letra del nº de pedido según su longitud, para que quepa en el panel. */
+function clasePedido(v) { var n = String(v || '').length; return n >= 7 ? 'l8' : n >= 5 ? 'l6' : n === 4 ? 'l4' : ''; }
+function ajustarPedido(input) { input.className = 'tk-pedido-input ' + clasePedido(input.value); }
+
+/** Refresca piloto, estado, "pedido / sin pedido" y el aviso de lo que falta
+ *  de una tarjeta ya pintada, sin reconstruirla (no interrumpe si se está
+ *  escribiendo en otro campo). */
+function refrescarEstadoTarjeta(id) {
+var r = buscarReserva(id);
+var pantallaActiva = document.querySelector('.screen.active');
+var card = (r && pantallaActiva) ? pantallaActiva.querySelector('.reserva-card[data-id="' + id + '"]') : null;
+if (!card) return;
+card.classList.remove('st-ok', 'st-wait', 'st-off');
+card.classList.add('st-' + estadoTarjeta(r));
+card.querySelector('.tk-cap').textContent = tienePedido(r) ? 'pedido' : 'sin pedido';
+var need = card.querySelector('.tk-need');
+if (need) need.textContent = textoFalta(r);
+}
+
+function lineasHistorial(r) {
+var h = [];
+h.push({ t: r.horaReserva, txt: 'Reservó, ' + (r.usuario || '—') });
+if (r.usuarioCaja) h.push({ t: r.horaCajaTexto, txt: 'Caja asignada, ' + r.usuarioCaja });
+if (r.usuarioPedido) h.push({ t: r.horaPedido, txt: 'Pedido informado, ' + r.usuarioPedido });
+if (r.usuarioConfirma) h.push({ t: r.hrConfirmado, txt: (r.estado === 'EXCLUIDO' ? 'Excluyó, ' : 'Confirmó, ') + r.usuarioConfirma });
+return h.map(function (x) { return '<li><b>' + escapeAttr(x.t || '—') + '</b><span>' + escapeAttr(x.txt) + '</span></li>'; }).join('');
+}
+
+/** HTML de una tarjeta de reserva editable — compartida por la Lista de
+ *  Reservas (mostrarFecha=false, ya se sabe la fecha por el filtro de
+ *  arriba) y por la pantalla de Pendientes (mostrarFecha=true, porque
+ *  mezcla reservas de distintas fechas).
+ *
+ *  Rediseño 2026-10-07 (tarjeta "ticket"): a la izquierda, panel oscuro con
+ *  el nº de PEDIDO (editable) y un piloto de estado; a la derecha franja,
+ *  estado y hora, Cliente/Dirección, Caja, 📍 y 📷. Tras la línea
+ *  perforada, el Cobro y lo que falta; luego Confirmar / Editar / Excluir
+ *  en una fila y el historial plegable. La fecha de EMISIÓN no se muestra
+ *  en la tarjeta (solo se ve/edita en el modal de Editar). */
+function tarjetaReservaHTML(r, mostrarFecha) {
+var excluida = r.estado === 'EXCLUIDO';
+var ubicacionSet = r.ubicacion && String(r.ubicacion).trim().length > 0;
+var st = estadoTarjeta(r);
+return '' +
+'<article class="reserva-card st-' + st + (excluida ? ' excluida' : '') + (r.cobro ? ' cobro' : '') + '" data-id="' + r.id + '">' +
+      (necesitaAlerta(r) ? HTML_ALERTA_PEDIDO : '') +
+'<div class="tk-top">' +
+'<label class="tk-pedido">' +
+'<span class="tk-lamp" aria-hidden="true"></span>' +
+'<input type="text" class="tk-pedido-input ' + clasePedido(r.pedido) + '" inputmode="numeric" autocomplete="off" aria-label="Nº de pedido" placeholder="—" value="' + escapeAttr(r.pedido) + '" oninput="ajustarPedido(this)" onchange="guardarCampo(this,\'' + r.id + '\',\'pedido\')" />' +
+'<span class="tk-cap">' + (tienePedido(r) ? 'pedido' : 'sin pedido') + '</span>' +
+'</label>' +
+'<div class="tk-main">' +
+'<div class="tk-meta">' +
+'<span class="tk-slot">' + (mostrarFecha ? escapeAttr(formatearFechaConDia(r.fecha)) + ' · ' : '') + etiquetaFranja(r.franja) + '</span>' +
+'<span class="tk-status">' + (r.estado === 'CONFIRMADO' ? 'Confirmado' : excluida ? 'Excluido' : 'Pendiente') + '</span>' +
+'<span class="tk-hora">' + escapeAttr(r.horaReserva || '') + '</span>' +
+'</div>' +
+'<input type="text" class="tk-cliente input-mayus" aria-label="Cliente o dirección" value="' + escapeAttr(r.clienteDireccion) + '" onchange="guardarCampo(this,\'' + r.id + '\',\'clienteDireccion\')" />' +
+'<div class="tk-caja-row">' +
+'<div class="tk-caja"><label class="tk-label" for="caja_' + r.id + '">Caja</label>' +
+'<select id="caja_' + r.id + '" onchange="guardarCampo(this,\'' + r.id + '\',\'caja\')">' +
+'<option value="">—</option>' + opcionesCaja(r.caja) +
+'</select></div>' +
+'<button type="button" class="tk-icono btn-loc' + (ubicacionSet ? ' set' : '') + '" aria-label="Ubicación en el mapa" title="Ubicación" onclick="abrirModalUbicacion(\'' + r.id + '\')">' + ICONO_MAPA + '</button>' +
+'<button type="button" class="tk-icono btn-foto' + (r.fotoId ? ' set' : '') + '" aria-label="Foto del ticket" title="Foto del ticket" onclick="fotoClick(\'' + r.id + '\')">' + ICONO_CAMARA + '</button>' +
+'</div>' +
+'</div>' +
+'</div>' +
+'<div class="tk-perf" aria-hidden="true"></div>' +
+'<div class="tk-bottom">' +
+'<div class="tk-campo"><label class="tk-label" for="cobro_' + r.id + '">Cobro</label>' +
+'<input type="text" id="cobro_' + r.id + '" class="cobro-input" value="' + escapeAttr(r.cobro) + '" placeholder="—" onchange="guardarCampo(this,\'' + r.id + '\',\'cobro\')" /></div>' +
+'<p class="tk-need">' + textoFalta(r) + '</p>' +
+'</div>' +
+'<div class="actions-row">' +
+'<button type="button" class="action-btn btn-confirm" onclick="confirmarClick(\'' + r.id + '\')">' + ICONO_CHECK + (r.estado === 'CONFIRMADO' ? 'Confirmado' : 'Confirmar') + '</button>' +
+'<button type="button" class="action-btn btn-edit" onclick="abrirModalEditarFecha(\'' + r.id + '\')">' + ICONO_LAPIZ + 'Editar</button>' +
+'<button type="button" class="action-btn btn-exclude" onclick="excluirClick(\'' + r.id + '\')">' + ICONO_PAPELERA + 'Excluir</button>' +
+'</div>' +
+'<details class="tk-hist"><summary>Historial</summary><ul>' + lineasHistorial(r) + '</ul></details>' +
+'</article>';
+}
+
+function renderLista(reservas) {
+var cont = document.getElementById('listaReservas');
+// 2026-09-24 (pedido de Wanderson): un pedido EXCLUIDO se queda en la base
+// de datos (no se borra, ver excluirReserva en Code.gs) pero deja de
+// mostrarse en la Lista de Reservas — antes aparecía igual, con la
+// tarjeta atenuada (.excluida).
+var filtradas = reservas.filter(function (r) { return r.estado !== 'EXCLUIDO'; });
+if (franjaFiltro) filtradas = filtradas.filter(function (r) { return r.franja === franjaFiltro; });
+filtradas = filtradas.slice().sort(compararReservas);
+if (!filtradas.length) {
+cont.innerHTML = '<div class="empty-state">No hay reservas' + (franjaFiltro ? ' para ' + franjaFiltro : '') + ' en esta fecha.</div>';
+return;
+  }
+var html = '';
+filtradas.forEach(function (r) { html += tarjetaReservaHTML(r, false); });
+cont.innerHTML = html;
+}
+
+/** Muestra u oculta solo el icono de alerta de una tarjeta ya pintada, sin
+ *  reconstruir la tarjeta entera (para no interrumpir al usuario si está
+ *  editando otro campo). Se llama tras guardar CAJA o PEDIDO, y cada 30s.
+ *  Busca la tarjeta SOLO dentro de la pantalla activa (Lista o Pendientes),
+ *  porque ambas quedan montadas en el DOM a la vez y una misma reserva
+ *  puede aparecer en las dos listas si está PENDIENTE y es de hoy. */
+function actualizarAlertaTarjeta(id) {
+var r = buscarReserva(id);
+if (!r) return;
+var pantallaActiva = document.querySelector('.screen.active');
+var card = pantallaActiva ? pantallaActiva.querySelector('.reserva-card[data-id="' + id + '"]') : null;
+if (!card) return;
+var alerta = card.querySelector('.alerta-pedido');
+var necesita = necesitaAlerta(r);
+if (necesita && !alerta) {
+card.insertAdjacentHTML('afterbegin', HTML_ALERTA_PEDIDO);
+  } else if (!necesita && alerta) {
+alerta.remove();
+  }
+}
+
+function escapeAttr(v) {
+return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+/** Busca una reserva por id en la lista de la fecha actual o en la de
+ *  pendientes (puede estar en ambas si está PENDIENTE y es de hoy). */
+function buscarReserva(id) {
+for (var i = 0; i < reservasActuales.length; i++) if (reservasActuales[i].id === id) return reservasActuales[i];
+for (var j = 0; j < pendientesActuales.length; j++) if (pendientesActuales[j].id === id) return pendientesActuales[j];
+return null;
+}
+
+/** Aplica los mismos cambios de campo a las DOS cachés locales (reservasActuales
+ *  y pendientesActuales), porque una misma reserva puede existir como objetos
+ *  separados en cada una — evita que la que no se está viendo ahora mismo
+ *  quede desactualizada. */
+function actualizarReservaEnCache(id, cambios) {
+[reservasActuales, pendientesActuales].forEach(function (arr) {
+for (var i = 0; i < arr.length; i++) {
+if (arr[i].id === id) {
+for (var k in cambios) if (cambios.hasOwnProperty(k)) arr[i][k] = cambios[k];
+      }
+    }
+  });
+}
+
+/** Recarga la pantalla que esté activa ahora mismo (Lista o Pendientes) y,
+ *  de paso, el contador global — usado tras confirmar/excluir, que cambian
+ *  el estado y por lo tanto pueden sacar la reserva de la lista visible. */
+function refrescarVistaActual() {
+if (document.getElementById('screenLista').classList.contains('active')) cargarReservas();
+if (document.getElementById('screenPendientes').classList.contains('active')) cargarPendientes();
+refrescarContadorPendientes();
+}
+
+function guardarCampo(input, id, campo) {
+input.classList.remove('saved');
+// Ronda 12 (2026-09-24): Cliente/Dirección se normaliza a mayúsculas antes
+// de guardar — así el valor en la base de datos queda consistente y no
+// solo la visual (CSS text-transform:uppercase de .input-mayus).
+if (campo === 'clienteDireccion') { input.value = input.value.toUpperCase(); }
+google.script.run
+    .withSuccessHandler(function (res) {
+if (res && res.ok) {
+var cambios = {};
+cambios[campo] = input.value;
+if (campo === 'caja' && res.horaCajaTs !== undefined) {
+cambios.horaCajaTs = res.horaCajaTs;
+cambios.horaCajaTexto = res.horaCajaTexto;
+cambios.usuarioCaja = res.usuarioCaja;
+        }
+if (campo === 'cobro') {
+var cc = input.closest('.reserva-card');
+if (cc) cc.classList.toggle('cobro', !!input.value.trim());
+}
+if (campo === 'pedido') {
+cambios.horaPedido = res.horaPedido;
+cambios.usuarioPedido = res.usuarioPedido;
+        }
+actualizarReservaEnCache(id, cambios);
+input.classList.add('saved');
+setTimeout(function () { input.classList.remove('saved'); }, 1200);
+if (campo === 'pedido' || campo === 'caja') { actualizarAlertaTarjeta(id); refrescarEstadoTarjeta(id); refrescarContadorPendientes(); }
+      } else {
+mostrarMsgActual(res && res.error || 'Error al guardar.', 'error');
+      }
+    })
+    .withFailureHandler(function (err) { mostrarMsgActual('⚠️ Error de conexión: ' + err, 'error'); })
+    .actualizarCampo(id, campo, input.value, sesion.usuario);
+}
+
+/* CORRECCIÓN 2026-09-22: antes hacía falta pulsar "Confirmar" 2 veces si se
+   acababa de escribir el nº de PEDIDO — el guardado de ese campo (disparado
+   por el "onchange" del input al perder el foco al hacer click en
+   Confirmar) es una llamada aparte y asíncrona, así que confirmarReserva
+   podía llegar a leer la celda ANTES de que ese guardado terminara (carrera
+   entre las dos llamadas). Ahora se manda el valor que se ve en pantalla en
+   ese mismo momento junto con la confirmación, y el servidor lo guarda y
+   confirma en una sola llamada — ya no depende de que el otro guardado
+   haya terminado antes. */
+function confirmarClick(id) {
+var pantallaActiva = document.querySelector('.screen.active');
+var card = pantallaActiva ? pantallaActiva.querySelector('.reserva-card[data-id="' + id + '"]') : null;
+var pedidoInput = card ? card.querySelector('.tk-pedido-input') : null;
+var pedidoActual = pedidoInput ? pedidoInput.value : undefined;
+
+mostrarSpinner(true);
+google.script.run
+    .withSuccessHandler(function (res) {
+mostrarSpinner(false);
+if (res && res.ok) {
+if (res.pedido !== undefined) actualizarReservaEnCache(id, { pedido: res.pedido, horaPedido: res.horaPedido, usuarioPedido: res.usuarioPedido });
+mostrarMsgActual('✅ Reserva confirmada.', '');
+refrescarVistaActual();
+      } else {
+mostrarMsgActual(res && res.error || 'No se pudo confirmar.', 'error');
+      }
+    })
+    .withFailureHandler(function (err) { mostrarSpinner(false); mostrarMsgActual('⚠️ Error de conexión: ' + err, 'error'); })
+    .confirmarReserva(id, sesion.usuario, pedidoActual);
+}
+
+/* Rediseño 2026-10-07: la confirmación de excluir es una hoja inferior con
+   el resumen de la reserva (nº de pedido, cliente, franja y caja), en vez
+   del confirm() nativo del navegador. */
+var idExcluirEnCurso = null;
+function excluirClick(id) {
+var r = buscarReserva(id) || {};
+idExcluirEnCurso = id;
+document.getElementById('exPedido').textContent = tienePedido(r) ? String(r.pedido).trim() : '—';
+document.getElementById('exPedidoCap').textContent = tienePedido(r) ? 'pedido' : 'sin pedido';
+document.getElementById('exCliente').textContent = r.clienteDireccion || '—';
+document.getElementById('exDetalle').textContent = 'Franja ' + etiquetaFranja(r.franja) + (tieneCaja(r) ? ', caja ' + r.caja : ', sin caja');
+document.getElementById('modalExcluir').classList.add('show');
+}
+function cerrarModalExcluir() {
+document.getElementById('modalExcluir').classList.remove('show');
+idExcluirEnCurso = null;
+}
+function ejecutarExcluir() {
+var id = idExcluirEnCurso;
+if (!id) return;
+cerrarModalExcluir();
+mostrarSpinner(true);
+google.script.run
+    .withSuccessHandler(function (res) {
+mostrarSpinner(false);
+if (res && res.ok) { mostrarMsgActual('Reserva excluida.', ''); refrescarVistaActual(); }
+else mostrarMsgActual(res && res.error || 'No se pudo excluir.', 'error');
+    })
+    .withFailureHandler(function (err) { mostrarSpinner(false); mostrarMsgActual('⚠️ Error de conexión: ' + err, 'error'); })
+    .excluirReserva(id, sesion.usuario);
+}
+
+/* ── Modal ubicación (se usa igual desde la Lista y desde Pendientes) ── */
+function abrirModalUbicacion(id) {
+idUbicacionEnEdicion = id;
+var r = buscarReserva(id);
+document.getElementById('inputUbicacion').value = (r && r.ubicacion) || '';
+document.getElementById('modalUbicacion').classList.add('show');
+}
+function cerrarModalUbicacion() {
+document.getElementById('modalUbicacion').classList.remove('show');
+idUbicacionEnEdicion = null;
+}
+function abrirGoogleMaps() {
+var r = buscarReserva(idUbicacionEnEdicion);
+var query = (r && r.clienteDireccion) ? r.clienteDireccion : '';
+var url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query);
+window.open(url, '_blank');
+}
+function guardarUbicacion() {
+var valor = document.getElementById('inputUbicacion').value.trim();
+var id = idUbicacionEnEdicion;
+google.script.run
+    .withSuccessHandler(function (res) {
+if (res && res.ok) {
+actualizarReservaEnCache(id, { ubicacion: valor });
+cerrarModalUbicacion();
+if (document.getElementById('screenPendientes').classList.contains('active')) renderPendientes(pendientesActuales);
+else renderLista(reservasActuales);
+      } else {
+mostrarMsgActual(res && res.error || 'Error al guardar ubicación.', 'error');
+      }
+    })
+    .withFailureHandler(function (err) { mostrarMsgActual('⚠️ Error de conexión: ' + err, 'error'); })
+    .actualizarCampo(id, 'ubicacion', valor, sesion.usuario);
+}
+
+/** "yyyy-MM-dd" + n días, sin depender de UTC (ver bug de fecha "pegada"
+ *  documentado en index.html: siempre a partir de componentes locales). */
+function fechaISOMasDias(fechaISO, dias) {
+var p = String(fechaISO).split('-');
+var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+d.setDate(d.getDate() + dias);
+var mm = String(d.getMonth() + 1).padStart(2, '0');
+var dd = String(d.getDate()).padStart(2, '0');
+return d.getFullYear() + '-' + mm + '-' + dd;
+}
+
+/* ── Modal Editar fecha de entrega y franja (punto 1, 2026-09-22; ampliado
+   el mismo día a pedido de Wanderson para incluir también la franja) —
+   igual que la ubicación, funciona tanto desde la Lista como desde
+   Pendientes. La FECHA de la reserva es la fecha de ENTREGA (aclaración de
+   Wanderson tras el primer intento de informe diario); ambas solo se
+   podían fijar al crear la reserva, y con esto se pueden corregir después
+   si hace falta.
+
+   Ronda 14 (2026-09-28): también permite corregir la FECHA DE EMISIÓN del
+   ticket (por defecto, el día en que se creó la reserva), en un campo
+   discreto al pie del modal. No puede ser posterior a hoy. ── */
+var idFechaEnEdicion = null;
+var FRANJAS_MODULO = ['10-13H', '13-16H', '16-19H', '19-22H'];
+function abrirModalEditarFecha(id) {
+idFechaEnEdicion = id;
+var r = buscarReserva(id);
+var hoy = hoyISO();
+var input = document.getElementById('inputFechaEditar');
+input.min = hoy;
+input.max = fechaISOMasDias(hoy, 7);
+input.value = (r && r.fecha) || hoy;
+
+var inputEmision = document.getElementById('inputFechaEmisionEditar');
+inputEmision.max = hoy;
+inputEmision.value = (r && r.fechaEmision) || hoy;
+
+var franjaActual = (r && r.franja) || FRANJAS_MODULO[0];
+var sel = document.getElementById('selectFranjaEditar');
+sel.innerHTML = FRANJAS_MODULO.map(function (f) {
+return '<option value="' + f + '"' + (f === franjaActual ? ' selected' : '') + '>' + f + '</option>';
+}).join('');
+pintarFranjasEditar();
+
+document.getElementById('modalEditarFecha').classList.add('show');
+}
+/** Ronda 16: en el modal Editar, los tramos ya cerrados por hora (para la
+ *  fecha elegida) salen con 🔒 y no se pueden elegir — salvo el tramo en el
+ *  que ya está la reserva (dejarla donde está no es "añadir"). */
+function pintarFranjasEditar() {
+var sel = document.getElementById('selectFranjaEditar');
+if (!sel) return;
+var r = buscarReserva(idFechaEnEdicion) || {};
+var fecha = document.getElementById('inputFechaEditar').value || hoyISO();
+var elegida = sel.value;
+sel.innerHTML = FRANJAS_MODULO.map(function (f) {
+var esLaSuya = (r.fecha === fecha && r.franja === f);
+var cerrado = !esLaSuya && franjaCerrada(fecha, f);
+return '<option value="' + f + '"' + (f === elegida ? ' selected' : '') + (cerrado ? ' disabled' : '') + '>' + f + (cerrado ? ' 🔒 cerrado' : '') + '</option>';
+}).join('');
+}
+function cerrarModalEditarFecha() {
+document.getElementById('modalEditarFecha').classList.remove('show');
+idFechaEnEdicion = null;
+}
+function guardarFechaEditada(forzarCompleto) {
+var valor = document.getElementById('inputFechaEditar').value;
+var franja = document.getElementById('selectFranjaEditar').value;
+var fechaEmision = document.getElementById('inputFechaEmisionEditar').value;
+var id = idFechaEnEdicion;
+if (!valor) { mostrarMsgActual('Selecciona una fecha.', 'error'); return; }
+if (!franja) { mostrarMsgActual('Selecciona una franja horaria.', 'error'); return; }
+if (!fechaEmision) { mostrarMsgActual('Indica la fecha de emisión del ticket.', 'error'); return; }
+mostrarSpinner(true);
+google.script.run
+    .withSuccessHandler(function (res) {
+mostrarSpinner(false);
+if (res && res.ok) {
+actualizarReservaEnCache(id, { fecha: res.fecha, franja: res.franja, fechaEmision: res.fechaEmision });
+cerrarModalEditarFecha();
+refrescarVistaActual();
+mostrarMsgActual('✅ Fecha y franja actualizadas.', '');
+      } else if (res && res.requiereConfirmacion) {
+// Ronda 16: el tramo de destino está completo → aviso SÍ / NO.
+preguntarSiNo(res.error || TEXTO_TRAMO_COMPLETO, function () { guardarFechaEditada(true); }, null, { detalle: res.detalle || '' });
+      } else {
+if (res && res.tramoCerrado) pintarFranjasEditar();
+mostrarMsgActual(res && res.error || 'No se pudo actualizar.', 'error');
+      }
+    })
+    .withFailureHandler(function (err) { mostrarSpinner(false); mostrarMsgActual('⚠️ Error de conexión: ' + err, 'error'); })
+    .actualizarFechaFranja(id, valor, franja, sesion.usuario, fechaEmision, forzarCompleto === true);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PANTALLA: SOLICITUD DE RESERVAS
+   ══════════════════════════════════════════════════════════════ */
+var disponibilidadActual = {};
+var franjasSolicitud = [];        // franjas pintadas ahora mismo (para repintar al pasar la hora)
+var franjaCompletaAceptada = '';  // franja completa para la que el usuario ya respondió SÍ al aviso
+
+/** Dibuja los 4 botones cuadrados de franja horaria (Ronda 12, 2026-09-24 —
+ *  reemplaza al <select id="franja">). franjaSeleccionada puede ser '' si
+ *  todavía no se eligió ninguna (p.ej. al cambiar de fecha).
+ *
+ *  Ronda 16 (2026-10-02):
+ *   - CERRADO (🔒): tramo de hoy cuya hora de inicio ya llegó (o día
+ *     pasado). Se ve, pero está bloqueado: no se puede añadir nada.
+ *   - COMPLETO: se sigue viendo "inhabilitado" (gris), pero se puede tocar;
+ *     pide confirmación SÍ / NO antes de añadir la reserva. */
+function renderFranjaBtns(franjas, porFranja, franjaSeleccionada) {
+var cont = document.getElementById('franjaBtns');
+var fecha = document.getElementById('fechaSolicitud').value || hoyISO();
+franjasSolicitud = franjas || [];
+var html = '';
+franjasSolicitud.forEach(function (f) {
+var d = porFranja[f] || { usadas: 0, limite: 0, restante: 0 };
+var cerrado = franjaCerrada(fecha, f);
+var lleno = !cerrado && d.restante <= 0;
+var activo = !cerrado && f === franjaSeleccionada;
+html += '<button type="button" class="franja-btn' + (cerrado ? ' cerrado' : '') + (lleno ? ' lleno' : '') + (activo ? ' activo' : '') +
+    '" data-franja="' + f + '"' + (cerrado ? ' disabled title="Tramo cerrado: ya no admite pedidos"' : ' onclick="tocarFranja(\'' + f + '\')"') + '>' +
+    f + '<span class="franja-btn-count">' + d.usadas + '/' + d.limite + (cerrado ? ' · 🔒 cerrado' : (lleno ? ' · completo' : '')) + '</span>' +
+    '</button>';
+  });
+cont.innerHTML = html;
+}
+
+/** ¿Está completo (sin cupo) ese tramo según la última disponibilidad cargada? */
+function franjaCompleta(f) {
+var d = disponibilidadActual[f];
+return !!d && d.restante <= 0;
+}
+
+/** Toque en un botón de franja. Si el tramo está completo, primero pregunta
+ *  (SÍ ✓ verde / NO ✕ rojo); solo con SÍ queda elegido. */
+function tocarFranja(f) {
+var fecha = document.getElementById('fechaSolicitud').value || hoyISO();
+if (franjaCerrada(fecha, f)) { refrescarFranjasSolicitud(); return; }
+if (franjaCompleta(f) && franjaCompletaAceptada !== f) {
+var d = disponibilidadActual[f] || {};
+preguntarSiNo(TEXTO_TRAMO_COMPLETO, function () { franjaCompletaAceptada = f; seleccionarFranja(f); }, null,
+      { detalle: f + ' · ' + (d.usadas || 0) + '/' + (d.limite || 0) });
+return;
+  }
+seleccionarFranja(f);
+}
+
+/** Marca la franja elegida (1 solo click): guarda el valor en el input
+ *  oculto #franja y resalta en amarillo el botón tocado. */
+function seleccionarFranja(f) {
+document.getElementById('franja').value = f;
+document.querySelectorAll('#franjaBtns .franja-btn').forEach(function (b) {
+b.classList.toggle('activo', b.getAttribute('data-franja') === f);
+  });
+}
+
+/** Repinta los botones con la hora actual (por si un tramo acaba de cerrarse
+ *  con la pantalla abierta); si el tramo elegido se cerró, se quita la elección. */
+function refrescarFranjasSolicitud() {
+if (!franjasSolicitud.length) return;
+var fecha = document.getElementById('fechaSolicitud').value || hoyISO();
+var elegida = document.getElementById('franja').value;
+if (elegida && franjaCerrada(fecha, elegida)) {
+elegida = '';
+document.getElementById('franja').value = '';
+mostrarMsgSolicitud('El tramo elegido acaba de cerrarse. Elige otro tramo u otro día.', 'error');
+  }
+renderFranjaBtns(franjasSolicitud, disponibilidadActual, elegida);
+}
+
+function cancelarSolicitud() {
+mostrarPantalla('Lista');
+// Ronda 16: si la vuelta a hoy (30 s) venció mientras se rellenaba la
+// Solicitud, se aplica ahora, antes de recargar la Lista.
+if (vueltaHoyPendiente) { aplicarVueltaAHoyAlSalirDeSolicitud_(); return; }
+cargarReservas();
+}
+function aplicarVueltaAHoyAlSalirDeSolicitud_() {
+vueltaHoyPendiente = false;
+var hoy = hoyISO();
+document.getElementById('inputFecha').value = hoy;
+document.getElementById('fechaSolicitud').value = hoy;
+cargarReservas();
+mostrarMsg('⏱ Se volvió a la fecha de hoy.', 'warn');
+}
+
+function mostrarMsgSolicitud(text, color) {
+var el = document.getElementById('msg');
+el.textContent = text;
+el.style.background = color === 'error' ? 'rgba(220,38,38,.28)' : 'rgba(34,197,94,.22)';
+}
+
+function cargarDisponibilidad() {
+var fecha = document.getElementById('fechaSolicitud').value || hoyISO();
+actualizarDiaSemanaSolicitud();
+document.getElementById('franja').value = '';
+franjaCompletaAceptada = '';
+google.script.run
+    .withSuccessHandler(function (data) {
+if (!data || !data.ok) return;
+disponibilidadActual = data.porFranja;
+renderFranjaBtns(data.franjas, data.porFranja, '');
+    })
+    .withFailureHandler(function (err) { console.error(err); })
+    .obtenerDisponibilidadFecha(fecha);
+}
+
+function confirmarSolicitud() {
+var fecha = document.getElementById('fechaSolicitud').value;
+var franja = document.getElementById('franja').value;
+// Ronda 12 (2026-09-24): Cliente/Dirección se normaliza a mayúsculas antes
+// de enviar, igual que en guardarCampo() para las tarjetas ya creadas.
+var clienteDireccion = document.getElementById('clienteDireccion').value.trim().toUpperCase();
+var caja = document.getElementById('caja').value;
+
+if (!fecha) { mostrarMsgSolicitud('Selecciona una fecha.', 'error'); return; }
+if (!franja) { mostrarMsgSolicitud('Selecciona una franja horaria.', 'error'); return; }
+if (!clienteDireccion) { mostrarMsgSolicitud('Informa Cliente/Dirección.', 'error'); return; }
+if (!caja) { mostrarMsgSolicitud('Selecciona el número de Caja.', 'error'); return; }
+// Ronda 16: no se añaden pedidos a días anteriores ni a un tramo de hoy ya empezado.
+if (franjaCerrada(fecha, franja)) {
+mostrarMsgSolicitud(fecha < ahoraMadrid_().hoy ? 'No se pueden añadir pedidos a días anteriores.' : 'El tramo ' + franja + ' de hoy ya está cerrado. Elige otro tramo u otro día.', 'error');
+refrescarFranjasSolicitud();
+return;
+  }
+var forzarCompleto = (franjaCompletaAceptada === franja);
+
+var btn = document.getElementById('btnConfirmar');
+btn.disabled = true;
+mostrarSpinner(true);
+mostrarMsgSolicitud('', '');
+
+google.script.run
+    .withSuccessHandler(function (res) {
+mostrarSpinner(false);
+btn.disabled = false;
+if (res && res.ok) {
+document.getElementById('clienteDireccion').value = '';
+document.getElementById('caja').value = '';
+franjaCompletaAceptada = '';
+mostrarPantalla('Lista');
+var fechaCreada = res.fecha || fecha;
+document.getElementById('inputFecha').value = fechaCreada;
+cargarReservas();
+refrescarContadorPendientes();
+// Ronda 16: pedido añadido a un día posterior → la página vuelve sola a
+// hoy a los 30 s, salvo que el servidor indique que se puede seguir allí
+// (tramo 19-22H de hoy completo, o ya pasaron las 18:00).
+if (fechaCreada > (res.hoy || hoyISO()) && res.seguirEnDiaPosterior === false) programarVueltaAHoy();
+else cancelarVueltaAHoy();
+      } else if (res && res.requiereConfirmacion) {
+// Ronda 16: el tramo se completó mientras se rellenaba la solicitud
+// (o el aviso aún no se había aceptado) → se pregunta ahora.
+preguntarSiNo(res.error || TEXTO_TRAMO_COMPLETO, function () { franjaCompletaAceptada = franja; confirmarSolicitud(); }, null,
+          { detalle: res.detalle || '' });
+      } else {
+mostrarMsgSolicitud(res && res.error || 'No se pudo registrar la reserva.', 'error');
+cargarDisponibilidad();
+      }
+    })
+    .withFailureHandler(function (err) {
+mostrarSpinner(false);
+btn.disabled = false;
+mostrarMsgSolicitud('⚠️ Error de conexión: ' + err, 'error');
+    })
+    .crearReserva({ fecha: fecha, franja: franja, clienteDireccion: clienteDireccion, caja: caja, usuario: sesion.usuario, forzarCompleto: forzarCompleto });
+}
+
+/* ══════ MÓDULO EMBOLSADO: foto del ticket ══════ */
+var idFotoEnCurso = null, fileIdFoto = null;
+
+function fotoClick(id) { idFotoEnCurso = id; var f = document.getElementById('fileTicket'); f.value = ''; f.click(); }
+
+function reducirImagen_(file, max) {
+return new Promise(function (res, rej) {
+var img = new Image(), url = URL.createObjectURL(file);
+img.onload = function () {
+var s = Math.min(1, max / Math.max(img.width, img.height));
+var c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.8));
+    };
+img.onerror = function () { rej(new Error('No se pudo leer la foto')); };
+img.src = url;
+  });
+}
+
+document.getElementById('fileTicket').addEventListener('change', function (ev) {
+var file = ev.target.files[0];
+if (!file || !idFotoEnCurso) return;
+mostrarSpinner(true);
+reducirImagen_(file, 1600).then(function (dataUrl) {
+google.script.run
+      .withSuccessHandler(function (res) {
+mostrarSpinner(false);
+if (!res || !res.ok) { mostrarMsgActual((res && res.error) || 'No se pudo leer el ticket.', 'error'); return; }
+fileIdFoto = res.fileId;
+abrirModalTicket(res);
+      })
+      .withFailureHandler(function (err) { mostrarSpinner(false); mostrarMsgActual('⚠️ Error de conexión: ' + err, 'error'); })
+      .leerTicketFoto({ usuario: sesion.usuario, reservaId: idFotoEnCurso, imagenBase64: dataUrl });
+  }).catch(function (e) { mostrarSpinner(false); mostrarMsgActual(e.message, 'error'); });
+});
+
+var CAMPOS_REV = ['fecha','hora','ticket','caja','cliente_id','telefono','nombre','direccion','ascensor','n_cajas','nevera','frios','congelados','dia_entrega','tramo'];
+
+function abrirModalTicket(res) {
+var r = buscarReserva(idFotoEnCurso) || {};
+var d = res.datos || {};
+CAMPOS_REV.forEach(function (k) {
+var v = d[k]; document.getElementById('rev_' + k).value = (v === null || v === undefined) ? '' : String(v);
+  });
+if (!d.dia_entrega && r.fecha) document.getElementById('rev_dia_entrega').value = diaSemanaDeISO(r.fecha);
+if (!d.tramo && r.franja) document.getElementById('rev_tramo').value = r.franja;
+var av = (res.avisos || []).map(function (a) { return '<div class="rev-aviso">⚠️ ' + escapeAttr(a) + '</div>'; }).join('');
+if (res.ocrDisponible === false) av = '<div class="rev-aviso">La lectura automática no está disponible: rellena los datos a mano.</div>' + av;
+document.getElementById('revAvisos').innerHTML = av;
+document.getElementById('modalTicket').classList.add('show');
+}
+function cerrarModalTicket() { document.getElementById('modalTicket').classList.remove('show'); }
+
+function guardarTicketClick(forzar) {
+var datos = {};
+CAMPOS_REV.forEach(function (k) { datos[k] = document.getElementById('rev_' + k).value.trim(); });
+mostrarSpinner(true);
+google.script.run
+    .withSuccessHandler(function (res) {
+mostrarSpinner(false);
+if (res && res.ok) {
+cerrarModalTicket();
+mostrarMsgActual(res.redirigido ? '✅ Ticket grabado en la reserva que coincide (caja + pedido).' : '✅ Ticket grabado.', '');
+google.script.run.withSuccessHandler(function () { refrescarVistaActual(); })
+        .geocodificarReserva({ id: res.id, usuario: sesion.usuario });
+refrescarVistaActual();
+      } else if (res && res.requiereConfirmacion) {
+if (confirm(res.error)) guardarTicketClick(true);
+      } else {
+alert((res && res.error) || 'No se pudo guardar.');
+      }
+    })
+    .withFailureHandler(function (err) { mostrarSpinner(false); mostrarMsgActual('⚠️ Error de conexión: ' + err, 'error'); })
+    .guardarTicket({ usuario: sesion.usuario, reservaId: idFotoEnCurso, fileId: fileIdFoto, datos: datos, forzar: !!forzar });
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   INICIO — decide qué pantalla mostrar al abrir el módulo
+   ══════════════════════════════════════════════════════════════ */
+document.getElementById('inputUsuario').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); verificarUsuario(); } });
+document.getElementById('inputPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); hacerLoginClick(); } });
+document.getElementById('inputPwdConfirm').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); registrarPasswordClick(); } });
+
+document.getElementById('caja').insertAdjacentHTML('beforeend', opcionesCaja(''));
+// Puntos 5 y 6 (2026-09-22): no se permiten reservas con fecha anterior a
+// hoy ni más de 7 días vista — min/max aquí son solo ayuda visual, la
+// validación real (que no se puede saltar) está en crearReserva (Code.gs).
+(function () {
+var fechaSolicitudInput = document.getElementById('fechaSolicitud');
+var hoy = hoyISO();
+fechaSolicitudInput.min = hoy;
+fechaSolicitudInput.max = fechaISOMasDias(hoy, 7);
+fechaSolicitudInput.value = hoy;
+})();
+
+// Revisa cada 30s si alguna reserva acaba de pasar los 15 min sin nº de
+// pedido (o si ya lo dejó de necesitar); solo toca el iconito de alerta,
+// nunca los campos, para no interrumpir si alguien está escribiendo. Corre
+// tanto en la Lista como en Pendientes (la que esté activa). También
+// refresca siempre el contador global de pendientes.
+setInterval(function () {
+if (document.getElementById('screenLista').classList.contains('active')) {
+reservasActuales.forEach(function (r) { actualizarAlertaTarjeta(r.id); });
+  }
+if (document.getElementById('screenPendientes').classList.contains('active')) {
+pendientesActuales.forEach(function (r) { actualizarAlertaTarjeta(r.id); });
+  }
+refrescarContadorPendientes();
+}, 30000);
+
+// Ronda 16 (2026-10-02): cada 20 s se repintan los tramos con la hora actual,
+// para que un tramo quede bloqueado en cuanto llega su hora de inicio aunque
+// la pantalla lleve rato abierta (Lista: chips; Solicitud: botones de franja).
+setInterval(function () {
+if (document.getElementById('screenLista').classList.contains('active') && franjasActuales.length) {
+renderChips(franjasActuales, porFranjaActual);
+  }
+if (document.getElementById('screenSolicitud').classList.contains('active')) refrescarFranjasSolicitud();
+}, 20000);
+
+(function inicializarApp() {
+if (cargarSesion()) {
+mostrarPantalla('Lista');
+document.getElementById('inputFecha').value = hoyISO();
+cargarReservas();
+refrescarContadorPendientes();
+return;
+  }
+
+// Si se llega desde el botón de Nexo Tickets (reservas.html?u=usuario),
+// entra directo sin pedir contraseña: solo comprueba autorización.
+var usuarioURL = USUARIO_URL || (new URLSearchParams(window.location.search).get('u') || '');
+if (usuarioURL) {
+mostrarSpinner(true);
+google.script.run
+      .withSuccessHandler(function (data) {
+mostrarSpinner(false);
+if (data && data.ok) {
+guardarSesion(data.usuario, data.nombre, data.token);
+mostrarPantalla('Lista');
+document.getElementById('inputFecha').value = hoyISO();
+cargarReservas();
+refrescarContadorPendientes();
+        } else {
+mostrarPantalla('Login');
+showMsg('msg1', '🚫 ' + (data && data.error || 'No tienes acceso a este módulo.'), 'error');
+        }
+      })
+      .withFailureHandler(function (err) {
+mostrarSpinner(false);
+mostrarPantalla('Login');
+showMsg('msg1', '⚠️ Error de conexión. Inténtalo de nuevo.', 'error');
+console.error(err);
+      })
+      .autenticarPorUsuario(usuarioURL);
+return;
+  }
+
+mostrarPantalla('Login');
+setTimeout(function () { document.getElementById('inputUsuario').focus(); }, 200);
+})();
+
+</script>
+</body>
+</html>
