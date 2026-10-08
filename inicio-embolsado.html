@@ -1,152 +1,46 @@
 <!DOCTYPE html>
-<!-- Nexo Tickets — inicio-embolsado.html (nuevo, 2026-10-02)
+<!-- Nexo Tickets — inicio-embolsado.html
      Página de inicio propia del departamento EMBOLSADO (columna DEPARTAMENTO
-     de la hoja USUARIOS). Solo el logo y 4 botones grandes, apilados y
-     centrados: Reservas, Incidencias, Embolsado e Informe.
+     de la hoja USUARIOS): logo y 4 botones grandes — Reservas, Incidencias,
+     Embolsado e Informe. Los ADM siguen viendo el index normal.
 
-     Cómo se llega aquí: login.html guarda el departamento en la sesión y
-     index.html, al cargar, manda a esta página a quien sea de EMBOLSADO
-     (los ADM siguen viendo el index normal). Requiere el main.gs de NEXO
-     SCRIPT del 2026-10-02, que devuelve el departamento al hacer login.
-
-     Los 4 botones van al mismo sitio que sus equivalentes de index.html:
-       Reservas    → reservas.html?u=usuario
-       Incidencias → incidencias.html   (globo rojo = incidencias abiertas)
-       Embolsado   → Módulo Embolsado (Apps Script) ?u=usuario
-       Informe     → informe.html       (columna INFORME de USUARIOS) -->
-<html lang="es">
+     v3.10.1 (2026-10-09, ronda 24): diseño nuevo (nexo-tema.css) y
+     comprobación de versión al entrar (nexo-version.js + version.json).
+     La lógica no cambia: mismos destinos, mismo contador de incidencias. -->
+<html lang="es" data-pagina="inicio-embolsado" data-version="v3.10.1">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#003366" />
+<meta name="theme-color" content="#FEFEFE" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Nexo Tickets" />
 <link rel="manifest" href="manifest.json?v=5">
 <link rel="icon" href="nexo-icon-192.png">
 <link rel="apple-touch-icon" href="nexo-icon-192.png">
 <title>Nexo · Embolsado</title>
+<link rel="stylesheet" href="nexo-tema.css?v=24">
+<script src="nexo-version.js?v=1"></script>
 <style>
-:root {
-  --bg1:#003366; --bg2:#0077cc;
-  --card-bg:rgba(255,255,255,.12);
-  --text-main:#fff; --text-dark:#003366;
-  --radius-card:24px;
-  --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
-}
-*, *::before, *::after { box-sizing:border-box; -webkit-font-smoothing:antialiased; font-family:var(--font); }
-html, body { height:100%; }
-body {
-  margin:0; min-height:100vh; min-height:100dvh;
-  background:linear-gradient(180deg, var(--bg1), var(--bg2));
-  background-attachment:fixed;
-  color:var(--text-main);
-  display:flex; justify-content:center; align-items:center;   /* centrado en la página */
-  padding:20px 16px;
-  padding-top:max(20px, env(safe-area-inset-top));
-  padding-bottom:max(20px, env(safe-area-inset-bottom));
-}
-.card {
-  width:100%; max-width:420px;
-  background:var(--card-bg);
-  border-radius:var(--radius-card);
-  box-shadow:0 16px 40px rgba(0,0,0,.45);
-  padding:24px 18px 22px;
-  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
-  text-align:center;
-}
-.logo {
-  width:190px; max-width:70%;
-  height:auto; display:block;
-  margin:0 auto 12px auto;
-  background:#fff;
-  border-radius:16px;
-  padding:9px 16px;
-}
-.user-badge {
-  display:inline-flex; align-items:center; gap:6px;
-  background:rgba(255,255,255,.15);
-  border:1px solid rgba(255,255,255,.2);
-  border-radius:20px;
-  padding:5px 14px 5px 10px;
-  font-size:.8rem; font-weight:700;
-  color:rgba(255,255,255,.92);
-  cursor:pointer;
-  transition:background .18s;
-}
-.user-badge:hover { background:rgba(255,255,255,.23); }
-.nivel-tag {
-  display:inline-block;
-  background:rgba(96,165,250,.25);
-  color:#bfdbfe;
-  padding:2px 8px;
-  border-radius:10px;
-  font-size:.65rem;
-  font-weight:800;
-  text-transform:uppercase;
-  letter-spacing:.05em;
-  margin-left:6px;
-}
-.nivel-tag.admin { background:rgba(251,146,60,.25); color:#fed7aa; }
-
-/* ===== Botones grandes, apilados y centrados ===== */
-.menu {
-  display:flex; flex-direction:column; align-items:center;
-  gap:14px;
-  margin:22px auto 18px;
-  width:100%; max-width:330px;
-}
-.menu a {
-  position:relative;
-  display:flex; align-items:center; gap:16px;
-  width:100%; min-height:88px;
-  padding:12px 18px;
-  background:#fff; color:var(--text-dark);
-  border-radius:20px;
-  text-decoration:none;
-  font-size:1.22rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
-  box-shadow:0 10px 26px rgba(0,0,0,.38);
-  transition:transform .12s, box-shadow .12s;
-  -webkit-tap-highlight-color:transparent;
-  user-select:none; -webkit-user-select:none;
-}
-.menu a:active { transform:scale(.97); box-shadow:0 5px 14px rgba(0,0,0,.38); }
-.menu a:focus-visible { outline:3px solid #ffcc00; outline-offset:3px; }
-.menu .ico {
-  position:relative; flex:0 0 auto;
-  width:62px; height:62px; border-radius:50%;
-  display:flex; align-items:center; justify-content:center;
-}
-.menu .ico .img { width:100%; height:100%; border-radius:50%; overflow:hidden; display:block; }
-.menu .ico img { width:100%; height:100%; display:block; object-fit:cover; }
-/* boton_embolsado.png trae margen transparente alrededor del círculo:
-   se amplía y se sube un poco para que llene igual que los demás iconos. */
-.menu .ico img.ajuste-embolsado { transform:scale(1.41) translate(-.6%, -7%); }
-.menu .ico.emoji { background:#fff3cd; font-size:34px; line-height:1; }
-.menu .txt { flex:1; text-align:left; line-height:1.15; }
-.menu .flecha { flex:0 0 auto; font-size:1.5rem; font-weight:400; color:#94a3b8; }
-.menu .num {
-  position:absolute; top:-6px; right:-6px;
-  min-width:24px; height:24px; padding:0 6px; border-radius:999px;
-  background:#dc2626; color:#fff; font-size:13px; font-weight:800; letter-spacing:0;
-  display:none; align-items:center; justify-content:center;
-  border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.35);
-}
-.app-version { font-size:.78rem; font-weight:600; color:rgba(255,255,255,.45); }
-
-/* Pantallas bajas (móviles pequeños o en horizontal): todo un poco más compacto */
-@media (max-height:640px) {
-  .card { padding:16px 16px 14px; }
-  .logo { width:150px; margin-bottom:8px; }
-  .menu { gap:10px; margin:14px auto 12px; }
-  .menu a { min-height:72px; font-size:1.1rem; padding:8px 16px; }
-  .menu .ico { width:52px; height:52px; }
-  .menu .ico.emoji { font-size:28px; }
-}
+body.nx { display:flex; flex-direction:column; }
+.panel-logo { background:var(--nx-cabecera); box-shadow:0 1px 0 var(--nx-linea);
+  padding:calc(36px + env(safe-area-inset-top)) 24px 16px; display:flex; flex-direction:column; align-items:center; gap:10px; }
+.panel-logo img { display:block; height:92px; width:auto; max-width:80vw; }
+.panel-usuario { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:700; }
+.menu { width:100%; max-width:480px; margin:0 auto; padding:24px 16px; display:flex; flex-direction:column; gap:12px; }
+.menu a { display:grid; grid-template-columns:64px minmax(0,1fr) 24px; align-items:center; gap:16px; min-height:104px;
+  padding:16px; border-radius:var(--nx-r-tarjeta); background:var(--nx-superficie); color:var(--nx-tinta);
+  text-decoration:none; transition:transform .12s; }
+.menu a:active { transform:scale(.98); }
+.menu .ico { position:relative; width:64px; height:64px; border-radius:14px; background:var(--nx-tinta); color:var(--nx-tinta-clara);
+  display:grid; place-items:center; }
+.menu .txt { font-family:var(--nx-display); font-weight:800; font-size:34px; line-height:1; }
+.menu .flecha { color:var(--nx-suave); }
+.menu .num { position:absolute; top:-8px; right:-8px; min-width:26px; height:26px; padding:0 6px; border-radius:13px;
+  background:var(--nx-rojo); color:#fff; font-size:14px; font-weight:800; display:none; align-items:center; justify-content:center; }
+.nx-version { margin-top:auto; }
 </style>
-
-<!-- GUARD DE SESIÓN: redirige antes de pintar nada (igual que index.html) -->
 <script>
 (function sessionGuard() {
   try {
@@ -172,37 +66,37 @@ body {
 })();
 </script>
 </head>
-<body>
+<body class="nx">
 
-<div class="card">
-  <img class="logo" src="nexo-logo-full.png" alt="Nexo · Distribución Inteligente" />
-  <div class="user-badge" id="userBadge" onclick="cerrarSesion()" title="Pulsa para cerrar sesión">
-    👤 <span id="badgeNombre">—</span>
-    <span class="nivel-tag" id="nivelTag">Embolsado</span>
-    &nbsp;·&nbsp;Salir
+<header class="panel-logo">
+  <img src="nexo-logo-oficial.png" alt="Nexo" />
+  <div class="panel-usuario" id="userBadge">
+    <span id="badgeNombre">—</span>
+    <span class="nx-nivel" id="nivelTag">Embolsado</span>
+    <button type="button" class="nx-salir" onclick="cerrarSesion()">Salir</button>
   </div>
+</header>
 
-  <nav class="menu" aria-label="Menú de Embolsado">
-    <a id="btnReservas" href="reservas.html">
-      <span class="ico"><span class="img"><img src="boton_reservas.png" alt="" /></span></span>
-      <span class="txt">Reservas</span><span class="flecha" aria-hidden="true">›</span>
-    </a>
-    <a id="btnIncidencias" href="incidencias.html">
-      <span class="ico emoji" aria-hidden="true">⚠️<span class="num" id="numIncidencias"></span></span>
-      <span class="txt">Incidencias</span><span class="flecha" aria-hidden="true">›</span>
-    </a>
-    <a id="btnEmbolsado" href="#">
-      <span class="ico"><span class="img"><img class="ajuste-embolsado" src="boton_embolsado.png" alt="" /></span></span>
-      <span class="txt">Embolsado</span><span class="flecha" aria-hidden="true">›</span>
-    </a>
-    <a id="btnInforme" href="informe.html">
-      <span class="ico"><span class="img"><img src="boton_informe.png" alt="" /></span></span>
-      <span class="txt">Informe</span><span class="flecha" aria-hidden="true">›</span>
-    </a>
-  </nav>
+<nav class="menu" aria-label="Menú de Embolsado">
+  <a id="btnReservas" href="reservas.html">
+    <span class="ico"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10h16M8 4v4M16 4v4"/></svg></span>
+    <span class="txt">Reservas</span><svg class="flecha" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </a>
+  <a id="btnIncidencias" href="incidencias.html">
+    <span class="ico"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4M12 17.5v.5"/></svg><span class="num" id="numIncidencias"></span></span>
+    <span class="txt">Incidencias</span><svg class="flecha" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </a>
+  <a id="btnEmbolsado" href="#">
+    <span class="ico"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 12H5zM9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
+    <span class="txt">Embolsado</span><svg class="flecha" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </a>
+  <a id="btnInforme" href="informe.html">
+    <span class="ico"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span>
+    <span class="txt">Informe</span><svg class="flecha" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </a>
+</nav>
 
-  <div class="app-version">Nexo · Embolsado v1.0.0</div>
-</div>
+<div class="nx-version" data-nexo-version="Nexo · Embolsado">Nexo · Embolsado v3.10.1</div>
 
 <script>
 let sesion = null;
@@ -211,11 +105,7 @@ const USUARIO = (sesion && sesion.usuario) || '';
 const NIVEL   = (sesion && sesion.nivel ? String(sesion.nivel).toLowerCase().trim() : '');
 
 document.getElementById('badgeNombre').textContent = (sesion && sesion.nombre) || '—';
-if (NIVEL === 'admin') {
-  const tag = document.getElementById('nivelTag');
-  tag.textContent = 'admin';
-  tag.classList.add('admin');
-}
+if (NIVEL === 'admin') document.getElementById('nivelTag').textContent = 'ADM';
 
 /* Mismas URL que en index.html / incidencias.html */
 var EMBOLSADO_URL = 'https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoDisEn4qrGWh0tEGfGHn4NXoEqP1ShODyIWQ1bzYyWfcuz_Pqh/exec';
