@@ -194,7 +194,7 @@ input[type="date"].control { -webkit-appearance:none; appearance:none; text-alig
 <main class="nx-pag">
 
   <nav class="modulos" id="sideStack" aria-label="Módulos">
-    <a class="btn-reservas" href="reservas.html"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10h16M8 4v4M16 4v4"/></svg>Reservas</a>
+    <a class="btn-reservas" href="reservas.html" style="display:none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10h16M8 4v4M16 4v4"/></svg>Reservas</a>
     <a class="btn-dia" id="btnDia" href="dia.html"><span class="pct">%</span>%DIA<span class="num" id="numDia"></span></a>
     <a id="linkIncidencias" class="btn-inc" href="incidencias.html"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4M12 17.5v.5"/></svg>Incidencias<span class="num" id="numIncidencias"></span></a>
     <a class="btn-informe" href="informe.html"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Informe</a>
@@ -1407,6 +1407,9 @@ const asigHint   = document.getElementById('asigHint');
 function esTravesia(v) { return /trav[eé]s[ií]a/i.test(String(v || '')); }
 function actualizarBtnAsignar() {
   btnAsignar.style.display = esTravesia(tiendaSel.value) ? 'block' : 'none';
+  // Ronda 24 (2026-10-09): las reservas son de TRAVESIA — el botón Reservas
+  // solo aparece con esa tienda elegida (el ADM lo ve siempre).
+  if (btnReservas) btnReservas.style.display = (ES_ADMIN || esTravesia(tiendaSel.value)) ? '' : 'none';
 }
 tiendaSel.addEventListener('change', actualizarBtnAsignar);
 (function () {
