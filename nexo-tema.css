@@ -1,0 +1,124 @@
+/* =============================================================
+   Nexo · tema común (ronda 24, 2026-10-08)
+   Mismo diseño que el modelo aprobado de Embolsado:
+   fondo gris azulado, tinta azul marino, títulos Big Shoulders
+   Display y texto Hanken Grotesk. Todas las páginas lo enlazan.
+   Clases con prefijo nx- para no chocar con las de cada página.
+   ============================================================= */
+@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --nx-fondo:#E8EDF3;   --nx-superficie:#FBFCFA; --nx-cabecera:#FEFEFE;
+  --nx-tinta:#0B2447;   --nx-tinta-clara:#F3F7FC; --nx-suave:#4F6078;
+  --nx-linea:#CBD5E2;   --nx-campo:#EEF2F7;      --nx-chip:#E1E7EF;
+  --nx-azul-fondo:#DCE7FB; --nx-azul:#17409E;
+  --nx-verde:#15803D;   --nx-verde-fondo:#D7F2E1; --nx-verde-tinta:#14532D;
+  --nx-ambar:#B45309;   --nx-ambar-fondo:#FFF1CC; --nx-ambar-tinta:#7A4A05; --nx-lampara:#FBBF24;
+  --nx-rojo:#B42318;    --nx-rojo-fondo:#FDE4E1;
+  --nx-cobro:#FFF1A6;
+  --nx-display:'Big Shoulders Display','Arial Narrow',sans-serif;
+  --nx-texto:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --nx-r-tarjeta:20px; --nx-r-boton:12px; --nx-r-grande:16px;
+}
+
+/* ---------- Base ---------- */
+html { -webkit-text-size-adjust:100%; text-size-adjust:100%; touch-action:manipulation; }
+body.nx { margin:0; background:var(--nx-fondo); color:var(--nx-tinta); font-family:var(--nx-texto);
+  -webkit-font-smoothing:antialiased; min-height:100vh; min-height:100dvh; }
+body.nx *, body.nx *::before, body.nx *::after { box-sizing:border-box; }
+body.nx button, body.nx a, body.nx input, body.nx select, body.nx textarea { touch-action:manipulation; }
+body.nx input, body.nx select, body.nx textarea { font-size:max(16px,1em); }
+
+/* ---------- Cabecera: logo (vuelve al inicio) + usuario + Salir ---------- */
+.nx-cab { position:sticky; top:0; z-index:50; display:flex; align-items:center; gap:8px;
+  height:60px; padding:0 12px; padding-top:env(safe-area-inset-top);
+  background:var(--nx-cabecera); box-shadow:0 1px 0 var(--nx-linea); }
+.nx-cab-logo { display:flex; align-items:center; gap:10px; min-height:44px; text-decoration:none; }
+.nx-cab-logo img { display:block; height:40px; width:auto; }
+.nx-cab-seccion { font-size:13px; font-weight:700; color:var(--nx-suave); }
+.nx-cab-usuario { margin-left:auto; display:flex; align-items:center; gap:4px; font-size:13px; font-weight:700; }
+.nx-nivel { background:var(--nx-chip); padding:3px 8px; border-radius:6px; font-size:12px; font-weight:800; text-transform:uppercase; }
+.nx-salir { min-height:44px; padding:0 12px; border:0; background:transparent; color:var(--nx-tinta); cursor:pointer;
+  font:800 13px var(--nx-texto); text-decoration:underline; text-underline-offset:3px; }
+
+/* ---------- Página ---------- */
+.nx-pag { width:100%; max-width:560px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.nx-titulo { margin:0; font-family:var(--nx-display); font-weight:800; font-size:36px; line-height:1; }
+.nx-subtitulo { margin:0; font-family:var(--nx-display); font-weight:800; font-size:26px; line-height:1; }
+.nx-nota { margin:0; font-size:13px; font-weight:600; line-height:1.4; color:var(--nx-suave); }
+.nx-version { padding:16px; font-size:12px; font-weight:700; color:var(--nx-suave); text-align:center; }
+
+/* ---------- Tarjeta ---------- */
+.nx-tarjeta { background:var(--nx-superficie); border-radius:var(--nx-r-tarjeta); padding:16px;
+  display:flex; flex-direction:column; gap:14px; }
+.nx-perf { position:relative; height:0; margin:4px -16px; border-top:2px dashed var(--nx-linea); }
+.nx-perf::before, .nx-perf::after { content:''; position:absolute; top:-11px; width:20px; height:20px; border-radius:50%; background:var(--nx-fondo); }
+.nx-perf::before { left:-10px; } .nx-perf::after { right:-10px; }
+
+/* ---------- Campos ---------- */
+.nx-campo { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.nx-campo > label, .nx-etiqueta { font-size:12px; font-weight:700; color:var(--nx-suave); }
+.nx-input { width:100%; min-width:0; height:48px; border:1.5px solid var(--nx-linea); border-radius:var(--nx-r-boton);
+  background:var(--nx-campo); color:var(--nx-tinta); font:700 16px var(--nx-texto); padding:0 12px; outline:none;
+  -webkit-appearance:none; appearance:none; }
+textarea.nx-input { height:auto; min-height:72px; padding:10px 12px; font-weight:600; line-height:1.35; resize:vertical; }
+.nx-input:focus { border-color:var(--nx-tinta); background:var(--nx-superficie); }
+.nx-input::placeholder { color:#7A879A; font-weight:600; }
+.nx-input.nx-num { font:700 26px/1 var(--nx-display); text-align:center; height:52px; }
+.nx-fila { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.nx-fila.tres { grid-template-columns:repeat(3,minmax(0,1fr)); }
+
+/* ---------- Botones ---------- */
+.nx-btn { min-height:52px; border:0; border-radius:var(--nx-r-boton); padding:0 14px; cursor:pointer;
+  font:800 15px var(--nx-texto); display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  text-decoration:none; transition:transform .12s, opacity .15s; }
+.nx-btn:active { transform:scale(.97); }
+.nx-btn:disabled { cursor:default; transform:none; }
+.nx-btn.ancho { width:100%; }
+.nx-btn.grande { min-height:56px; border-radius:var(--nx-r-grande); font-size:17px; }
+.nx-btn.tinta { background:var(--nx-tinta); color:var(--nx-tinta-clara); }
+.nx-btn.suave { background:var(--nx-azul-fondo); color:var(--nx-azul); }
+.nx-btn.verde { background:var(--nx-verde); color:#fff; }
+.nx-btn.rojo { background:var(--nx-rojo); color:#fff; }
+.nx-btn.rojo-borde { background:transparent; box-shadow:inset 0 0 0 1.5px var(--nx-rojo); color:var(--nx-rojo); }
+.nx-btn.gris, .nx-btn:disabled.verde { background:var(--nx-chip); color:var(--nx-suave); }
+.nx-btn.texto { background:transparent; color:var(--nx-suave); min-height:44px; font-size:14px; }
+.nx-btn svg { flex:0 0 auto; }
+
+/* ---------- Pestañas (segmentado) ---------- */
+.nx-pestanas { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); gap:4px; padding:4px;
+  border-radius:14px; background:var(--nx-chip); }
+.nx-pestanas > button { min-height:44px; border:0; border-radius:10px; background:transparent; color:var(--nx-suave);
+  font:800 14px var(--nx-texto); cursor:pointer; }
+.nx-pestanas > button.on, .nx-pestanas > button[aria-selected="true"] { background:var(--nx-tinta); color:var(--nx-tinta-clara); }
+
+/* ---------- Chips y estados ---------- */
+.nx-chip { display:inline-flex; align-items:center; gap:5px; background:var(--nx-chip); color:var(--nx-tinta);
+  padding:4px 8px; border-radius:6px; font-size:12px; font-weight:800; }
+.nx-estado { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:800; }
+.nx-estado::before { content:''; width:8px; height:8px; border-radius:50%; background:currentColor; }
+.nx-estado.pendiente { color:var(--nx-ambar); } .nx-estado.asignado { color:var(--nx-azul); }
+.nx-estado.entregado, .nx-estado.ok { color:var(--nx-verde); } .nx-estado.incidencia { color:var(--nx-rojo); }
+.nx-insignia { min-width:20px; height:20px; padding:0 5px; border-radius:10px; background:var(--nx-rojo); color:#fff;
+  font-size:12px; font-weight:800; display:inline-grid; place-items:center; }
+
+/* ---------- Avisos ---------- */
+.nx-aviso { padding:10px 12px; border-radius:12px; font-size:14px; font-weight:700; line-height:1.4; }
+.nx-aviso.error { background:var(--nx-rojo-fondo); color:#7A1A12; }
+.nx-aviso.ok    { background:var(--nx-verde-fondo); color:var(--nx-verde-tinta); }
+.nx-aviso.ambar { background:var(--nx-ambar-fondo); color:var(--nx-ambar-tinta); }
+.nx-aviso.info  { background:var(--nx-azul-fondo); color:var(--nx-azul); }
+
+/* ---------- Hoja inferior (modales) ---------- */
+.nx-velo { position:fixed; inset:0; z-index:200; background:rgba(11,36,71,.62); display:none; align-items:flex-end; justify-content:center; }
+.nx-velo.on { display:flex; }
+.nx-hoja { width:100%; max-width:560px; max-height:92vh; overflow:auto; background:var(--nx-superficie);
+  border-radius:24px 24px 0 0; padding:12px 20px calc(24px + env(safe-area-inset-bottom));
+  display:flex; flex-direction:column; gap:14px; }
+.nx-hoja::before { content:''; align-self:center; width:40px; height:5px; border-radius:99px; background:var(--nx-linea); }
+.nx-hoja h2 { margin:0; font-family:var(--nx-display); font-weight:800; font-size:34px; line-height:1; }
+
+/* ---------- Spinner ---------- */
+@keyframes nx-gira { to { transform:rotate(360deg); } }
+.nx-giro { display:inline-block; width:16px; height:16px; border-radius:50%; border:2.5px solid currentColor;
+  border-top-color:transparent; animation:nx-gira .7s linear infinite; vertical-align:middle; }
