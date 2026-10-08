@@ -38,215 +38,89 @@
         servidor. Repartidor: pedidos %DIA asignados a él y aún sin entregar.
         Gestores: pedidos %DIA sin asignar (como antes).
      3) Si la consulta falla, reintenta a los 4, 8 y 12 s en vez de esperar
-        al minuto siguiente. -->
+        al minuto siguiente.
+
+     Cambios 2026-10-08 (v2.14.0, ronda 24): diseño nuevo de Nexo
+     (nexo-tema.css). Cabecera blanca con el logo oficial, usuario y Salir;
+     los botones de módulos pasan a una cuadrícula de iconos encima del
+     formulario (ADM ve además Embolsado, Actualizar y Config). La lógica
+     del formulario y de la subida de tickets no cambia. -->
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#003366" />
+<meta name="theme-color" content="#FEFEFE" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Nexo Tickets" />
 <meta name="display" content="standalone" />
 <link rel="manifest" href="manifest.json?v=5">
 <link rel="icon" href="nexo-icon-192.png">
 <link rel="apple-touch-icon" href="nexo-icon-192.png">
 <title>Nexo · SAD Tickets</title>
+<link rel="stylesheet" href="nexo-tema.css?v=24">
 <style>
-:root {
-  --bg1:#003366; --bg2:#0077cc;
-  --card-bg:rgba(255,255,255,.12);
-  --text-main:#fff; --text-dark:#003366;
-  --radius-card:24px; --radius-field:12px;
-  --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
-}
-*, *::before, *::after { box-sizing:border-box; -webkit-font-smoothing:antialiased; font-family:var(--font); }
-body {
-  margin:0; min-height:100vh;
-  background:linear-gradient(180deg, var(--bg1), var(--bg2));
-  color:var(--text-main);
-  display:flex; justify-content:center; align-items:flex-start;
-  padding:24px 16px 56px;
-}
-.card {
-  width:100%; max-width:420px;
-  background:var(--card-bg);
-  border-radius:var(--radius-card);
-  box-shadow:0 16px 40px rgba(0,0,0,.45);
-  padding:20px 16px 28px;
-  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
-}
-.header { text-align:center; margin-bottom:18px; position:relative; }
-/* Botones laterales APILADOS (2026-10-02): Reservas, Informe, %DIA y, solo
-   para ADM, Embolsado / Actualizar pedidos / Configuración — todos en una
-   columna a la derecha. Si la columna baja más que la cabecera, los campos
-   del formulario que queden a su altura se acortan solos (ver
-   ajustarCamposAlStack). Incidencias (arriba a la izquierda) y Pedidos
-   asignados (junto a Tienda) no cambian de sitio. */
-.side-stack { position:absolute; top:-4px; right:-2px; z-index:5;
-  display:flex; flex-direction:column; gap:8px; }
-.side-stack a { position:relative; display:block; flex:0 0 auto; width:38px; height:38px;
-  border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.35); transition:transform .12s; cursor:pointer; }
-.side-stack a:active { transform:scale(.93); }
-.side-stack a img { width:100%; height:100%; display:block; object-fit:cover; border-radius:inherit; }
-.side-stack a.redondo { border-radius:50%; }
-.side-stack .solo-adm { display:none; }
-.side-stack.adm .solo-adm { display:block; }
-/* Botón %DIA (pedidos tienda online DIA) + contador amarillo.
-   Siempre visible (v2.13.0): ya no depende de la respuesta del servidor. */
-.btn-dia .num { position:absolute; top:-7px; right:-7px; min-width:20px; height:20px; padding:0 5px; border-radius:999px;
-  background:#facc15; color:#1f2937; font-size:11px; font-weight:900; display:none; align-items:center; justify-content:center;
-  border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.35); }
+/* Ronda 24 (2026-10-08): diseño nuevo. Los ids y clases que usa el script
+   (sideStack/.adm/.solo-adm, btnDia/.nuevo, .num, .control/.locked,
+   .lock-hint, .asig-hint, #spinner.visible…) se mantienen. */
+/* Módulos: cuadrícula de iconos */
+.modulos { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.modulos a { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  min-height:76px; border:1.5px solid var(--nx-linea); border-radius:14px; background:var(--nx-superficie);
+  color:var(--nx-tinta); text-decoration:none; font-size:12px; font-weight:800; cursor:pointer; transition:transform .12s; }
+.modulos a:active { transform:scale(.95); }
+.modulos .pct { font-family:var(--nx-display); font-weight:800; font-size:24px; line-height:1; }
+.modulos .solo-adm { display:none; }
+.modulos.adm .solo-adm { display:flex; }
+.modulos .num { position:absolute; top:6px; right:6px; min-width:20px; height:20px; padding:0 5px; border-radius:10px;
+  background:var(--nx-rojo); color:#fff; font-size:12px; font-weight:800; display:none; align-items:center; justify-content:center; }
+.btn-dia .num { background:var(--nx-lampara); color:var(--nx-tinta); }
 .btn-dia.nuevo .num { animation:diaPulso 1s ease-in-out 6; }
 @keyframes diaPulso { 50% { transform:scale(1.35); } }
-.btn-inc { display:flex; position:absolute; top:-4px; left:-2px; width:38px; height:38px; border-radius:10px;
-  background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.3); align-items:center; justify-content:center;
-  font-size:20px; text-decoration:none; box-shadow:0 4px 14px rgba(0,0,0,.35); }
-.btn-inc:active { transform:scale(.93); }
-.btn-inc .num { position:absolute; top:-7px; right:-7px; min-width:19px; height:19px; padding:0 5px; border-radius:999px;
-  background:#dc2626; color:#fff; font-size:11px; font-weight:800; display:none; align-items:center; justify-content:center; }
+/* Formulario */
+#ticketForm { display:flex; flex-direction:column; gap:14px; }
+#ticketForm label { display:block; font-size:12px; font-weight:700; color:var(--nx-suave); margin-bottom:4px; }
+.control { width:100%; min-width:0; height:48px; border:1.5px solid var(--nx-linea); border-radius:var(--nx-r-boton);
+  background:var(--nx-campo); color:var(--nx-tinta); font:700 16px var(--nx-texto); padding:0 10px; outline:none; }
+.control:focus { border-color:var(--nx-tinta); background:var(--nx-superficie); }
+select.control { -webkit-appearance:none; appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%234F6078' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 10px center; padding-right:36px; }
+input[type="date"].control { -webkit-appearance:none; appearance:none; text-align:left; }
+.control.locked, .control:disabled { background-color:var(--nx-chip) !important; color:var(--nx-suave) !important; cursor:not-allowed !important; opacity:1; }
+#pedidos.control, #dobles.control { height:52px; font:700 26px/1 var(--nx-display); text-align:center; }
+.row-3 .control { text-align:center; }
+#obs.control { text-align:left; font-weight:600; }
+.row-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.row-3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.group { min-width:0; }
+.lock-hint { font-size:12px; font-weight:700; color:var(--nx-suave); margin-top:-6px; display:flex; align-items:center; gap:4px; }
 .tienda-row { display:flex; align-items:center; gap:8px; }
 .tienda-row select { flex:1; min-width:0; }
-.btn-asignar { display:none; flex:0 0 auto; width:42px; height:42px; border-radius:10px; overflow:hidden;
-  box-shadow:0 4px 14px rgba(0,0,0,.35); transition:transform .12s; position:relative; }
-.btn-asignar:active { transform:scale(.93); }
-.btn-asignar img { width:100%; height:100%; display:block; object-fit:cover; }
-.asig-hint { font-size:12px; color:#9dffb0; margin-top:4px; display:none; }
-.asig-hint a { color:#ffcc00; text-decoration:underline; cursor:pointer; margin-left:6px; }
-.logo {
-  width:170px; max-width:65%;
-  height:auto; display:block;
-  margin:0 auto 10px auto;
-  background:#fff;
-  border-radius:14px;
-  padding:8px 14px;
-}
-.user-badge {
-  display:inline-flex; align-items:center; gap:6px;
-  background:rgba(255,255,255,.15);
-  border:1px solid rgba(255,255,255,.2);
-  border-radius:20px;
-  padding:5px 14px 5px 10px;
-  font-size:.8rem; font-weight:700;
-  color:rgba(255,255,255,.92);
-  margin-bottom:6px; cursor:pointer;
-  transition:background .18s;
-}
-.user-badge:hover { background:rgba(255,255,255,.23); }
-.nivel-tag {
-  display:inline-block;
-  background:rgba(96,165,250,.25);
-  color:#bfdbfe;
-  padding:2px 8px;
-  border-radius:10px;
-  font-size:.65rem;
-  font-weight:800;
-  text-transform:uppercase;
-  letter-spacing:.05em;
-  margin-left:6px;
-}
-.nivel-tag.admin { background:rgba(251,146,60,.25); color:#fed7aa; }
-.app-version { font-size:.78rem; font-weight:600; color:rgba(255,255,255,.45); }
-form { display:flex; flex-direction:column; gap:12px; }
-label {
-  font-size:.88rem; font-weight:600;
-  color:var(--text-main);
-  margin-bottom:3px; display:block;
-}
-.control {
-  width:100%; border:none; border-radius:var(--radius-field);
-  background:#fff; color:var(--text-dark);
-  font-weight:500; padding:13px 12px;
-  font-size: max(1rem, 16px);
-  outline:none;
-}
-select.control { -webkit-appearance:none; appearance:none; }
-.control.locked, .control:disabled {
-  background:#e5e7eb !important;
-  color:#475569 !important;
-  cursor:not-allowed !important;
-  opacity:1;
-}
-.lock-hint {
-  font-size:.7rem;
-  color:rgba(255,255,255,.6);
-  font-style:italic;
-  margin-top:-8px;
-  display:flex; align-items:center; gap:4px;
-}
-.row-2 { display:flex; gap:12px; }
-.row-2 .group { flex:1; min-width:0; }
-/* Fecha + Franja horaria en la misma línea (2026-10-02) */
-.row-fecha-franja { gap:10px; }
-.row-fecha-franja .group-fecha { flex:1.25 1 0; }
-.row-fecha-franja .group-franja { flex:1 1 0; }
-.row-fecha-franja .control { min-width:0; min-height:48px; padding-left:10px; padding-right:8px; }
-.row-fecha-franja input[type="date"].control { -webkit-appearance:none; appearance:none; text-align:left; }
-#ticketForm > * { transition:margin-right .15s; }
-.row-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-.row-3 .group label { font-size:.82rem; text-align:center; }
-.row-3 .control { text-align:center; padding:12px 4px; }
-button {
-  width:100%; border:none;
-  border-radius:var(--radius-field);
-  background:#fff; color:var(--text-dark);
-  font-weight:700; padding:15px 14px;
-  font-size: max(1rem, 16px);
-  cursor:pointer;
-  box-shadow:0 8px 22px rgba(0,0,0,.38);
-  transition:transform .12s, box-shadow .18s;
-}
-button:active { transform:scale(.97); }
-.btn-foto-wrap { display:flex; gap:10px; }
-.btn-foto-wrap button { flex:1; }
-#fotoPreview {
-  width:100%; border-radius:12px;
-  max-height:220px; object-fit:contain;
-  display:none;
-  border:2px solid rgba(255,255,255,.3);
-  background:rgba(0,0,0,.2);
-}
-#fotoInfo {
-  font-size:.75rem; font-weight:600;
-  color:rgba(255,255,255,.55);
-  text-align:center; display:none;
-}
-#msg {
-  text-align:center; min-height:1.3em;
-  font-size:.93rem; font-weight:700;
-  margin-top:4px; padding:8px 10px;
-  border-radius:10px;
-  transition:opacity .4s;
-}
-@keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(270deg); } }
-#spinner {
-  position:fixed; inset:0;
-  display:flex; flex-direction:column;
-  justify-content:center; align-items:center;
-  gap:14px;
-  background:rgba(0,0,0,.62);
-  z-index:1000; visibility:hidden; opacity:0;
-  transition:opacity .2s, visibility .2s;
-}
+.btn-asignar { display:none; flex:0 0 48px; width:48px; height:48px; border-radius:var(--nx-r-boton);
+  background:var(--nx-azul-fondo); color:var(--nx-azul); }
+.btn-asignar svg { display:block; margin:13px auto; }
+.asig-hint { font-size:13px; font-weight:700; color:var(--nx-verde); margin-top:4px; display:none; }
+.asig-hint a { color:var(--nx-azul); text-decoration:underline; cursor:pointer; margin-left:6px; }
+.btn-foto-wrap { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+#btnGirar { display:none; width:100%; margin-top:8px; text-align:center; }
+#fotoPreview { width:100%; max-height:240px; object-fit:contain; display:none; border-radius:12px;
+  border:1.5px solid var(--nx-linea); background:var(--nx-campo); }
+#fotoInfo { font-size:13px; font-weight:700; color:var(--nx-suave); text-align:center; display:none; }
+#msg:empty { display:none; }
+#msg { text-align:center; transition:opacity .4s; }
+#badgePendientes { display:flex; align-items:center; justify-content:center; gap:6px; min-height:44px; border-radius:12px;
+  background:var(--nx-ambar-fondo); color:var(--nx-ambar-tinta); font-size:14px; font-weight:800; cursor:pointer; }
+/* Spinner y sin conexión */
+@keyframes spin { to { transform:rotate(360deg); } }
+#spinner { position:fixed; inset:0; z-index:1000; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:14px;
+  background:rgba(11,36,71,.62); visibility:hidden; opacity:0; transition:opacity .2s, visibility .2s; }
 #spinner.visible { visibility:visible; opacity:1; }
-#spinner-ring {
-  width:58px; height:58px;
-  border:6px solid rgba(255,255,255,.25);
-  border-top-color:#60a5fa;
-  border-radius:50%;
-  animation:spin 1s linear infinite;
-}
-#spinner-text { color:rgba(255,255,255,.8); font-size:.9rem; font-weight:700; }
-.offline-alert {
-  position:fixed; top:12px; left:50%;
-  transform:translateX(-50%);
-  background:#dc2626; color:white;
-  padding:10px 18px; border-radius:12px;
-  font-weight:700; font-size:.85rem;
-  z-index:1100; display:none;
-  box-shadow:0 8px 24px rgba(0,0,0,.4);
-}
+#spinner-ring { width:56px; height:56px; border:6px solid rgba(255,255,255,.25); border-top-color:#fff; border-radius:50%; animation:spin 1s linear infinite; }
+#spinner-text { color:#fff; font-size:15px; font-weight:800; }
+.offline-alert { position:fixed; top:calc(68px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); z-index:1100; display:none;
+  background:var(--nx-rojo); color:#fff; padding:10px 16px; border-radius:12px; font-weight:800; font-size:14px; }
 </style>
 
 <!-- GUARD DE SESIÓN: redirige antes de pintar nada -->
@@ -300,41 +174,38 @@ button:active { transform:scale(.97); }
 })();
 </script>
 </head>
-<body>
-<div class="offline-alert" id="offline-alert">⚠️ Sin conexión a internet</div>
+<body class="nx">
+<div class="offline-alert" id="offline-alert">Sin conexión a internet</div>
 
 <div id="spinner" role="status" aria-live="polite">
   <div id="spinner-ring"></div>
   <div id="spinner-text">Procesando...</div>
 </div>
 
-<div class="card">
-  <div class="header">
-    <div class="side-stack" id="sideStack">
-      <a class="btn-reservas" href="reservas.html" title="Reservas">
-        <img src="boton_reservas.png" alt="Reservas" />
-      </a>
-      <a class="btn-informe" href="informe.html" title="Informe">
-        <img src="boton_informe.png" alt="Informe" />
-      </a>
-      <a class="btn-dia redondo" id="btnDia" href="dia.html" title="Pedidos %DIA">
-        <img src="boton_dia.png" alt="%DIA" /><span class="num" id="numDia"></span>
-      </a>
-      <a class="solo-adm redondo" id="btnEmbolsado" href="#" title="Módulo Embolsado"><img src="boton_embolsado.png" alt="Embolsado" /></a>
-      <a class="solo-adm redondo" id="btnActualizar" title="Actualizar pedidos (control de tickets)"><img src="boton_actualizar_pedidos.png" alt="Actualizar pedidos" /></a>
-      <a class="solo-adm redondo" id="btnConfig" href="config.html" title="Configuración"><img src="boton_config.png" alt="Configuración" /></a>
-    </div>
-    <img class="logo" src="nexo-logo-full.png" alt="Nexo · Distribución Inteligente" />
-    <a id="linkIncidencias" class="btn-inc" href="incidencias.html" title="Incidencias de entrega">⚠️<span class="num" id="numIncidencias"></span></a>
-    <div class="user-badge" id="userBadge" onclick="cerrarSesion()" title="Pulsa para cerrar sesión">
-      👤 <span id="badgeNombre">—</span>
-      <span class="nivel-tag" id="nivelTag">—</span>
-      &nbsp;·&nbsp;Salir
-    </div>
-    <div class="app-version">SAD Ticket Upload v2.13.0</div>
+<header class="nx-cab">
+  <a class="nx-cab-logo" href="index.html" aria-label="Ir al inicio"><img src="nexo-logo-oficial.png" alt="Nexo"><span class="nx-cab-seccion">Tickets</span></a>
+  <div class="nx-cab-usuario" id="userBadge">
+    <span id="badgeNombre">—</span>
+    <span class="nx-nivel nivel-tag" id="nivelTag">—</span>
+    <button type="button" class="nx-salir" onclick="cerrarSesion()">Salir</button>
   </div>
+</header>
 
-  <form id="ticketForm" novalidate>
+<main class="nx-pag">
+
+  <nav class="modulos" id="sideStack" aria-label="Módulos">
+    <a class="btn-reservas" href="reservas.html"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10h16M8 4v4M16 4v4"/></svg>Reservas</a>
+    <a class="btn-dia" id="btnDia" href="dia.html"><span class="pct">%</span>%DIA<span class="num" id="numDia"></span></a>
+    <a id="linkIncidencias" class="btn-inc" href="incidencias.html"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4M12 17.5v.5"/></svg>Incidencias<span class="num" id="numIncidencias"></span></a>
+    <a class="btn-informe" href="informe.html"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Informe</a>
+    <a class="solo-adm" id="btnEmbolsado" href="#"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 12H5zM9 8V6a3 3 0 0 1 6 0v2"/></svg>Embolsado</a>
+    <a class="solo-adm" id="btnActualizar" role="button" tabindex="0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5"/></svg>Actualizar</a>
+    <a class="solo-adm" id="btnConfig" href="config.html"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Config</a>
+  </nav>
+
+  <h1 class="nx-titulo">Subir ticket</h1>
+
+  <form id="ticketForm" class="nx-tarjeta" novalidate>
     <div class="row-2 row-fecha-franja">
       <div class="group group-fecha">
         <label for="fecha">Fecha</label>
@@ -347,7 +218,7 @@ button:active { transform:scale(.97); }
         </select>
       </div>
     </div>
-    <div class="lock-hint" id="hintFecha" style="display:none;">🔒 Solo se puede registrar la fecha de hoy</div>
+    <div class="lock-hint" id="hintFecha" style="display:none;">Solo se puede registrar la fecha de hoy</div>
 
     <div>
       <label for="tienda">Tienda</label>
@@ -355,9 +226,7 @@ button:active { transform:scale(.97); }
         <select class="control" id="tienda" name="tienda" required>
           <option value="" disabled selected>Cargando...</option>
         </select>
-        <a class="btn-asignar" id="btnAsignar" href="asignar.html" title="Asignar pedidos">
-          <img src="boton_asignar.png" alt="Asignar pedidos" />
-        </a>
+        <a class="btn-asignar" id="btnAsignar" href="asignar.html" title="Pedidos asignados" aria-label="Pedidos asignados"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></svg></a>
       </div>
     </div>
 
@@ -366,14 +235,13 @@ button:active { transform:scale(.97); }
       <select class="control" id="repartidor" name="repartidor" required>
         <option value="" disabled selected>Cargando...</option>
       </select>
-      <div class="lock-hint" id="hintRepartidor" style="display:none; margin-top:4px;">🔒 Repartidor fijado a tu cuenta</div>
+      <div class="lock-hint" id="hintRepartidor" style="display:none; margin-top:4px;">Repartidor fijado a tu cuenta</div>
     </div>
 
     <div class="row-2">
       <div class="group">
         <label for="pedidos">Pedidos (P)</label>
-        <!-- ✅ FIX BUG 1: añadido value="0" — sin esto el campo parece relleno
-             (placeholder "0") pero su valor real es "" y la validación falla -->
+        <!-- FIX BUG 1: value="0" — sin esto el campo parece relleno pero su valor real es "" y la validación falla -->
         <input class="control" type="number" name="pedidos" id="pedidos"
                min="-40" max="40" value="0" placeholder="0" required />
         <div class="asig-hint" id="asigHint"></div>
@@ -403,28 +271,27 @@ button:active { transform:scale(.97); }
       </div>
     </div>
 
+    <div class="nx-perf"></div>
+
     <div>
       <label>Foto del ticket</label>
       <div class="btn-foto-wrap">
-        <button type="button" id="btnCamara">📷 Sacar foto</button>
-        <button type="button" id="btnArchivo">🖼️ Galería</button>
+        <button type="button" class="nx-btn suave" id="btnCamara"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13.5" r="3.2"/></svg>Sacar foto</button>
+        <button type="button" class="nx-btn suave" id="btnArchivo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l4.5-4.5 3.5 3.5 3-3 5 5"/><circle cx="9" cy="9.5" r="1.4"/></svg>Galería</button>
       </div>
-      <button type="button" id="btnGirar"
-        style="display:none; margin-top:8px; background:rgba(255,255,255,0.2);
-               color:#fff; border:1px solid rgba(255,255,255,0.3);
-               box-shadow:none; padding:10px; font-size:0.9rem;">
-        🔄 Girar foto
-      </button>
+      <button type="button" class="nx-btn texto" id="btnGirar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5"/></svg> Girar foto</button>
       <input type="file" id="foto" name="foto" accept="image/*" style="display:none;" />
     </div>
 
     <img id="fotoPreview" src="" alt="Vista previa del ticket" />
     <div id="fotoInfo"></div>
 
-    <button type="submit" id="btnSubir">⬆️ Subir ticket</button>
+    <button type="submit" class="nx-btn tinta grande ancho" id="btnSubir"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5M7 9.5L12 5l5 4.5M5 19h14"/></svg>Subir ticket</button>
     <div id="msg" role="alert" aria-live="polite"></div>
   </form>
-</div>
+
+  <div class="nx-version app-version">Nexo Tickets v2.14.0</div>
+</main>
 
 <script>
 /* ============================================================
@@ -539,6 +406,7 @@ if (ES_ADMIN) {
    columna baja más que la cabecera (ADM: 6 botones), se acortan solo los
    campos del formulario que quedan a su altura, para que no se tapen. */
 function ajustarCamposAlStack() {
+  return; // Ronda 24: los módulos ya no van en una columna sobre el formulario.
   var stack = document.getElementById('sideStack');
   var form = document.getElementById('ticketForm');
   if (!stack || !form) return;
@@ -608,7 +476,7 @@ var DIA_URL = 'https://script.google.com/macros/s/AKfycbwrX90CKa7GQki-DUDZFpdGVl
           try {
             if ('Notification' in window && Notification.permission === 'granted' && navigator.serviceWorker) {
               navigator.serviceWorker.getRegistration().then(function (reg) {
-                if (reg) reg.showNotification('Nexo · %DIA', { body: t, icon: 'boton_dia.png', vibrate: [300, 120, 300], tag: 'nexo-dia' });
+                if (reg) reg.showNotification('Nexo · %DIA', { body: t, icon: 'nexo-icon-192.png', vibrate: [300, 120, 300], tag: 'nexo-dia' });
               });
             }
           } catch (e) {}
@@ -647,18 +515,16 @@ function showSpinner(t) { spinnerTxt.textContent = t || 'Procesando...'; spinner
 function hideSpinner()  { spinnerEl.classList.remove('visible'); }
 
 function setMsg(text, color) {
+  // Ronda 24: los colores de siempre se traducen a los avisos del tema nuevo.
   msgEl.textContent = text;
-  msgEl.style.color = color || '#fff';
-  msgEl.style.background = color
-    ? (color === '#9dffb0' ? 'rgba(34,197,94,.12)' :
-       color === '#ffcc00' ? 'rgba(251,191,36,.12)' : 'rgba(239,68,68,.12)')
-    : 'transparent';
+  var tipo = !color ? 'info' : color === '#9dffb0' ? 'ok' : (color === '#ffcc00' || color === '#facc15') ? 'ambar' : 'error';
+  msgEl.className = text ? 'nx-aviso ' + tipo : '';
   msgEl.style.opacity = '1';
 }
 function clearMsg() {
   msgEl.style.transition = 'opacity .5s';
   msgEl.style.opacity = '0';
-  setTimeout(() => { msgEl.textContent = ''; msgEl.style.background = 'transparent'; }, 520);
+  setTimeout(() => { msgEl.textContent = ''; msgEl.className = ''; }, 520);
 }
 function showOfflineAlert() {
   const el = document.getElementById('offline-alert');
@@ -1246,15 +1112,9 @@ async function actualizarBadgePendientes() {
       if (!badge) {
         badge = document.createElement('div');
         badge.id = 'badgePendientes';
-        badge.style.cssText = `
-          display:inline-flex; align-items:center; gap:6px;
-          background:rgba(251,191,36,.25); border:1px solid rgba(251,191,36,.4);
-          border-radius:20px; padding:4px 12px; font-size:.78rem; font-weight:700;
-          color:#fde68a; margin-bottom:6px; cursor:pointer;
-        `;
         badge.title   = 'Tickets pendientes de subir';
         badge.onclick = () => procesarCola(true);
-        document.getElementById('userBadge').insertAdjacentElement('afterend', badge);
+        document.getElementById('ticketForm').insertAdjacentElement('beforebegin', badge); // ronda 24
       }
       badge.textContent = `⏳ ${n} ticket${n > 1 ? 's' : ''} pendiente${n > 1 ? 's' : ''}`;
     } else if (badge) {

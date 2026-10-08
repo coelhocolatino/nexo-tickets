@@ -37,7 +37,9 @@ body.nx input, body.nx select, body.nx textarea { font-size:max(16px,1em); }
 .nx-cab-logo img { display:block; height:40px; width:auto; }
 .nx-cab-seccion { font-size:13px; font-weight:700; color:var(--nx-suave); }
 .nx-cab-usuario { margin-left:auto; display:flex; align-items:center; gap:4px; font-size:13px; font-weight:700; }
-.nx-nivel { background:var(--nx-chip); padding:3px 8px; border-radius:6px; font-size:12px; font-weight:800; text-transform:uppercase; }
+.nx-nivel { background:var(--nx-chip); padding:3px 8px; border-radius:6px; font-size:12px; font-weight:800; text-transform:uppercase; white-space:nowrap; }
+.nx-cab-usuario > span:first-child { max-width:30vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media (max-width:370px) { .nx-cab-seccion { display:none; } }
 .nx-salir { min-height:44px; padding:0 12px; border:0; background:transparent; color:var(--nx-tinta); cursor:pointer;
   font:800 13px var(--nx-texto); text-decoration:underline; text-underline-offset:3px; }
 
