@@ -6,6 +6,7 @@
    También vale tocar directamente el dibujo de la galería o de la cámara. Uso:
      NexoFoto.crear(document.getElementById('miContenedor'), {
        alElegir: function (archivo, origen) { ... }   // origen: 'subir' | 'sacar'
+       // o bien alAbrir: function (origen) { ... }  → la página abre su propio input
      });
    ============================================================= */
 (function () {
@@ -42,7 +43,7 @@
       '<input type="file" accept="image/*" capture="environment" hidden class="in-sacar"></div>';
     var raiz = cont.firstChild, pomo = raiz.querySelector('.pomo');
     var inSubir = raiz.querySelector('.in-subir'), inSacar = raiz.querySelector('.in-sacar');
-    function abrir(origen) { (origen === 'subir' ? inSubir : inSacar).click(); }
+    function abrir(origen) { if (opc.alAbrir) { opc.alAbrir(origen); return; } (origen === 'subir' ? inSubir : inSacar).click(); }
     function elegido(origen) { return function (ev) { var f = ev.target.files && ev.target.files[0]; ev.target.value = ''; if (f && opc.alElegir) opc.alElegir(f, origen); }; }
     inSubir.addEventListener('change', elegido('subir'));
     inSacar.addEventListener('change', elegido('sacar'));
