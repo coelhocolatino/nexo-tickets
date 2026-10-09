@@ -1,263 +1,291 @@
 <!DOCTYPE html>
-<!-- Nexo · Configuración (solo ADM) — 2026-09-28
-     Página propia en GitHub: ya NO redirige al módulo de Reservas.
-     Backend: NEXO SCRIPT (acciones obtenerPedidosEmitidos / guardarPedidosEmitidos),
-     que escribe en la hoja PEDIDOS_TOTALES de la planilla 19bqTde5…
-
-     2026-10-02: nueva sección "Límites de pedidos por franja" — lee y ajusta
-     directamente la hoja LIMITES de la planilla RESERVAS DE PEDIDOS (1rpXo…).
-     Backend: MÓDULO EMBOLSADO (acciones obtenerLimites / guardarLimites,
-     requiere el Embolsado.gs del 2026-10-02).  -->
-<html lang="es">
+<!-- Nexo · Configuración (solo ADM)
+     v3.10.1 (2026-10-09, ronda 24): diseño nuevo (nexo-tema.css) y nueva sección
+     "Reservas automáticas" para clientes habituales: cada semana o cada 15 días, un día
+     y una franja; la reserva se crea sola 3 días antes (si la franja está completa se crea
+     igual y se avisa a ADM). Backend: Módulo Embolsado (listarReservasAuto,
+     guardarReservaAuto, borrarReservaAuto; disparador generarReservasAuto).
+     Se mantienen: Pedidos diarios emitidos (NEXO SCRIPT, PEDIDOS_TOTALES; GRANVIA en su
+     columna) y Límites por franja (Módulo Embolsado, hoja LIMITES). -->
+<html lang="es" data-pagina="config" data-version="v3.10.1">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#003366" />
+<meta name="theme-color" content="#FEFEFE" />
 <link rel="icon" href="nexo-icon-192.png">
 <title>Nexo · Configuración</title>
+<link rel="stylesheet" href="nexo-tema.css?v=24">
+<script src="nexo-version.js?v=1"></script>
+<script>
+/* Solo ADM */
+(function () {
+  try {
+    var u = JSON.parse(sessionStorage.getItem('sad_user') || 'null');
+    if (!u || !u.usuario || !u.token) location.replace('login.html');
+    else if (String(u.nivel || '').toLowerCase() !== 'admin') location.replace('index.html');
+  } catch (e) { location.replace('login.html'); }
+})();
+</script>
 <style>
-:root { --bg1:#003366; --bg2:#0077cc; --card-bg:rgba(255,255,255,.12); --text-dark:#003366; }
-*, *::before, *::after { box-sizing:border-box; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-body { margin:0; min-height:100vh; background:linear-gradient(180deg,var(--bg1),var(--bg2)); color:#fff;
-  display:flex; justify-content:center; align-items:flex-start; padding:24px 16px 56px; }
-.card { width:100%; max-width:420px; background:var(--card-bg); border-radius:24px; padding:20px 16px 28px;
-  box-shadow:0 16px 40px rgba(0,0,0,.45); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
-.header { display:flex; align-items:center; gap:10px; margin-bottom:18px; }
-.header img { width:40px; height:40px; border-radius:10px; }
-.header h1 { font-size:1.15rem; margin:0; flex:1; }
-.volver { color:#fff; text-decoration:none; font-weight:700; font-size:.85rem; background:rgba(255,255,255,.16);
-  border:1px solid rgba(255,255,255,.3); padding:8px 12px; border-radius:12px; }
-.seccion { background:rgba(255,255,255,.95); color:var(--text-dark); border-radius:16px; padding:16px; }
-.seccion h2 { font-size:1rem; margin:0 0 4px; }
-.seccion p.hint { font-size:.78rem; color:#64748b; margin:0 0 14px; line-height:1.4; }
-label { display:block; font-size:.76rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin:0 0 4px; }
-.control { width:100%; border:1.5px solid #e2e8f0; border-radius:12px; padding:12px; font-size:16px; font-weight:700;
-  color:var(--text-dark); background:#fff; margin-bottom:12px; outline:none; }
-.control:focus { border-color:#2563eb; }
-.tiendas { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
-.tienda-btn { border:1.5px solid #e2e8f0; background:#fff; color:var(--text-dark); border-radius:12px; padding:12px 6px;
-  font-weight:800; font-size:.95rem; cursor:pointer; }
-.tienda-btn.activo { background:#fde047; border-color:#f59e0b; color:#78350f; }
-.actual { font-size:.85rem; font-weight:700; margin:-4px 0 12px; min-height:1.2em; color:#334155; }
-.btn { width:100%; border:none; border-radius:12px; padding:14px; font-size:1rem; font-weight:800; cursor:pointer;
-  background:#22c55e; color:#fff; box-shadow:0 8px 20px rgba(0,0,0,.25); }
-.btn:disabled { opacity:.55; cursor:not-allowed; }
-.msg { display:none; margin-top:12px; padding:10px; border-radius:10px; font-size:.88rem; font-weight:700; text-align:center; }
-.msg.show { display:block; }
-.msg.ok { background:#dcfce7; color:#166534; }
-.msg.error { background:#fee2e2; color:#991b1b; }
-/* Límites de pedidos por franja (2026-10-02) */
-.seccion + .seccion { margin-top:16px; }
-.lim-tabla { display:grid; grid-template-columns:44px repeat(4, minmax(0, 1fr)); gap:6px; align-items:center; margin-bottom:12px; }
-.lim-cab { font-size:.68rem; font-weight:800; color:#64748b; text-align:center; letter-spacing:.02em; }
-.lim-dia { font-size:.78rem; font-weight:800; color:var(--text-dark); }
-.lim-dia.hoy { color:#b45309; }
-.lim-in { width:100%; min-width:0; border:1.5px solid #e2e8f0; border-radius:10px; padding:10px 2px; font-size:16px; font-weight:800;
-  color:var(--text-dark); background:#fff; text-align:center; outline:none; -moz-appearance:textfield; appearance:textfield; }
-.lim-in::-webkit-outer-spin-button, .lim-in::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
-.lim-in:focus { border-color:#2563eb; }
-.lim-in.cambiado { border-color:#f59e0b; background:#fef9c3; }
-.lim-in.mal { border-color:#dc2626; background:#fee2e2; }
-.lim-acciones { display:flex; gap:8px; }
-.lim-acciones .btn { flex:1; white-space:nowrap; font-size:.95rem; padding:14px 8px; }
-.lim-acciones .btn.gris { background:#e2e8f0; color:#334155; box-shadow:none; flex:0 0 36%; }
-.lim-estado { font-size:.85rem; font-weight:700; color:#334155; min-height:1.2em; margin-bottom:10px; }
+body.nx { padding-bottom:40px; }
+.sec { background:var(--nx-superficie); border-radius:var(--nx-r-tarjeta); padding:16px; display:flex; flex-direction:column; gap:12px; }
+.sec h2 { margin:0; font-family:var(--nx-display); font-weight:800; font-size:28px; line-height:1.05; }
+.nota { margin:0; font-size:13px; font-weight:600; color:var(--nx-suave); line-height:1.4; }
+.g2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; }
+.campo label, .etq { display:block; font-size:12px; font-weight:700; color:var(--nx-suave); margin:0 0 4px; }
+.in { width:100%; min-height:52px; border:1.5px solid var(--nx-linea); border-radius:12px; padding:0 12px; background:var(--nx-campo);
+  color:var(--nx-tinta); font:700 17px var(--nx-texto); }
+.in.num { text-align:center; font:800 26px var(--nx-display); }
+.in:focus { outline:none; border-color:var(--nx-tinta); background:var(--nx-superficie); }
+.btn-p { width:100%; min-height:56px; border:0; border-radius:14px; background:var(--nx-tinta); color:var(--nx-tinta-clara); font:800 16px var(--nx-texto);
+  cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+.btn-p:disabled { opacity:.5; cursor:default; }
+.btn-s { min-height:56px; border:0; border-radius:14px; background:var(--nx-azul-fondo); color:var(--nx-azul); font:800 16px var(--nx-texto); cursor:pointer; }
+.btn-s:disabled { opacity:.5; cursor:default; }
+.fila-btn { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); gap:8px; }
+.msg { display:none; padding:10px 12px; border-radius:12px; font-size:14px; font-weight:700; line-height:1.4; white-space:pre-line; }
+.msg.ok { display:block; background:var(--nx-verde-fondo); color:var(--nx-verde-tinta); }
+.msg.err { display:block; background:var(--nx-rojo-fondo); color:#7A1A12; }
+.actual { font-size:13px; font-weight:700; color:var(--nx-suave); }
+/* Límites */
+.lim { display:grid; grid-template-columns:40px repeat(var(--nf,4), minmax(0,1fr)); gap:6px; align-items:center; }
+.lim .cab { text-align:center; font-size:12px; font-weight:800; color:var(--nx-suave); }
+.lim .dia { font-size:14px; font-weight:800; }
+.lim .dia.hoy { color:var(--nx-azul); }
+.lim input { width:100%; min-width:0; height:46px; border:1.5px solid var(--nx-linea); border-radius:10px; background:var(--nx-campo);
+  text-align:center; padding:0; font:800 20px var(--nx-display); color:var(--nx-tinta); -moz-appearance:textfield; }
+.lim input.cambiado { border-color:var(--nx-lampara); background:#FFF8E1; }
+.lim input.mal { border-color:var(--nx-rojo); background:var(--nx-rojo-fondo); }
+/* Reservas automáticas */
+#raLista { display:flex; flex-direction:column; gap:8px; }
+.ra { display:grid; grid-template-columns:minmax(0,1fr) auto 48px; gap:10px; align-items:center; background:var(--nx-campo); border-radius:14px; padding:10px 10px 10px 14px; }
+.ra.pausada { opacity:.6; }
+.ra b { display:block; font-size:16px; font-weight:800; text-transform:uppercase; overflow-wrap:anywhere; }
+.ra span.t { display:block; font-size:13px; font-weight:700; color:var(--nx-suave); }
+.ra .chip-f { background:var(--nx-superficie); border-radius:8px; padding:5px 8px; font-size:13px; font-weight:800; white-space:nowrap; }
+.ra button { width:48px; height:48px; border:0; border-radius:12px; background:var(--nx-azul-fondo); color:var(--nx-azul); cursor:pointer; display:grid; place-items:center; }
+.ra-vacio { font-size:14px; font-weight:700; color:var(--nx-suave); padding:6px 2px; }
+/* Hoja */
+.modal { position:fixed; inset:0; z-index:200; background:rgba(11,36,71,.62); display:none; align-items:flex-end; justify-content:center; }
+.modal.on { display:flex; }
+.modal .box { width:100%; max-width:560px; max-height:94vh; overflow:auto; background:var(--nx-superficie); color:var(--nx-tinta);
+  border-radius:24px 24px 0 0; padding:12px 20px calc(24px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:14px; }
+.modal .box::before { content:''; align-self:center; width:40px; height:5px; border-radius:99px; background:var(--nx-linea); flex:0 0 auto; }
+.modal h2 { margin:0; font-family:var(--nx-display); font-weight:800; font-size:32px; line-height:1.05; }
+.in-cli { width:100%; border:0; border-bottom:1.5px solid var(--nx-linea); background:transparent; padding:6px 0; font:800 22px var(--nx-texto);
+  color:var(--nx-tinta); text-transform:uppercase; border-radius:0; }
+.in-cli:focus { outline:none; border-bottom-color:var(--nx-tinta); }
+.chips { display:grid; gap:8px; }
+.chips.dias { grid-template-columns:repeat(7,minmax(0,1fr)); }
+.chips.franjas { grid-template-columns:repeat(var(--nf,4),minmax(0,1fr)); }
+.chips button { min-height:48px; border:1.5px solid var(--nx-linea); border-radius:12px; background:var(--nx-campo); color:var(--nx-tinta);
+  font:800 15px var(--nx-texto); cursor:pointer; padding:0 4px; }
+.chips button.on { background:var(--nx-tinta); border-color:var(--nx-tinta); color:var(--nx-tinta-clara); }
+.resumen { display:grid; grid-template-columns:28px minmax(0,1fr); gap:10px; align-items:center; background:var(--nx-campo); border-radius:12px; padding:12px;
+  font-size:14px; font-weight:800; }
+.resumen i { display:block; width:28px; height:6px; border-radius:99px; background:#22C55E; }
+.resumen.pausa i { background:var(--nx-suave); }
+.row { display:flex; gap:8px; }
+.row button { flex:1; min-height:56px; border:0; border-radius:14px; font:800 16px var(--nx-texto); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+.b-gris { background:var(--nx-azul-fondo); color:var(--nx-azul); }
+.b-verde { background:var(--nx-verde); color:#fff; }
+.b-borde { background:transparent; box-shadow:inset 0 0 0 1.5px var(--nx-linea); color:var(--nx-tinta); }
+.b-rojo-borde { background:transparent; box-shadow:inset 0 0 0 1.5px var(--nx-rojo); color:var(--nx-rojo); }
+details.hist { font-size:12px; color:var(--nx-suave); }
+details.hist summary { font-weight:800; cursor:pointer; }
+details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
+#spin { position:fixed; inset:0; z-index:300; background:rgba(11,36,71,.62); display:none; align-items:center; justify-content:center; color:#fff; font-weight:800; }
+#spin.on { display:flex; }
 </style>
 </head>
-<body>
-<div class="card">
-  <div class="header">
-    <img src="boton_config.png" alt="" />
-    <h1>Configuración</h1>
-    <a class="volver" href="index.html">← Volver</a>
-  </div>
+<body class="nx">
+<header class="nx-cab">
+  <a class="nx-cab-logo" href="index.html" aria-label="Ir al inicio"><img src="nexo-logo-oficial.png" alt="Nexo"><span class="nx-cab-seccion">Config</span></a>
+  <div class="nx-cab-usuario"><span id="quien"></span><span class="nx-nivel">ADM</span></div>
+</header>
+<main class="nx-pag">
+  <h1 class="nx-titulo">Configuración</h1>
 
-  <div class="seccion">
-    <h2>📦 Pedidos diarios emitidos</h2>
-    <p class="hint">Cantidad de pedidos emitidos por tienda y día (hoja PEDIDOS_TOTALES). Si el día ya existe se actualiza; si no, se añade.</p>
-
-    <label>Tienda</label>
-    <div class="tiendas">
-      <button type="button" class="tienda-btn activo" data-tienda="TRAVESIA">TRAVESIA</button>
-      <button type="button" class="tienda-btn" data-tienda="GRANVIA">GRANVIA</button>
+  <!-- Pedidos diarios emitidos -->
+  <section class="sec">
+    <h2>Pedidos diarios emitidos</h2>
+    <div><span class="etq">Tienda</span>
+      <div class="nx-pestanas" role="tablist">
+        <button class="on" data-tienda="TRAVESIA" onclick="elegirTienda(this)">TRAVESIA</button>
+        <button data-tienda="GRANVIA" onclick="elegirTienda(this)">GRANVIA</button>
+      </div>
     </div>
-
-    <label for="fecha">Fecha</label>
-    <input class="control" type="date" id="fecha" />
-
+    <div class="g2">
+      <div class="campo"><label for="fecha">Fecha</label><input class="in" type="date" id="fecha" /></div>
+      <div class="campo"><label for="cantidad">Pedidos emitidos</label><input class="in num" type="number" id="cantidad" min="0" max="100000" step="1" inputmode="numeric" placeholder="0" /></div>
+    </div>
     <div class="actual" id="actual"></div>
-
-    <label for="cantidad">Pedidos emitidos</label>
-    <input class="control" type="number" id="cantidad" min="0" max="100000" step="1" inputmode="numeric" placeholder="0" />
-
-    <button class="btn" id="btnGuardar" type="button">💾 Guardar</button>
+    <p class="nota" id="notaCol">Se guarda en PEDIDOS_TOTALES, columna de TRAVESIA.</p>
+    <button class="btn-p" id="btnGuardar" type="button">Guardar</button>
     <div class="msg" id="msg"></div>
-  </div>
+  </section>
 
-  <div class="seccion">
-    <h2>⏱️ Límites de pedidos por franja</h2>
-    <p class="hint">Nº máximo de reservas por día de la semana y franja horaria (hoja LIMITES). Vale para Reservas y Embolsado desde el momento en que se guarda.</p>
-    <div class="lim-estado" id="limEstado">Cargando…</div>
-    <div class="lim-tabla" id="limTabla"></div>
-    <div class="lim-acciones">
-      <button class="btn gris" id="btnLimDeshacer" type="button" disabled>↺ Deshacer</button>
-      <button class="btn" id="btnLimGuardar" type="button" disabled>💾 Guardar límites</button>
+  <!-- Límites -->
+  <section class="sec">
+    <h2>Límites por franja</h2>
+    <p class="nota">Nº máximo de reservas por día de la semana y franja (hoja LIMITES). Vale para Reservas y Embolsado desde que se guarda.</p>
+    <div class="actual" id="limEstado">Cargando…</div>
+    <div class="lim" id="limTabla"></div>
+    <div class="fila-btn">
+      <button class="btn-s" id="btnLimDeshacer" type="button" disabled>Deshacer</button>
+      <button class="btn-p" id="btnLimGuardar" type="button" disabled>Guardar límites</button>
     </div>
     <div class="msg" id="msgLim"></div>
+  </section>
+
+  <!-- Reservas automáticas -->
+  <section class="sec">
+    <h2>Reservas automáticas</h2>
+    <p class="nota">Para clientes habituales. La reserva se crea sola <b id="raDias">3</b> días antes. Si la franja está completa se crea igual y se avisa a ADM.</p>
+    <div id="raLista"><div class="ra-vacio">Cargando…</div></div>
+    <button class="btn-p" type="button" onclick="abrirRA(null)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva reserva automática</button>
+    <div class="msg" id="msgRA"></div>
+  </section>
+
+  <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.1</div>
+</main>
+
+<!-- Hoja: reserva automática -->
+<div class="modal" id="mRA" onclick="if(event.target===this)cerrarRA()"><div class="box">
+  <h2>Reserva automática</h2>
+  <div><label class="etq" for="raCli">Cliente / dirección</label><input class="in-cli" id="raCli" autocomplete="off" placeholder="NOMBRE O DIRECCIÓN" /></div>
+  <div><span class="etq">Se repite</span>
+    <div class="nx-pestanas" role="tablist">
+      <button id="raSem" onclick="elegirFrec('SEMANAL')">Cada semana</button>
+      <button id="raQui" onclick="elegirFrec('QUINCENAL')">Cada 15 días</button>
+    </div>
   </div>
-</div>
+  <div><span class="etq">Día</span><div class="chips dias" id="raDiasChips"></div></div>
+  <div><span class="etq">Franja horaria</span><div class="chips franjas" id="raFranjas"></div></div>
+  <div class="campo"><label for="raInicio">Primera reserva</label><input class="in" type="date" id="raInicio" /></div>
+  <div class="resumen" id="raResumen"><i></i><span id="raResumenTxt"></span></div>
+  <div class="row" id="raAccEdit" style="display:none">
+    <button class="b-borde" id="raPausar" onclick="pausarRA()"></button>
+    <button class="b-rojo-borde" onclick="borrarRA()">Eliminar</button>
+  </div>
+  <details class="hist" id="raHistWrap" style="display:none"><summary>Historial</summary><pre id="raHist"></pre></details>
+  <div class="row">
+    <button class="b-gris" onclick="cerrarRA()">Cancelar</button>
+    <button class="b-verde" onclick="guardarRA()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Guardar</button>
+  </div>
+</div></div>
+
+<div id="spin">Guardando…</div>
 
 <script>
 var BACKEND_URL = "https://script.google.com/macros/s/AKfycbzkf4K28coJa5YXNv_iN08sfhjrtKenyFJgHxWaIxMGVtuABHswvySAFEmowq5vP4rD/exec";
+var EMBOLSADO_URL = 'https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoDisEn4qrGWh0tEGfGHn4NXoEqP1ShODyIWQ1bzYyWfcuz_Pqh/exec';
 var PROXY = "https://sad-proxy.colatino-ventas-enlinea.workers.dev/";
+var sesion = {};
+try { sesion = JSON.parse(sessionStorage.getItem('sad_user') || '{}'); } catch (e) {}
+document.getElementById('quien').textContent = sesion.nombre || sesion.usuario || '';
 
-/* Solo ADM */
-var sesion = null;
-try { sesion = JSON.parse(sessionStorage.getItem('sad_user') || 'null'); } catch (e) {}
-if (!sesion || !sesion.usuario) { location.replace('login.html'); }
-else if (String(sesion.nivel || '').toLowerCase() !== 'admin') { location.replace('index.html'); }
-
-var tienda = 'TRAVESIA';
-var fechaEl = document.getElementById('fecha');
-var cantEl = document.getElementById('cantidad');
-var actualEl = document.getElementById('actual');
-var btn = document.getElementById('btnGuardar');
-
-function hoyISO() {
-  var d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
-function fechaES(iso) { var p = iso.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
-function msg(t, tipo) { var m = document.getElementById('msg'); m.textContent = t; m.className = 'msg show ' + tipo; }
-function limpiarMsg() { document.getElementById('msg').className = 'msg'; }
-
-function post(body) {
+function el(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function hoyISO() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function fechaES(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso; }
+function fechaCorta(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] : iso; }
+function aviso(id, t, tipo) { var m = el(id); m.textContent = t || ''; m.className = 'msg' + (t ? ' ' + (tipo || 'ok') : ''); }
+function spin(on) { el('spin').classList.toggle('on', !!on); }
+function postA(url, body) {
   body.usuario = sesion.usuario;
-  return fetch(PROXY + '?url=' + encodeURIComponent(BACKEND_URL), {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-  }).then(function (r) { return r.text(); }).then(function (t) {
-    try { return JSON.parse(t); }
-    catch (e) { return { ok: false, error: 'Respuesta inesperada del servidor.' }; }
-  });
+  return fetch(PROXY + '?url=' + encodeURIComponent(url), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then(function (r) { return r.text(); })
+    .then(function (t) { try { return JSON.parse(t); } catch (e) { return { ok: false, error: 'Respuesta inesperada del servidor.' }; } })
+    .catch(function () { return { ok: false, error: 'Error de conexión.' }; });
 }
+function post(body) { return postA(BACKEND_URL, body); }
+function postEmbolsado(body) { return postA(EMBOLSADO_URL, body); }
 
-var consultaN = 0;
+/* ================= PEDIDOS DIARIOS EMITIDOS (NEXO SCRIPT → PEDIDOS_TOTALES) ================= */
+var tienda = 'TRAVESIA', consultaN = 0;
+var fechaEl = el('fecha'), cantEl = el('cantidad'), actualEl = el('actual'), btn = el('btnGuardar');
+function elegirTienda(b) {
+  tienda = b.getAttribute('data-tienda');
+  document.querySelectorAll('[data-tienda]').forEach(function (x) { x.classList.toggle('on', x === b); });
+  el('notaCol').textContent = 'Se guarda en PEDIDOS_TOTALES, columna de ' + tienda + '.';
+  aviso('msg', ''); cargar();
+}
 function cargar() {
-  var fecha = fechaEl.value;
-  if (!fecha) return;
+  var fecha = fechaEl.value; if (!fecha) return;
   var n = ++consultaN;
   actualEl.textContent = 'Consultando…';
   post({ accion: 'obtenerPedidosEmitidos', tienda: tienda, fecha: fecha }).then(function (r) {
     if (n !== consultaN) return;
-    if (!r || !r.ok) { actualEl.textContent = '⚠️ ' + ((r && r.error) || 'No se pudo consultar.'); return; }
+    if (!r || !r.ok) { actualEl.textContent = (r && r.error) || 'No se pudo consultar.'; return; }
     if (r.existe) { actualEl.textContent = 'Valor actual: ' + r.cantidad; cantEl.value = r.cantidad; }
     else { actualEl.textContent = 'Sin registro para ' + tienda + ' el ' + fechaES(fecha) + '.'; cantEl.value = ''; }
-  }).catch(function () { if (n === consultaN) actualEl.textContent = '⚠️ Error de conexión.'; });
-}
-
-document.querySelectorAll('.tienda-btn').forEach(function (b) {
-  b.addEventListener('click', function () {
-    tienda = b.getAttribute('data-tienda');
-    document.querySelectorAll('.tienda-btn').forEach(function (x) { x.classList.toggle('activo', x === b); });
-    limpiarMsg(); cargar();
   });
-});
-fechaEl.addEventListener('change', function () { limpiarMsg(); cargar(); });
-
+}
+fechaEl.addEventListener('change', function () { aviso('msg', ''); cargar(); });
 btn.addEventListener('click', function () {
-  var fecha = fechaEl.value;
-  var cant = cantEl.value.trim();
-  if (!fecha) { msg('Elige una fecha.', 'error'); return; }
-  if (!/^\d+$/.test(cant) || Number(cant) > 100000) { msg('Indica una cantidad válida (número entero).', 'error'); return; }
+  var fecha = fechaEl.value, cant = cantEl.value.trim();
+  if (!fecha) { aviso('msg', 'Elige una fecha.', 'err'); return; }
+  if (!/^\d+$/.test(cant) || Number(cant) > 100000) { aviso('msg', 'Indica una cantidad válida (número entero).', 'err'); return; }
   if (!confirm('¿Guardar ' + cant + ' pedidos emitidos para ' + tienda + ' el ' + fechaES(fecha) + '?')) return;
-  btn.disabled = true; limpiarMsg();
+  btn.disabled = true; aviso('msg', '');
   post({ accion: 'guardarPedidosEmitidos', tienda: tienda, fecha: fecha, cantidad: Number(cant) }).then(function (r) {
     btn.disabled = false;
-    if (!r || !r.ok) { msg('❌ ' + ((r && r.error) || 'No se pudo guardar.'), 'error'); return; }
+    if (!r || !r.ok) { aviso('msg', (r && r.error) || 'No se pudo guardar.', 'err'); return; }
     var txt = r.accion === 'incluido' ? 'añadido' : (r.accion === 'alterado' ? 'actualizado' : 'sin cambios');
-    msg('✅ ' + tienda + ' ' + fechaES(fecha) + ': ' + cant + ' (' + txt + ').', 'ok');
+    aviso('msg', tienda + ' ' + fechaES(fecha) + ': ' + cant + ' (' + txt + ').', 'ok');
     actualEl.textContent = 'Valor actual: ' + cant;
-  }).catch(function () { btn.disabled = false; msg('⚠️ Error de conexión.', 'error'); });
+  });
 });
+fechaEl.max = hoyISO(); fechaEl.value = hoyISO();
 
-fechaEl.max = hoyISO();
-fechaEl.value = hoyISO();
-if (sesion && String(sesion.nivel || '').toLowerCase() === 'admin') cargar();
-
-/* ============================================================
-   LÍMITES DE PEDIDOS POR FRANJA (2026-10-02)
-   Lee y ajusta la hoja LIMITES de la planilla RESERVAS DE PEDIDOS
-   a través del backend del Módulo Embolsado (solo ADM).
-============================================================ */
-var EMBOLSADO_URL = 'https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoDisEn4qrGWh0tEGfGHn4NXoEqP1ShODyIWQ1bzYyWfcuz_Pqh/exec';
+/* ================= LÍMITES POR FRANJA (Módulo Embolsado → hoja LIMITES) ================= */
 var LIM_MAX = 999;
-var LIM_ETIQUETA = { LUNES: 'LUN', MARTES: 'MAR', MIERCOLES: 'MIÉ', JUEVES: 'JUE', VIERNES: 'VIE', SABADO: 'SÁB', DOMINGO: 'DOM' };
+var LIM_ETIQUETA = { LUNES: 'Lun', MARTES: 'Mar', MIERCOLES: 'Mié', JUEVES: 'Jue', VIERNES: 'Vie', SABADO: 'Sáb', DOMINGO: 'Dom' };
 var LIM_NOMBRE = { LUNES: 'Lunes', MARTES: 'Martes', MIERCOLES: 'Miércoles', JUEVES: 'Jueves', VIERNES: 'Viernes', SABADO: 'Sábado', DOMINGO: 'Domingo' };
 var LIM_DIA_JS = ['DOMINGO', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
 var limOriginal = {}, limFranjas = [], limDias = [];
-var limTabla = document.getElementById('limTabla');
-var limEstado = document.getElementById('limEstado');
-var btnLimGuardar = document.getElementById('btnLimGuardar');
-var btnLimDeshacer = document.getElementById('btnLimDeshacer');
-
-function postEmbolsado(body) {
-  body.usuario = sesion.usuario;
-  return fetch(PROXY + '?url=' + encodeURIComponent(EMBOLSADO_URL), {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-  }).then(function (r) { return r.text(); }).then(function (t) {
-    try { return JSON.parse(t); }
-    catch (e) { return { ok: false, error: 'Respuesta inesperada del servidor.' }; }
-  });
-}
-function msgLim(t, tipo) { var m = document.getElementById('msgLim'); m.textContent = t; m.className = 'msg show ' + tipo; }
-function limpiarMsgLim() { document.getElementById('msgLim').className = 'msg'; }
-
+var limTabla = el('limTabla'), limEstado = el('limEstado'), btnLimGuardar = el('btnLimGuardar'), btnLimDeshacer = el('btnLimDeshacer');
+function etiquetaFranja(f) { return String(f).replace(/H$/i, '').replace('-', '–'); }
 function pintarLimites() {
   var hoy = LIM_DIA_JS[new Date().getDay()];
-  var h = '<div></div>' + limFranjas.map(function (f) { return '<div class="lim-cab">' + f + '</div>'; }).join('');
+  limTabla.style.setProperty('--nf', limFranjas.length);
+  var h = '<div></div>' + limFranjas.map(function (f) { return '<div class="cab">' + etiquetaFranja(f) + '</div>'; }).join('');
   limDias.forEach(function (d) {
-    h += '<div class="lim-dia' + (d === hoy ? ' hoy' : '') + '" title="' + LIM_NOMBRE[d] + '">' + LIM_ETIQUETA[d] + '</div>';
+    h += '<div class="dia' + (d === hoy ? ' hoy' : '') + '" title="' + LIM_NOMBRE[d] + '">' + LIM_ETIQUETA[d] + '</div>';
     limFranjas.forEach(function (f) {
-      h += '<input class="lim-in" type="number" inputmode="numeric" min="0" max="' + LIM_MAX + '" step="1" data-dia="' + d + '" data-franja="' + f +
+      h += '<input type="number" inputmode="numeric" min="0" max="' + LIM_MAX + '" step="1" data-dia="' + d + '" data-franja="' + f +
         '" value="' + limOriginal[d][f] + '" aria-label="' + LIM_NOMBRE[d] + ' ' + f + '" />';
     });
   });
   limTabla.innerHTML = h;
   revisarLimites();
 }
-
-/** Devuelve { cambios:[{dia,franja,antes,ahora}], errores:n } y marca cada casilla. */
 function revisarLimites() {
   var cambios = [], errores = 0;
-  limTabla.querySelectorAll('.lim-in').forEach(function (inp) {
-    var d = inp.getAttribute('data-dia'), f = inp.getAttribute('data-franja');
-    var v = inp.value.trim();
+  limTabla.querySelectorAll('input').forEach(function (inp) {
+    var d = inp.getAttribute('data-dia'), f = inp.getAttribute('data-franja'), v = inp.value.trim();
     var valido = /^\d{1,3}$/.test(v) && Number(v) <= LIM_MAX;
     var distinto = valido && Number(v) !== limOriginal[d][f];
-    inp.classList.toggle('mal', !valido);
-    inp.classList.toggle('cambiado', distinto);
-    if (!valido) errores++;
-    else if (distinto) cambios.push({ dia: d, franja: f, antes: limOriginal[d][f], ahora: Number(v) });
+    inp.classList.toggle('mal', !valido); inp.classList.toggle('cambiado', distinto);
+    if (!valido) errores++; else if (distinto) cambios.push({ dia: d, franja: f, antes: limOriginal[d][f], ahora: Number(v) });
   });
   btnLimGuardar.disabled = errores > 0 || cambios.length === 0;
   btnLimDeshacer.disabled = errores === 0 && cambios.length === 0;
-  limEstado.textContent = errores ? '⚠️ Hay casillas no válidas (número entero de 0 a ' + LIM_MAX + ').'
-    : cambios.length ? cambios.length + (cambios.length === 1 ? ' cambio sin guardar.' : ' cambios sin guardar.')
-    : 'Límites actuales de la hoja.';
+  limEstado.textContent = errores ? 'Hay casillas no válidas (número entero de 0 a ' + LIM_MAX + ').'
+    : cambios.length ? cambios.length + (cambios.length === 1 ? ' cambio sin guardar.' : ' cambios sin guardar.') : 'Límites actuales de la hoja.';
   return { cambios: cambios, errores: errores };
 }
-
 function cargarLimites() {
   limEstado.textContent = 'Cargando…';
   postEmbolsado({ accion: 'obtenerLimites' }).then(function (r) {
-    if (!r || !r.ok) { limTabla.innerHTML = ''; limEstado.textContent = '⚠️ ' + ((r && r.error) || 'No se pudieron leer los límites.'); return; }
+    if (!r || !r.ok) { limTabla.innerHTML = ''; limEstado.textContent = (r && r.error) || 'No se pudieron leer los límites.'; return; }
     limOriginal = r.limites; limFranjas = r.franjas; limDias = r.dias;
     pintarLimites();
-  }).catch(function () { limEstado.textContent = '⚠️ Error de conexión al leer los límites.'; });
+  });
 }
-
-limTabla.addEventListener('input', function () { limpiarMsgLim(); revisarLimites(); });
-btnLimDeshacer.addEventListener('click', function () { limpiarMsgLim(); pintarLimites(); });
+limTabla.addEventListener('input', function () { aviso('msgLim', ''); revisarLimites(); });
+btnLimDeshacer.addEventListener('click', function () { aviso('msgLim', ''); pintarLimites(); });
 btnLimGuardar.addEventListener('click', function () {
   var rev = revisarLimites();
   if (rev.errores || !rev.cambios.length) return;
@@ -265,17 +293,106 @@ btnLimGuardar.addEventListener('click', function () {
   if (!confirm('¿Guardar ' + rev.cambios.length + (rev.cambios.length === 1 ? ' cambio' : ' cambios') + ' en los límites?\n\n' + lista)) return;
   var envio = {};
   rev.cambios.forEach(function (c) { (envio[c.dia] = envio[c.dia] || {})[c.franja] = c.ahora; });
-  btnLimGuardar.disabled = true; btnLimDeshacer.disabled = true; limpiarMsgLim();
+  btnLimGuardar.disabled = true; btnLimDeshacer.disabled = true; aviso('msgLim', '');
   limEstado.textContent = 'Guardando…';
   postEmbolsado({ accion: 'guardarLimites', limites: envio }).then(function (r) {
-    if (!r || !r.ok) { msgLim('❌ ' + ((r && r.error) || 'No se pudieron guardar los límites.'), 'error'); revisarLimites(); return; }
-    limOriginal = r.limites;
-    pintarLimites();
-    msgLim('✅ Límites guardados (' + r.cambiados + (r.cambiados === 1 ? ' cambio).' : ' cambios).'), 'ok');
-  }).catch(function () { msgLim('⚠️ Error de conexión. No se guardó nada.', 'error'); revisarLimites(); });
+    if (!r || !r.ok) { aviso('msgLim', (r && r.error) || 'No se pudieron guardar los límites.', 'err'); revisarLimites(); return; }
+    limOriginal = r.limites; pintarLimites();
+    aviso('msgLim', 'Límites guardados (' + r.cambiados + (r.cambiados === 1 ? ' cambio).' : ' cambios).'), 'ok');
+  });
 });
 
-if (sesion && String(sesion.nivel || '').toLowerCase() === 'admin') cargarLimites();
+/* ================= RESERVAS AUTOMÁTICAS (Módulo Embolsado → hoja RESERVAS_AUTO) ================= */
+var RA = [], RA_FRANJAS = ['10-13H', '13-16H', '16-19H', '19-22H'], raEd = null;
+var DIAS_LETRA = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+var DIAS_PLURAL = ['', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados', 'domingos'];
+var IC_LAPIZ = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l1-4L16 5l3 3L8 19z"/></svg>';
+function diaDeISO(iso) { var p = iso.split('-'); var g = new Date(+p[0], +p[1] - 1, +p[2], 12).getDay(); return ((g + 6) % 7) + 1; }
+function sumarDias(iso, n) { var p = iso.split('-'); var d = new Date(+p[0], +p[1] - 1, +p[2] + n, 12); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function proximoDia(dia, desde) { var iso = desde || hoyISO(); for (var i = 0; i < 7; i++) { var x = sumarDias(iso, i); if (diaDeISO(x) === dia) return x; } return iso; }
+
+function cargarRA() {
+  postEmbolsado({ accion: 'listarReservasAuto' }).then(function (r) {
+    if (!r || !r.ok) { el('raLista').innerHTML = '<div class="ra-vacio">' + esc((r && r.error) || 'No se pudo cargar.') + '</div>'; return; }
+    RA = r.reglas || []; if (r.franjas) RA_FRANJAS = r.franjas; if (r.diasAntes) el('raDias').textContent = r.diasAntes;
+    pintarRA();
+  });
+}
+function pintarRA() {
+  el('raLista').innerHTML = RA.length ? RA.map(function (x) {
+    var prox = x.activa ? (x.proximas && x.proximas.length ? 'Próxima: ' + fechaCorta(x.proximas[0]) : '') : 'En pausa';
+    return '<div class="ra' + (x.activa ? '' : ' pausada') + '"><div><b>' + esc(x.clienteDireccion) + '</b><span class="t">' +
+      esc(x.texto.replace(/, \d.*$/, '')) + (prox ? ' · ' + esc(prox) : '') + '</span></div>' +
+      '<span class="chip-f">' + esc(etiquetaFranja(x.franja)) + 'h</span>' +
+      '<button type="button" aria-label="Editar" onclick="abrirRA(\'' + esc(x.id) + '\')">' + IC_LAPIZ + '</button></div>';
+  }).join('') : '<div class="ra-vacio">Aún no hay reservas automáticas.</div>';
+}
+function abrirRA(id) {
+  var x = id ? RA.filter(function (r) { return r.id === id; })[0] : null;
+  raEd = x ? { id: x.id, cli: x.clienteDireccion, frec: x.frecuencia, dia: x.dia, franja: x.franja, inicio: x.inicio, activa: x.activa, hist: x.historial }
+           : { id: null, cli: '', frec: 'SEMANAL', dia: 6, franja: RA_FRANJAS[2] || RA_FRANJAS[0], inicio: proximoDia(6), activa: true, hist: '' };
+  el('raCli').value = raEd.cli;
+  el('raDiasChips').innerHTML = DIAS_LETRA.map(function (l, i) { return '<button type="button" data-d="' + (i + 1) + '" onclick="elegirDia(' + (i + 1) + ')">' + l + '</button>'; }).join('');
+  el('raFranjas').style.setProperty('--nf', RA_FRANJAS.length);
+  el('raFranjas').innerHTML = RA_FRANJAS.map(function (f) { return '<button type="button" data-f="' + f + '" onclick="elegirFranja(\'' + f + '\')">' + etiquetaFranja(f) + 'h</button>'; }).join('');
+  el('raInicio').value = raEd.inicio;
+  el('raAccEdit').style.display = raEd.id ? 'flex' : 'none';
+  el('raHistWrap').style.display = raEd.id && raEd.hist ? 'block' : 'none';
+  el('raHist').textContent = raEd.hist || '';
+  marcarRA();
+  el('mRA').classList.add('on');
+  if (!raEd.id) setTimeout(function () { el('raCli').focus(); }, 100);
+}
+function cerrarRA() { el('mRA').classList.remove('on'); raEd = null; }
+function elegirFrec(f) { raEd.frec = f; marcarRA(); }
+function elegirDia(d) {
+  raEd.dia = d;
+  var ini = el('raInicio').value || hoyISO();
+  if (diaDeISO(ini) !== d) el('raInicio').value = proximoDia(d, ini < hoyISO() ? hoyISO() : ini);
+  marcarRA();
+}
+function elegirFranja(f) { raEd.franja = f; marcarRA(); }
+el('raInicio').addEventListener('change', function () { if (raEd && this.value) { raEd.dia = diaDeISO(this.value); marcarRA(); } });
+function marcarRA() {
+  if (!raEd) return;
+  el('raSem').classList.toggle('on', raEd.frec === 'SEMANAL'); el('raQui').classList.toggle('on', raEd.frec === 'QUINCENAL');
+  el('raDiasChips').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', Number(b.getAttribute('data-d')) === raEd.dia); });
+  el('raFranjas').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-f') === raEd.franja); });
+  var ini = el('raInicio').value;
+  var t = (raEd.frec === 'QUINCENAL' ? 'Cada 15 días, los ' : 'Todos los ') + DIAS_PLURAL[raEd.dia] + ', ' + etiquetaFranja(raEd.franja) + 'h' + (ini ? ', desde el ' + fechaCorta(ini) : '') + '.';
+  if (!raEd.activa) t = 'En pausa. ' + t;
+  el('raResumenTxt').textContent = t;
+  el('raResumen').classList.toggle('pausa', !raEd.activa);
+  el('raPausar').textContent = raEd.activa ? 'Pausar' : 'Reanudar';
+}
+function pausarRA() { raEd.activa = !raEd.activa; marcarRA(); }
+function guardarRA() {
+  var cli = el('raCli').value.trim(), ini = el('raInicio').value;
+  if (!cli) { alert('Escribe el cliente o la dirección.'); el('raCli').focus(); return; }
+  if (!ini) { alert('Elige la fecha de la primera reserva.'); return; }
+  if (diaDeISO(ini) !== raEd.dia) { alert('La primera reserva tiene que caer en ' + DIAS_PLURAL[raEd.dia].replace(/s$/, '') + '.'); return; }
+  spin(true);
+  postEmbolsado({ accion: 'guardarReservaAuto', id: raEd.id, clienteDireccion: cli, frecuencia: raEd.frec, dia: raEd.dia, franja: raEd.franja, inicio: ini, activa: raEd.activa })
+    .then(function (r) {
+      spin(false);
+      if (!r || !r.ok) { alert((r && r.error) || 'No se pudo guardar.'); return; }
+      cerrarRA();
+      aviso('msgRA', r.sinCambios ? 'Sin cambios.' : 'Reserva automática guardada.' + (r.creadas ? ' Se ha creado ya ' + (r.creadas === 1 ? '1 reserva' : r.creadas + ' reservas') + ' (toca en los próximos días).' : ''), 'ok');
+      cargarRA();
+    });
+}
+function borrarRA() {
+  if (!raEd || !raEd.id) return;
+  if (!confirm('¿Eliminar esta reserva automática? Las reservas ya creadas no se borran.')) return;
+  spin(true);
+  postEmbolsado({ accion: 'borrarReservaAuto', id: raEd.id }).then(function (r) {
+    spin(false);
+    if (!r || !r.ok) { alert((r && r.error) || 'No se pudo eliminar.'); return; }
+    cerrarRA(); aviso('msgRA', 'Reserva automática eliminada.', 'ok'); cargarRA();
+  });
+}
+
+if (String(sesion.nivel || '').toLowerCase() === 'admin') { cargar(); cargarLimites(); cargarRA(); }
 </script>
 </body>
 </html>
