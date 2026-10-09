@@ -45,7 +45,7 @@
         [I.ok, 'Entregados de hoy', 'En Pedidos asignados, lo que ya entregaste queda abajo en "Entregados hoy", con el botón gris "Entregado · hora".'],
         [I.foto, '%DIA más rápido', '"Entregar" abre directamente la foto del ticket. Puedes sacarla o subirla de la galería.'],
         [I.campana, 'Aviso al móvil', 'En %DIA toca "Activar avisos": te llegará un aviso cuando te asignen un pedido, aunque tengas la app cerrada. En iPhone, instala antes la app en la pantalla de inicio (Compartir → "Añadir a pantalla de inicio").'],
-        [I.tel, 'Cliente ausente sin esperar', 'Con las 3 llamadas hechas ya puedes registrar la incidencia. Ya no hay que esperar 10 minutos.'],
+        [I.tel, 'Cliente ausente sin esperar', 'Con las 3 llamadas hechas ya puedes registrar la incidencia.'],
         [I.imagen, 'Más fotos en incidencias', 'Puedes añadir hasta 10 fotos en cualquier motivo.']
       ]
     },
