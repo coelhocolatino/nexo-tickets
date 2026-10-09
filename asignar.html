@@ -1,10 +1,18 @@
 <!DOCTYPE html>
-<html lang="es">
+<!-- Nexo Tickets — asignar.html (Pedidos asignados)
+     v3.10.1 (2026-10-09, ronda 24): diseño nuevo (nexo-tema.css), cabecera
+     con logo y usuario, tarjetas como las de Embolsado (nº de ticket grande,
+     caja debajo), botones Incidencia / Entregar, y comprobación de versión
+     al entrar (nexo-version.js + version.json). La lógica no cambia. -->
+<html lang="es" data-pagina="asignar" data-version="v3.10.1">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#FEFEFE" />
 <title>Nexo · Pedidos asignados</title>
 <link rel="icon" href="nexo-icon-192.png">
+<link rel="stylesheet" href="nexo-tema.css?v=24">
+<script src="nexo-version.js?v=1"></script>
 <script>
 /* Guard de sesión */
 (function () {
@@ -15,119 +23,161 @@
 })();
 </script>
 <style>
-:root { --bg1:#003366; --bg2:#0077cc; --ok:#16a34a; --bad:#dc2626; --amarillo:#fef08a; }
-* { box-sizing:border-box; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-body { margin:0; min-height:100vh; background:linear-gradient(180deg,var(--bg1),var(--bg2)); color:#fff; padding:14px 12px 90px; }
-.wrap { max-width:460px; margin:0 auto; }
-.top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-.top a.volver { color:#fff; text-decoration:none; font-size:22px; padding:4px 8px; }
-.top h1 { font-size:18px; margin:0; flex:1; }
-.tabs { display:flex; gap:8px; margin-bottom:10px; }
-.tab { flex:1; padding:10px; border:0; border-radius:12px; background:rgba(255,255,255,.15); color:#fff; font-weight:700; font-size:14px; }
-.tab.on { background:#fff; color:#003366; }
-.info { font-size:12px; opacity:.85; margin:0 2px 10px; }
-#msg { font-size:13px; padding:8px 10px; border-radius:10px; margin-bottom:10px; display:none; }
-#msg.ok { background:#dcfce7; color:#166534; display:block; }
-#msg.err { background:#fee2e2; color:#991b1b; display:block; }
-.vacio { text-align:center; opacity:.85; padding:30px 10px; }
-.card { background:#fff; color:#0f172a; border-radius:16px; padding:12px 12px 14px; margin-bottom:10px; position:relative; box-shadow:0 6px 18px rgba(0,0,0,.25); }
-.card.cobro { background:var(--amarillo); }
-/* Pedidos %DIA (rosa) */
-.card.dia { background:#fce7f3; border:2px solid #f9a8d4; }
-.card.dia.alerta { border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.55); }
-.card.dia.tarde { border-color:#dc2626; box-shadow:0 0 0 3px rgba(220,38,38,.55); }
-.card.dia .tag { background:#be185d; color:#fff; }
-.dia-aviso { margin-top:6px; border-radius:8px; padding:5px 8px; font-size:12px; font-weight:800; background:#fef3c7; color:#92400e; }
-.card.dia.tarde .dia-aviso { background:#fee2e2; color:#991b1b; }
-.b-dia { display:block; text-align:center; margin-top:10px; padding:11px; border-radius:10px; background:#16a34a; color:#fff; font-weight:800; text-decoration:none; }
-.card .cab { display:flex; align-items:center; gap:8px; font-weight:800; font-size:15px; }
-.card .cab .chk { width:24px; height:24px; accent-color:#0077cc; flex:0 0 auto; }
-.card .cab .grow { flex:1; }
-.tag { display:inline-block; background:#e0f2fe; color:#075985; border-radius:8px; padding:2px 8px; font-size:12px; font-weight:700; }
-.card.cobro .tag { background:#fde047; color:#713f12; }
-.fila { font-size:14px; margin-top:6px; }
-.fila b { color:#475569; font-weight:600; font-size:12px; display:block; }
-.fila a.tel { color:#0369a1; font-weight:700; font-size:16px; text-decoration:none; }
-.fila textarea { width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:6px 8px; font-size:14px; resize:vertical; min-height:44px; background:rgba(255,255,255,.7); }
-.chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-.chip { background:#f1f5f9; border-radius:8px; padding:3px 8px; font-size:12px; font-weight:600; }
-.card.cobro .chip { background:#fff7c2; }
-.cobro-badge { background:#facc15; color:#713f12; border-radius:8px; padding:3px 8px; font-size:12px; font-weight:800; margin-top:8px; display:inline-block; }
-.btn-cam { position:absolute; right:10px; bottom:10px; width:38px; height:38px; border:0; border-radius:50%; background:rgba(15,23,42,.12); font-size:18px; }
-.btn-cam:disabled { opacity:.3; }
-.acciones { display:flex; gap:8px; margin-top:12px; padding-right:48px; }
-.acciones button { flex:1; padding:11px 6px; border:0; border-radius:10px; font-weight:800; font-size:14px; color:#fff; }
-.b-inc { background:var(--bad); } .b-ent { background:var(--ok); }
-.barra { position:fixed; left:0; right:0; bottom:0; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:rgba(0,30,60,.92); display:none; }
-.barra button { width:100%; max-width:460px; display:block; margin:0 auto; padding:14px; border:0; border-radius:12px; background:#22c55e; color:#fff; font-size:16px; font-weight:800; }
-.barra button:disabled { opacity:.5; }
-.modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:flex-start; justify-content:center; overflow:auto; padding:16px 10px; z-index:50; }
+/* Ronda 24 (2026-10-09): diseño nuevo. Se mantienen las clases que pinta el
+   script (card, cab, fila, chips, acciones, tk, lote, modal…). */
+body.nx { padding-bottom:96px; }
+.top-tit { display:flex; align-items:flex-end; justify-content:space-between; gap:8px; }
+.info { font-size:13px; font-weight:700; color:var(--nx-suave); }
+#msg { display:none; padding:10px 12px; border-radius:12px; font-size:14px; font-weight:700; line-height:1.4; }
+#msg.ok { display:block; background:var(--nx-verde-fondo); color:var(--nx-verde-tinta); }
+#msg.err { display:block; background:var(--nx-rojo-fondo); color:#7A1A12; }
+.vacio { text-align:center; color:var(--nx-suave); font-weight:700; padding:32px 12px; background:var(--nx-superficie); border-radius:var(--nx-r-tarjeta); }
+#lista { display:flex; flex-direction:column; gap:12px; }
+
+/* Tarjeta de pedido */
+.card { position:relative; background:var(--nx-superficie); color:var(--nx-tinta); border-radius:var(--nx-r-tarjeta); padding:16px;
+  display:flex; flex-direction:column; gap:12px; }
+.card.cobro { background:var(--nx-cobro); }
+.card .sup { display:grid; grid-template-columns:92px minmax(0,1fr); gap:12px; }
+.card .num-box { background:var(--nx-tinta); border-radius:10px; min-height:96px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:4px; padding:8px 4px; text-align:center; }
+.card .num-box .n { font-family:var(--nx-display); font-weight:800; font-size:38px; line-height:1; color:var(--nx-tinta-clara); white-space:nowrap; letter-spacing:-.01em; }
+.card .num-box .n.largo { font-size:27px; }
+.card .num-box .s { font-size:12px; font-weight:700; color:#B9C7DD; }
+.card .der { display:flex; flex-direction:column; gap:6px; min-width:0; }
+.card .cab { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.card .cab .chk { width:26px; height:26px; accent-color:var(--nx-tinta); flex:0 0 auto; margin:0; }
+.card .cliente { font-size:18px; font-weight:800; line-height:1.15; overflow-wrap:anywhere; }
+.tag { display:inline-flex; align-items:center; background:var(--nx-chip); color:var(--nx-tinta); border-radius:6px; padding:3px 8px; font-size:12px; font-weight:800; }
+.card.cobro .tag, .card.cobro .chip { background:rgba(255,255,255,.65); }
+.fila { font-size:15px; font-weight:600; }
+.fila b { display:block; color:var(--nx-suave); font-weight:700; font-size:12px; margin-bottom:2px; }
+.fila a.tel { display:inline-flex; align-items:center; gap:6px; min-height:36px; color:var(--nx-azul); font-weight:800; font-size:16px; text-decoration:none; }
+.fila textarea { width:100%; min-height:48px; border:1.5px solid var(--nx-linea); border-radius:10px; padding:8px 10px; resize:vertical;
+  background:var(--nx-campo); color:var(--nx-tinta); font:600 16px/1.35 var(--nx-texto); }
+.card.cobro .fila textarea { background:rgba(255,255,255,.65); }
+.chips { display:flex; flex-wrap:wrap; gap:6px; }
+.chip { background:var(--nx-chip); border-radius:6px; padding:4px 8px; font-size:12px; font-weight:800; }
+.cobro-badge { align-self:flex-start; background:var(--nx-tinta); color:#FFF1A6; border-radius:8px; padding:6px 10px; font-size:14px; font-weight:800; }
+.acciones { display:grid; grid-template-columns:52px minmax(0,1fr) minmax(0,1.25fr); gap:8px; }
+.acciones button, .acciones a { min-height:52px; border:0; border-radius:12px; font:800 15px var(--nx-texto); text-decoration:none;
+  display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; }
+.b-inc { background:transparent; box-shadow:inset 0 0 0 1.5px var(--nx-rojo); color:var(--nx-rojo); }
+.b-ent { background:var(--nx-verde); color:#fff; }
+.btn-cam { width:52px; background:var(--nx-azul-fondo); color:var(--nx-azul); }
+.acciones.hecho { grid-template-columns:52px minmax(0,1fr); }
+.b-hecho { background:var(--nx-chip); color:var(--nx-suave); cursor:default; }
+.b-deshacer { min-height:48px; border:0; border-radius:12px; background:transparent; box-shadow:inset 0 0 0 1.5px var(--nx-linea);
+  color:var(--nx-tinta); font:800 15px var(--nx-texto); cursor:pointer; }
+.tag.rep { background:var(--nx-tinta); color:var(--nx-tinta-clara); }
+/* Bloque "Entregados hoy (n)", cerrado hasta que se toca */
+details.entregados { background:var(--nx-chip); border-radius:var(--nx-r-tarjeta); }
+details.entregados > summary { list-style:none; display:flex; align-items:center; justify-content:space-between; gap:8px;
+  min-height:56px; padding:0 16px; font-weight:800; font-size:16px; color:var(--nx-tinta); cursor:pointer; }
+details.entregados > summary::-webkit-details-marker { display:none; }
+details.entregados > summary .flecha { transition:transform .15s; color:var(--nx-suave); }
+details.entregados[open] > summary .flecha { transform:rotate(180deg); }
+.ent-lista { display:flex; flex-direction:column; gap:12px; padding:0 8px 8px; }
+.ent-lista .card { opacity:.92; }
+.btn-cam:disabled { opacity:.4; }
+.acciones.solo-cam { grid-template-columns:52px; justify-content:end; }
+/* %DIA */
+.card.dia .num-box { background:#7A1A4A; }
+.card.dia.alerta { box-shadow:0 0 0 3px var(--nx-lampara); }
+.card.dia.tarde { box-shadow:0 0 0 3px var(--nx-rojo); }
+.dia-aviso { border-radius:12px; padding:10px 12px; font-size:13px; font-weight:800; background:var(--nx-ambar-fondo); color:var(--nx-ambar-tinta); }
+.card.dia.tarde .dia-aviso { background:var(--nx-rojo-fondo); color:#7A1A12; }
+
+/* Barra de asignar */
+.barra { position:fixed; left:0; right:0; bottom:0; z-index:40; padding:24px 16px calc(16px + env(safe-area-inset-bottom));
+  background:linear-gradient(to top, var(--nx-fondo) 65%, rgba(232,237,243,0)); display:none; }
+.barra button { width:100%; max-width:528px; display:flex; align-items:center; justify-content:center; margin:0 auto; min-height:56px; border:0;
+  border-radius:16px; background:var(--nx-tinta); color:var(--nx-tinta-clara); font:800 17px var(--nx-texto); cursor:pointer; }
+.barra button:disabled { background:var(--nx-chip); color:var(--nx-suave); }
+
+/* Hojas (modales) */
+.modal { position:fixed; inset:0; z-index:200; background:rgba(11,36,71,.62); display:none; align-items:flex-end; justify-content:center; }
 .modal.on { display:flex; }
-.modal .box { background:#fff; color:#0f172a; border-radius:16px; padding:14px; width:100%; max-width:440px; }
-.modal h2 { margin:0 0 10px; font-size:17px; }
-.modal img.foto { width:100%; border-radius:10px; }
-.tipo { display:block; width:100%; text-align:left; padding:12px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; margin-bottom:8px; font-weight:700; font-size:14px; }
-.tipo.on { border-color:#0077cc; background:#e0f2fe; }
-.box textarea { width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:8px; font-size:14px; min-height:70px; }
-.box .row { display:flex; gap:8px; margin-top:10px; }
-.box .row button { flex:1; padding:12px; border:0; border-radius:10px; font-weight:800; font-size:14px; }
-.b-gris { background:#e2e8f0; color:#0f172a; } .b-azul { background:#0077cc; color:#fff; } .b-rojo { background:var(--bad); color:#fff; }
-.miniaturas { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
-.miniaturas img { width:64px; height:64px; object-fit:cover; border-radius:8px; }
-.ausente button.intento { width:100%; padding:12px; border:0; border-radius:10px; background:#f59e0b; color:#fff; font-weight:800; margin-bottom:8px; }
-.ausente .cuenta { font-size:13px; margin-bottom:8px; }
-.btn-foto { width:100%; padding:11px; border:1px dashed #64748b; border-radius:10px; background:#f8fafc; font-weight:700; margin-top:8px; }
-/* ===== Fase 1 multi-ticket: panel de lectura de la foto ===== */
-.lote { background:rgba(255,255,255,.12); border-radius:16px; padding:10px; margin-bottom:12px; }
-.lote-cab { display:flex; align-items:center; gap:8px; font-weight:800; font-size:15px; margin-bottom:6px; }
+.modal .box { width:100%; max-width:560px; max-height:92vh; overflow:auto; background:var(--nx-superficie); color:var(--nx-tinta);
+  border-radius:24px 24px 0 0; padding:12px 20px calc(24px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:12px; }
+.modal .box::before { content:''; align-self:center; width:40px; height:5px; border-radius:99px; background:var(--nx-linea); }
+.modal h2 { margin:0; font-family:var(--nx-display); font-weight:800; font-size:30px; line-height:1.05; }
+.modal img.foto { width:100%; border-radius:12px; }
+.tipo { display:block; width:100%; min-height:48px; text-align:left; padding:0 14px; border:1.5px solid var(--nx-linea); border-radius:12px;
+  background:var(--nx-campo); color:var(--nx-tinta); margin:0; font:700 16px var(--nx-texto); cursor:pointer; }
+.tipo.on { border:2px solid var(--nx-tinta); background:var(--nx-superficie); font-weight:800; }
+#incTipos { display:flex; flex-direction:column; gap:8px; }
+.box textarea { width:100%; min-height:72px; border:1.5px solid var(--nx-linea); border-radius:12px; padding:10px 12px; background:var(--nx-campo);
+  color:var(--nx-tinta); font:600 16px/1.35 var(--nx-texto); }
+.box .row { display:flex; gap:8px; }
+.box .row button { flex:1; min-height:56px; border:0; border-radius:14px; font:800 16px var(--nx-texto); cursor:pointer; }
+.b-gris { background:var(--nx-azul-fondo); color:var(--nx-azul); }
+.b-azul { background:var(--nx-tinta); color:var(--nx-tinta-clara); }
+.b-rojo { background:var(--nx-rojo); color:#fff; }
+.b-verde { background:var(--nx-verde); color:#fff; }
+.miniaturas { display:flex; gap:8px; flex-wrap:wrap; }
+.miniaturas img { width:72px; height:72px; object-fit:cover; border-radius:10px; }
+.ausente button.intento { width:100%; min-height:52px; border:0; border-radius:12px; background:var(--nx-ambar-fondo); color:var(--nx-ambar-tinta);
+  font:800 16px var(--nx-texto); margin-bottom:8px; cursor:pointer; }
+.ausente button.intento:disabled { background:var(--nx-verde-fondo); color:var(--nx-verde-tinta); }
+.ausente .cuenta { font-size:14px; font-weight:700; }
+.btn-foto { width:100%; min-height:52px; border:0; border-radius:12px; background:var(--nx-azul-fondo); color:var(--nx-azul); font:800 15px var(--nx-texto); cursor:pointer; }
+
+/* Lectura de la foto con varios tickets (multi-ticket) */
+#lotes { display:flex; flex-direction:column; gap:12px; }
+.lote { background:var(--nx-superficie); border-radius:var(--nx-r-tarjeta); padding:14px; display:flex; flex-direction:column; gap:8px; }
+.lote-cab { display:flex; align-items:center; gap:8px; font-weight:800; font-size:15px; }
 .lote-cab .grow { flex:1; }
-.lote-cab button { border:0; border-radius:8px; padding:6px 10px; font-weight:700; background:rgba(255,255,255,.2); color:#fff; }
-.lote-res { font-size:12px; opacity:.9; margin-bottom:8px; }
-.lote-leyendo { text-align:center; padding:18px 8px; font-weight:700; }
-.lote-leyendo .rueda { width:34px; height:34px; border:4px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%;
+.lote-cab button { min-height:40px; border:0; border-radius:10px; padding:0 12px; font:800 14px var(--nx-texto); background:var(--nx-azul-fondo); color:var(--nx-azul); cursor:pointer; }
+.lote-res { font-size:13px; font-weight:700; color:var(--nx-suave); }
+.lote-leyendo { text-align:center; padding:18px 8px; font-weight:800; }
+.lote-leyendo .rueda { width:36px; height:36px; border:4px solid var(--nx-azul-fondo); border-top-color:var(--nx-tinta); border-radius:50%;
   margin:0 auto 10px; animation:gira 1s linear infinite; }
 @keyframes gira { to { transform:rotate(360deg); } }
-.tk { background:#fff; color:#0f172a; border-radius:12px; padding:8px; margin-bottom:8px; display:flex; gap:8px; align-items:flex-start; }
-.tk.ok { border-left:6px solid var(--ok); }
-.tk.rev { border-left:6px solid #f59e0b; background:#fffbeb; }
-.tk.mal { border-left:6px solid var(--bad); }
+.tk { background:var(--nx-campo); border-radius:12px; padding:10px; display:flex; gap:10px; align-items:flex-start; border-left:6px solid transparent; }
+.tk.ok { border-left-color:var(--nx-verde); }
+.tk.rev { border-left-color:var(--nx-lampara); background:#FFF8E1; }
+.tk.mal { border-left-color:var(--nx-rojo); }
 .tk.fuera { opacity:.55; }
-.tk .mini { width:64px; height:96px; object-fit:cover; object-position:top; border-radius:6px; background:#e2e8f0; flex:0 0 auto; }
-.tk .cuerpo { flex:1; min-width:0; font-size:13px; }
-.tk .titulo { font-weight:800; font-size:14px; }
-.tk .estado { font-size:12px; margin-top:2px; }
-.tk .form { margin-top:6px; }
-.tk .form .g { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
-.tk .form label { font-size:11px; color:#475569; font-weight:700; display:block; margin-top:4px; }
-.tk .form input { width:100%; padding:7px 6px; border:1px solid #cbd5e1; border-radius:8px; font-size:14px; }
-.tk .form input.oblig { border-color:#f59e0b; background:#fff; }
-.tk .form .btns { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
-.tk .form .btns button { flex:1; padding:9px 6px; border:0; border-radius:8px; font-weight:800; font-size:13px; }
-.tk .form label.chkman { display:flex; align-items:center; gap:6px; font-size:12px; margin-top:8px; color:#0f172a; }
-.tk .form label.chkman input { width:20px; height:20px; flex:0 0 auto; }
-.b-verde { background:var(--ok); color:#fff; }
-.b-add { width:100%; padding:10px; border:1px dashed rgba(255,255,255,.6); border-radius:10px; background:transparent; color:#fff; font-weight:700; }
-#spin { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:99; font-weight:700; }
+.tk .mini { width:64px; height:96px; object-fit:cover; object-position:top; border-radius:8px; background:var(--nx-chip); flex:0 0 auto; }
+.tk .cuerpo { flex:1; min-width:0; font-size:14px; }
+.tk .titulo { font-weight:800; font-size:15px; }
+.tk .estado { font-size:13px; margin-top:2px; }
+.tk .form { margin-top:8px; }
+.tk .form .g { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.tk .form label { font-size:12px; color:var(--nx-suave); font-weight:700; display:block; margin-top:6px; }
+.tk .form input { width:100%; height:44px; padding:0 8px; border:1.5px solid var(--nx-linea); border-radius:10px; background:var(--nx-superficie);
+  color:var(--nx-tinta); font:700 16px var(--nx-texto); }
+.tk .form input.oblig { border-color:var(--nx-lampara); }
+.tk .form .btns { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+.tk .form .btns button { flex:1; min-height:48px; border:0; border-radius:12px; font:800 14px var(--nx-texto); cursor:pointer; }
+.tk .form label.chkman { display:flex; align-items:center; gap:8px; font-size:13px; margin-top:10px; color:var(--nx-tinta); }
+.tk .form label.chkman input { width:22px; height:22px; flex:0 0 auto; }
+.b-add { width:100%; min-height:48px; border:1.5px dashed var(--nx-linea); border-radius:12px; background:transparent; color:var(--nx-azul);
+  font:800 15px var(--nx-texto); cursor:pointer; }
+#spin { position:fixed; inset:0; z-index:300; background:rgba(11,36,71,.62); display:none; align-items:center; justify-content:center;
+  color:#fff; font-weight:800; font-size:16px; }
 #spin.on { display:flex; }
 </style>
 </head>
-<body>
-<div class="wrap">
-  <div class="top">
-    <a class="volver" href="index.html" title="Volver">←</a>
-    <h1>Pedidos asignados</h1>
-    <span id="quien" style="font-size:12px;opacity:.85"></span>
-  </div>
+<body class="nx">
+<header class="nx-cab">
+  <a class="nx-cab-logo" href="index.html" aria-label="Ir al inicio"><img src="nexo-logo-oficial.png" alt="Nexo"><span class="nx-cab-seccion">Reparto</span></a>
+  <div class="nx-cab-usuario"><span id="quien"></span></div>
+</header>
+<main class="nx-pag">
+  <h1 class="nx-titulo">Pedidos asignados</h1>
   <!-- Fase 1 multi-ticket: resultado de la lectura de la foto -->
   <div id="lotes"></div>
-  <div class="tabs">
-    <button class="tab" id="tabRuta" onclick="cambiarTab('ruta')">Asignados</button>
-    <button class="tab" id="tabDisp" onclick="cambiarTab('disp')">Disponibles</button>
+  <div class="nx-pestanas" role="tablist">
+    <button class="tab" id="tabRuta" role="tab" onclick="cambiarTab('ruta')">Asignados</button>
+    <button class="tab" id="tabDisp" role="tab" onclick="cambiarTab('disp')">Disponibles</button>
   </div>
   <div class="info" id="info"></div>
   <div id="msg"></div>
   <div id="lista"></div>
-</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.1</div>
+</main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
 
@@ -135,7 +185,7 @@ body { margin:0; min-height:100vh; background:linear-gradient(180deg,var(--bg1),
 <div class="modal" id="mFoto"><div class="box">
   <h2>Foto del ticket</h2>
   <div id="fotoCont" style="text-align:center;padding:20px">Cargando…</div>
-  <div class="row"><button class="b-gris" onclick="cerrar('mFoto')">Cerrar</button></div>
+  <div class="row"><button class="b-azul" onclick="cerrar('mFoto')">Cerrar</button></div>
 </div></div>
 
 <!-- Modal incidencia -->
@@ -147,7 +197,7 @@ body { margin:0; min-height:100vh; background:linear-gradient(180deg,var(--bg1),
     <textarea id="incObs" placeholder="Observaciones"></textarea>
   </div>
   <div id="incFotoWrap" style="display:none">
-    <button class="btn-foto" id="btnIncFoto" onclick="document.getElementById('incFile').click()">📷 Añadir foto</button>
+    <button class="btn-foto" id="btnIncFoto" onclick="document.getElementById('incFile').click()">Añadir foto</button>
     <div class="miniaturas" id="incMini"></div>
   </div>
   <input type="file" id="incFile" accept="image/*" capture="environment" style="display:none" />
@@ -168,7 +218,7 @@ var PROXY = 'https://sad-proxy.colatino-ventas-enlinea.workers.dev/';
 var SESION = {};
 try { SESION = JSON.parse(sessionStorage.getItem('sad_user') || '{}'); } catch (e) {}
 var USUARIO = SESION.usuario || '';
-document.getElementById('quien').textContent = '👤 ' + (SESION.nombre || USUARIO);
+document.getElementById('quien').textContent = (SESION.nombre || USUARIO);
 
 var TIPOS = {
   CLIENTE_AUSENTE:      { etiqueta: 'Cliente ausente',            fotosMax: 2, obs: false },
@@ -193,6 +243,7 @@ function cerrar(id) { document.getElementById(id).classList.remove('on'); }
 
 /* ============ ESTADO ============ */
 var tab = 'disp', disp = [], ruta = [], sel = {}, tramos = [];
+var entAdm = null, abiertoEnt = false;   // ronda 24: entregados de hoy (ADM: de todos) y si el bloque está abierto
 /* Pedidos %DIA asignados a mí (backend NEXO · DIA) — se muestran en rosa en "Asignados" */
 var DIA_URL = 'https://script.google.com/macros/s/AKfycbwrX90CKa7GQki-DUDZFpdGVlGIXZvmiHsRKCEW7ZwBbYkKfYPr3R1kx96Uz9GKL_0m/exec', diaRuta = [];
 function apiDia(accion, datos) {
@@ -208,16 +259,21 @@ function diaCardHTML(o) {
   if (o.fecha && o.fecha < hoyIso) al = 'tarde'; else if (o.fecha === hoyIso && falta != null) al = falta <= 0 ? 'tarde' : falta <= 30 ? 'alerta' : '';
   var f = String(o.fecha || '').split('-');
   var h = '<div class="card dia' + (al ? ' ' + al : '') + '">';
-  h += '<div class="cab"><span class="grow">%DIA · ' + esc(o.tienda || '') + '</span><span class="tag">' + esc(o.tramo) + '</span></div>';
-  if (al) h += '<div class="dia-aviso">' + (al === 'tarde' ? '⏰ Tramo terminado — pedido sin entregar' : '⚠️ Quedan menos de 30 min del tramo') + '</div>';
-  h += '<div class="fila"><b>Entrega</b>' + (f.length === 3 ? f[2] + '/' + f[1] + '/' + f[0] : esc(o.fecha)) + ' · ' + esc(o.tramo) + '</div>';
-  h += '<div class="fila"><b>Cliente</b>' + esc(o.cliente || '—') + '</div>';
-  (o.telefonos || []).forEach(function (t) { h += '<div class="fila"><b>Teléfono</b><a class="tel" href="tel:' + esc(t) + '">📞 ' + esc(t) + '</a></div>'; });
+  if (al) h += '<div class="dia-aviso">' + (al === 'tarde' ? 'Tramo terminado — pedido sin entregar' : 'Quedan menos de 30 min del tramo') + '</div>';
+  h += '<div class="sup"><div class="num-box"><span class="n largo">%DIA</span><span class="s">' + esc(o.tienda || '') + '</span></div>';
+  h += '<div class="der"><div class="cab"><span class="tag">' + esc(o.tramo) + '</span><span class="tag">' + (f.length === 3 ? f[2] + '/' + f[1] + '/' + f[0] : esc(o.fecha)) + '</span>' + (ES_ADMIN && o.estadoNexo === 'ENTREGADO' && o.repartidor ? '<span class="tag rep">' + esc(String(o.repartidor).toUpperCase()) + '</span>' : '') + '</div>';
+  h += '<div class="cliente">' + esc(o.cliente || '—') + '</div>';
+  (o.telefonos || []).forEach(function (t) { h += '<div class="fila"><a class="tel" href="tel:' + esc(t) + '">' + IC_TEL + esc(t) + '</a></div>'; });
+  h += '</div></div>';
   h += '<div class="fila"><b>Dirección</b>' + esc(o.direccion || '—') + '</div>';
   h += '<div class="chips"><span class="chip">Albarán ' + esc(o.albaran) + '</span><span class="chip">Seco ' + esc(o.seco || 0) + '</span><span class="chip">Fresco ' + esc(o.fresco || 0) + '</span><span class="chip">Congelado ' + esc(o.congelado || 0) + '</span></div>';
   if (o.observaciones) h += '<div class="fila"><b>Observaciones</b>' + esc(o.observaciones) + '</div>';
-  h += '<div class="acciones" style="padding-right:0"><a class="b-dia" style="flex:1;background:#dc2626;margin-top:0" href="dia.html?id=' + encodeURIComponent(o.id) + '&inc=1">INCIDENCIA</a>' +
-       '<a class="b-dia" style="flex:1;margin-top:0" href="dia.html?id=' + encodeURIComponent(o.id) + '">📷 ENTREGADO</a></div>';
+  if (o.estadoNexo === 'ENTREGADO') {
+    h += '<div class="acciones hecho" style="grid-template-columns:1fr"><button class="b-hecho" disabled>' + IC_OK + 'Entregado' + horaCorta(o.entregaHora) + '</button></div>';
+    if (ES_ADMIN) h += '<button class="b-deshacer" onclick="deshacer(\'dia\',\'' + esc(o.id) + '\',\'' + esc(o.repartidor || o.asignadoA || '') + '\')">Deshacer entrega</button>';
+  }
+  else h += '<div class="acciones" style="grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)"><a class="b-inc" href="dia.html?id=' + encodeURIComponent(o.id) + '&inc=1">Incidencia</a>' +
+       '<a class="b-ent" href="dia.html?id=' + encodeURIComponent(o.id) + '">' + IC_OK + 'Entregar</a></div>';
   return h + '</div>';
 }
 
@@ -233,32 +289,78 @@ async function cargar(inicial) {
   var rr = await api('listarMiRuta');
   var rd = await api('listarDisponibles');
   var rdia = await apiDia('diaListar', { vista: 'mios' });
+  // Ronda 24: el ADM ve los entregados de hoy de TODOS los repartidores (para poder deshacer).
+  var hoyDM = (function (d) { return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); })(new Date());
+  entAdm = null;
+  if (ES_ADMIN) {
+    var rea = await api('listarEntregadosHoy');
+    var rda = await apiDia('diaListar', { vista: 'activos' });
+    entAdm = {
+      ruta: rea && rea.ok ? (rea.pedidos || []) : [],
+      dia: rda && rda.ok ? (rda.pedidos || []).filter(function (o) { return o.estadoNexo === 'ENTREGADO' && String(o.entregaHora || '').indexOf(hoyDM) === 0; }) : []
+    };
+  }
   spin(false);
-  diaRuta = rdia && rdia.ok ? (rdia.pedidos || []).filter(function (o) { return o.estadoNexo === 'ASIGNADO' && o.asignadoA === String(USUARIO).toLowerCase(); }) : [];
+  // Ronda 24: también los %DIA entregados hoy por mí (se ven con el botón gris "Entregado").
+  var hoyDDMM = (function (d) { return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); })(new Date());
+  diaRuta = rdia && rdia.ok ? (rdia.pedidos || []).filter(function (o) {
+    if (o.asignadoA !== String(USUARIO).toLowerCase()) return false;
+    return o.estadoNexo === 'ASIGNADO' || (o.estadoNexo === 'ENTREGADO' && String(o.entregaHora || '').indexOf(hoyDDMM) === 0);
+  }) : [];
   if (!rr.ok) { msg(rr.error, 'err'); }
   if (!rd.ok) { msg(rd.error, 'err'); }
   ruta = rr.ok ? rr.pedidos : [];
   disp = rd.ok ? rd.pedidos : [];
   tramos = rd.ok ? rd.tramos : [];
-  document.getElementById('tabRuta').textContent = 'Asignados (' + (ruta.length + diaRuta.length) + ')';
-  document.getElementById('tabDisp').textContent = 'Disponibles (' + disp.length + ')';
+  var pendientesRuta = ruta.filter(function (o) { return o.entregaEstado !== 'ENTREGADO'; }).length +
+                       diaRuta.filter(function (o) { return o.estadoNexo !== 'ENTREGADO'; }).length;
+  document.getElementById('tabRuta').textContent = 'Asignados · ' + pendientesRuta;
+  document.getElementById('tabDisp').textContent = 'Disponibles · ' + disp.length;
   // Si se viene de subir una foto (?lote=...), se queda en "Asignados".
-  if (inicial) { cambiarTab(ruta.length || diaRuta.length || /[?&]lote=/.test(location.search) ? 'ruta' : 'disp'); } else { pintar(); }
+  if (inicial) { cambiarTab(pendientesRuta || /[?&]lote=/.test(location.search) ? 'ruta' : 'disp'); } else { pintar(); }
 }
 
+var IC_CAM = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13.5" r="3.2"/></svg>';
+var IC_TEL = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4 6a2 2 0 0 1 2-2z"/></svg>';
+var IC_OK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
+var IC_FLECHA = '<svg class="flecha" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>';
+
+/* Ronda 24: ADM — deshacer una entrega de hoy. tipo = 'emb' (TRAVESIA/GRANVIA) | 'dia' (%DIA). */
+async function deshacer(tipo, id, rep) {
+  if (!confirm('¿Deshacer esta entrega?\n\nEl pedido vuelve a "Asignado" a ' + (rep || 'su repartidor') + ' y la foto archivada de la entrega se borra. Queda anotado en la auditoría.')) return;
+  spin(true);
+  var r = tipo === 'dia' ? await apiDia('diaDeshacerEntrega', { id: id }) : await api('deshacerEntrega', { id: id });
+  spin(false);
+  if (!r || !r.ok) { msg((r && r.error) || 'No se pudo deshacer la entrega.', 'err'); return; }
+  msg('Entrega deshecha: el pedido vuelve a estar asignado a ' + (r.repartidor || rep || 'su repartidor') + '.', 'ok');
+  cargar(false);
+}
+
+/* "02/10/2026 11:31:26" → " · 11:31" */
+function horaCorta(ts) { var m = /(\d{1,2}:\d{2})/.exec(String(ts || '')); return m ? ' · ' + m[1] : ''; }
+
+/* Ronda 24: tarjeta con el nº de ticket grande (caja debajo), como en Embolsado. */
 function cardHTML(o, conCheck, conAcc) {
+  var t = String(o.ticket || '—');
   var h = '<div class="card' + (o.cobro ? ' cobro' : '') + '" id="c_' + esc(o.id) + '">';
-  h += '<div class="cab">';
-  if (conCheck) h += '<input class="chk" type="checkbox" ' + (sel[o.id] ? 'checked' : '') + ' onchange="toggleSel(\'' + esc(o.id) + '\',this.checked)">';
-  h += '<span class="grow">Caja ' + esc(o.caja) + ' · Ticket ' + esc(o.ticket) + '</span><span class="tag">' + esc(o.franja) + '</span></div>';
-  h += '<div class="fila"><b>Entrega</b>' + esc(o.fecha) + ' · ' + esc(o.franja) + '</div>';
-  h += '<div class="fila"><b>Cliente</b>' + esc(o.nombre || '—') + '</div>';
-  if (o.telefono) h += '<div class="fila"><b>Teléfono</b><a class="tel" href="tel:' + esc(o.telefono.replace(/[^\d+]/g, '')) + '" onclick="llamada(\'' + esc(o.id) + '\')">📞 ' + esc(o.telefono) + '</a></div>';
+  h += '<div class="sup"><div class="num-box"><span class="n' + (t.length > 4 ? ' largo' : '') + '">' + esc(t) + '</span><span class="s">caja ' + esc(o.caja) + '</span></div>';
+  h += '<div class="der"><div class="cab">';
+  if (conCheck) h += '<input class="chk" type="checkbox" aria-label="Elegir este pedido" ' + (sel[o.id] ? 'checked' : '') + ' onchange="toggleSel(\'' + esc(o.id) + '\',this.checked)">';
+  h += '<span class="tag">' + esc(o.franja) + '</span><span class="tag">' + esc(o.fecha) + '</span>' + (o.repartidor ? '<span class="tag rep">' + esc(String(o.repartidor).toUpperCase()) + '</span>' : '') + '</div>';
+  h += '<div class="cliente">' + esc(o.nombre || '—') + '</div>';
+  if (o.telefono) h += '<div class="fila"><a class="tel" href="tel:' + esc(o.telefono.replace(/[^\d+]/g, '')) + '" onclick="llamada(\'' + esc(o.id) + '\')">' + IC_TEL + esc(o.telefono) + '</a></div>';
+  h += '</div></div>';
   h += '<div class="fila"><b>Dirección' + (o.ascensor ? ' · ascensor: ' + esc(o.ascensor) : '') + '</b><textarea id="d_' + esc(o.id) + '" data-orig="' + esc(o.direccion) + '" onblur="guardarDir(\'' + esc(o.id) + '\')">' + esc(o.direccion) + '</textarea></div>';
-  h += '<div class="chips"><span class="chip">📦 ' + esc(o.nCajas || '0') + ' cajas</span><span class="chip">🧊 nevera ' + esc(o.nevera || '0') + '</span><span class="chip">❄️ fríos ' + esc(o.frios || '0') + '</span><span class="chip">🥶 congelados ' + esc(o.congelados || '0') + '</span></div>';
-  if (o.cobro) h += '<div class="cobro-badge">💶 COBRO: ' + esc(o.cobro) + '</div>';
-  if (conAcc) h += '<div class="acciones"><button class="b-inc" onclick="abrirIncidencia(\'' + esc(o.id) + '\')">INCIDENCIA</button><button class="b-ent" onclick="entregado(\'' + esc(o.id) + '\')">ENTREGADO</button></div>';
-  h += '<button class="btn-cam" title="Ver foto del ticket" ' + (o.tieneFoto ? '' : 'disabled') + ' onclick="verFoto(\'' + esc(o.id) + '\')">📷</button>';
+  h += '<div class="chips"><span class="chip">' + esc(o.nCajas || '0') + ' cajas</span><span class="chip">Nevera ' + esc(o.nevera || '0') + '</span><span class="chip">Fríos ' + esc(o.frios || '0') + '</span><span class="chip">Congelados ' + esc(o.congelados || '0') + '</span></div>';
+  if (o.cobro) h += '<div class="cobro-badge">COBRO: ' + esc(o.cobro) + '</div>';
+  var cam = '<button class="btn-cam" title="Ver foto del ticket" aria-label="Ver foto del ticket" ' + (o.tieneFoto ? '' : 'disabled') + ' onclick="verFoto(\'' + esc(o.id) + '\')">' + IC_CAM + '</button>';
+  if (conAcc && o.entregaEstado === 'ENTREGADO') {
+    h += '<div class="acciones hecho">' + cam + '<button class="b-hecho" disabled>' + IC_OK + 'Entregado' + horaCorta(o.entregaTs) + '</button></div>';
+    if (ES_ADMIN) h += '<button class="b-deshacer" onclick="deshacer(\'emb\',\'' + esc(o.id) + '\',\'' + esc(o.repartidor || '') + '\')">Deshacer entrega</button>';
+  }
+  else if (conAcc) h += '<div class="acciones">' + cam + '<button class="b-inc" onclick="abrirIncidencia(\'' + esc(o.id) + '\')">Incidencia</button><button class="b-ent" onclick="entregado(\'' + esc(o.id) + '\')">' + IC_OK + 'Entregar</button></div>';
+  else h += '<div class="acciones solo-cam">' + cam + '</div>';
   return h + '</div>';
 }
 
@@ -272,7 +374,17 @@ function pintar() {
     actualizarBarra();
   } else {
     info.textContent = 'Pedidos asignados a ti, pendientes de entrega.';
-    l.innerHTML = (ruta.length || diaRuta.length) ? ruta.map(function (o) { return cardHTML(o, false, true); }).join('') + diaRuta.map(diaCardHTML).join('') : '<div class="vacio">No tienes pedidos pendientes en tu ruta.</div>';
+    // Ronda 24: primero lo pendiente; lo entregado hoy va en un bloque cerrado al final.
+    var rP = ruta.filter(function (o) { return o.entregaEstado !== 'ENTREGADO'; }), rE = ruta.filter(function (o) { return o.entregaEstado === 'ENTREGADO'; });
+    var dP = diaRuta.filter(function (o) { return o.estadoNexo !== 'ENTREGADO'; }), dE = diaRuta.filter(function (o) { return o.estadoNexo === 'ENTREGADO'; });
+    if (entAdm) { rE = entAdm.ruta; dE = entAdm.dia; }
+    var nE = rE.length + dE.length;
+    var bloque = nE ? '<details class="entregados"' + (abiertoEnt ? ' open' : '') + ' ontoggle="abiertoEnt = this.open">' +
+      '<summary><span>Entregados hoy (' + nE + ')' + (entAdm ? ' · todos los repartidores' : '') + '</span>' + IC_FLECHA + '</summary>' +
+      '<div class="ent-lista">' + rE.map(function (o) { return cardHTML(o, false, true); }).join('') + dE.map(diaCardHTML).join('') + '</div></details>' : '';
+    l.innerHTML = (rP.length || dP.length
+      ? rP.map(function (o) { return cardHTML(o, false, true); }).join('') + dP.map(diaCardHTML).join('')
+      : '<div class="vacio">No tienes pedidos pendientes en tu ruta.</div>') + bloque;
     barra.style.display = 'none';
   }
 }
@@ -319,7 +431,7 @@ async function verFoto(id) {
   if (r.box) {
     try { src = await recortar(r.dataUrl, r.box, 1400); } catch (e) { src = r.dataUrl; }
     _fotoCompleta = r.dataUrl;
-    extra = '<button class="b-gris" style="width:100%;margin-top:8px;padding:10px;border:0;border-radius:10px;font-weight:700" onclick="verCompleta()">Ver foto completa</button>';
+    extra = '<button class="b-gris" style="width:100%;margin-top:8px;min-height:48px;border:0;border-radius:12px;font-weight:800" onclick="verCompleta()">Ver foto completa</button>';
   }
   document.getElementById('fotoCont').innerHTML = '<img class="foto" src="' + src + '">' + extra;
 }
@@ -381,7 +493,7 @@ function elegirTipo(k) {
   document.getElementById('incObsWrap').style.display = 'block';
   document.getElementById('incObs').placeholder = d.obs ? 'Observaciones (obligatorio)' + (k === 'COMPRA_RECHAZADA' ? ' — motivo del rechazo' : '') : 'Observaciones (opcional)';
   document.getElementById('incFotoWrap').style.display = d.fotosMax ? 'block' : 'none';
-  document.getElementById('btnIncFoto').textContent = k === 'CLIENTE_AUSENTE' ? '📷 Foto del portal (opcional)' : '📷 Añadir foto (máx. ' + d.fotosMax + ')';
+  document.getElementById('btnIncFoto').textContent = k === 'CLIENTE_AUSENTE' ? 'Foto del portal (opcional)' : 'Añadir foto (máx. ' + d.fotosMax + ')';
   document.getElementById('incMini').innerHTML = '';
   var a = document.getElementById('incAusente');
   if (k === 'CLIENTE_AUSENTE') { a.style.display = 'block'; pintarAusente(); } else a.style.display = 'none';
@@ -389,7 +501,7 @@ function elegirTipo(k) {
 
 function pintarAusente() {
   var n = incIntentos.length;
-  var h = '<button class="intento" onclick="nuevoIntento()" ' + (n >= 3 ? 'disabled' : '') + '>📞 Registrar tentativa (' + n + '/3)</button>';
+  var h = '<button class="intento" onclick="nuevoIntento()" ' + (n >= 3 ? 'disabled' : '') + '>Registrar llamada (' + n + '/3)</button>';
   if (n) h += '<div class="cuenta" id="cuenta"></div>';
   document.getElementById('incAusente').innerHTML = h;
   tick();
@@ -403,7 +515,7 @@ function tick() {
   var t = incIntentos.map(function (x) { return new Date(x).toLocaleTimeString('es-ES'); }).join(' · ');
   if (n < 3) c.textContent = 'Tentativas: ' + t;
   else if (f > 0) c.textContent = 'Tentativas: ' + t + ' — espera ' + Math.floor(f / 60000) + ':' + String(Math.floor(f % 60000 / 1000)).padStart(2, '0') + ' para poder registrar.';
-  else c.textContent = 'Tentativas: ' + t + ' — ✅ espera de 10 min cumplida.';
+  else c.textContent = 'Tentativas: ' + t + ' — espera de 10 min cumplida.';
 }
 
 document.getElementById('incFile').addEventListener('change', async function (ev) {
@@ -482,14 +594,14 @@ function borrarLote(id) {
 }
 
 var ETIQUETAS = {
-  ASIGNADO:        { cls: 'ok',  txt: '✅ Asignado' },
-  GRABADO:         { cls: 'ok',  txt: '✅ Grabado (sin asignar)' },
-  REVISAR:         { cls: 'rev', txt: '❓ Revisar' },
-  DUPLICADO:       { cls: 'mal', txt: '⚠️ Repetido en la foto' },
-  OTRO_REPARTIDOR: { cls: 'mal', txt: '⚠️ De otro repartidor' },
-  CERRADO:         { cls: 'mal', txt: '⚠️ Ya cerrado' },
-  DESCARTADO:      { cls: 'mal fuera', txt: '🗑️ Descartado' },
-  LEYENDO:         { cls: 'rev', txt: '⏳ …' }
+  ASIGNADO:        { cls: 'ok',  txt: 'Asignado' },
+  GRABADO:         { cls: 'ok',  txt: 'Grabado (sin asignar)' },
+  REVISAR:         { cls: 'rev', txt: 'Revisar' },
+  DUPLICADO:       { cls: 'mal', txt: 'Repetido en la foto' },
+  OTRO_REPARTIDOR: { cls: 'mal', txt: 'De otro repartidor' },
+  CERRADO:         { cls: 'mal', txt: 'Ya cerrado' },
+  DESCARTADO:      { cls: 'mal fuera', txt: 'Descartado' },
+  LEYENDO:         { cls: 'rev', txt: '…' }
 };
 
 function formatoFechaCorta(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] : iso; }
@@ -502,24 +614,24 @@ function pintarLote(id) {
     document.getElementById('lotes').appendChild(cont);
   }
   var l = L.lote;
-  var h = '<div class="lote-cab"><span class="grow">📸 Foto de tickets · ' + esc(formatoFechaCorta(l.fecha)) + ' · ' + esc(l.franja || '') +
+  var h = '<div class="lote-cab"><span class="grow">Foto de tickets · ' + esc(formatoFechaCorta(l.fecha)) + ' · ' + esc(l.franja || '') +
           (ES_ADMIN && l.repartidor ? ' · ' + esc(l.repartidor) : '') + '</span>';
   if (L.estado === 'listo' && !pendientesRevision(L)) h += '<button onclick="cerrarLote(\'' + esc(id) + '\')">Cerrar</button>';
   h += '</div>';
 
   if (L.estado === 'leyendo') {
-    h += '<div class="lote-leyendo"><div class="rueda"></div>Leyendo tickets…<br><span style="font-weight:400;font-size:12px;opacity:.85">Puede tardar hasta 1 minuto. No cierres esta página.</span></div>';
+    h += '<div class="lote-leyendo"><div class="rueda"></div>Leyendo tickets…<br><span style="font-weight:600;font-size:13px;color:var(--nx-suave)">Puede tardar hasta 1 minuto. No cierres esta página.</span></div>';
   } else if (L.estado === 'error') {
-    h += '<div class="lote-res">❌ ' + esc(L.error) + '</div>' +
-         '<button class="b-add" onclick="procesarLote(\'' + esc(id) + '\')">🔄 Reintentar</button>';
+    h += '<div class="lote-res" style="color:var(--nx-rojo)">' + esc(L.error) + '</div>' +
+         '<button class="b-add" onclick="procesarLote(\'' + esc(id) + '\')">Reintentar</button>';
   } else {
     var n = L.items.filter(function (x) { return x.estado === 'ASIGNADO' || x.estado === 'GRABADO'; }).length;
     var rev = pendientesRevision(L);
     h += '<div class="lote-res">' + L.items.filter(function (x) { return x.estado !== 'DESCARTADO'; }).length + ' ticket(s) · ' +
          n + ' listo(s)' + (rev ? ' · <b>' + rev + ' por revisar</b>' : '') + '</div>';
-    if (L.aviso) h += '<div class="lote-res">⚠️ ' + esc(L.aviso) + '</div>';
+    if (L.aviso) h += '<div class="lote-res">' + esc(L.aviso) + '</div>';
     L.items.forEach(function (it, i) { h += itemHTML(id, i, it); });
-    h += '<button class="b-add" onclick="anadirTicket(\'' + esc(id) + '\')">➕ Añadir un ticket que falta</button>';
+    h += '<button class="b-add" onclick="anadirTicket(\'' + esc(id) + '\')">Añadir un ticket que falta</button>';
   }
   cont.innerHTML = h;
   // Miniaturas (recorte virtual en el propio móvil, con la foto local).
@@ -546,7 +658,7 @@ function itemHTML(id, i, it) {
   var nombre = it.nombre || d.nombre;
   if (nombre) h += '<div>' + esc(nombre) + '</div>';
   var dir = it.direccion || d.direccion;
-  if (dir) h += '<div style="font-size:12px;color:#475569">' + esc(dir) + '</div>';
+  if (dir) h += '<div style="font-size:13px;color:var(--nx-suave)">' + esc(dir) + '</div>';
   h += '<div class="estado"><b>' + et.txt + '</b>' + (it.mensaje ? ' — ' + esc(it.mensaje) : '') + '</div>';
 
   if (it.estado === 'REVISAR' || it.estado === 'DUPLICADO') {
