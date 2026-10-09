@@ -13,6 +13,7 @@
    Uso 2 — muchos selectores en una lista que se repinta (tarjetas):
      '<div>' + NexoFoto.html({ id: 'R123', set: true, clase: 'mini' }) + '</div>'
      NexoFoto.activar(document, function (origen, id) { ... });   // una sola vez
+   v4 (2026-10-09): tocar el botón central saca la foto; el botón nunca se queda a medio camino.
    v3 (2026-10-09): html() + activar() por delegación; clase "set" (ya hay
    foto, botón verde) y "mini" (más estrecho, para las tarjetas).
    ============================================================= */
@@ -79,9 +80,23 @@
       a.nxf.classList.remove('arrastrando', 'ir-izq', 'ir-der'); a.pomo.style.transform = '';
       if (a.dx < -a.max * 0.6) alAbrir('subir', a.nxf.getAttribute('data-id'), a.nxf);
       else if (a.dx > a.max * 0.6) alAbrir('sacar', a.nxf.getAttribute('data-id'), a.nxf);
+      else if (Math.abs(a.dx) < 6) alAbrir('sacar', a.nxf.getAttribute('data-id'), a.nxf);   // v4: tocar el botón central = sacar foto
+    }
+    /* v4 (2026-10-09): si se pierde el "soltar" (se abrió la cámara, cambio de app…), el botón
+       quedaba a medio camino. Se recoloca solo al volver a la página. */
+    function soltarSinAccion() {
+      if (arr) { arr.nxf.classList.remove('arrastrando', 'ir-izq', 'ir-der'); arr.pomo.style.transform = ''; arr = null; }
+      [].forEach.call(raiz.querySelectorAll ? raiz.querySelectorAll('.nxf.arrastrando, .nxf .pomo[style]') : [], function (n) {
+        if (n.classList.contains('pomo')) n.style.transform = ''; else n.classList.remove('arrastrando', 'ir-izq', 'ir-der');
+      });
     }
     raiz.addEventListener('pointerup', soltar);
-    raiz.addEventListener('pointercancel', soltar);
+    raiz.addEventListener('pointercancel', soltarSinAccion);
+    raiz.addEventListener('lostpointercapture', function () { setTimeout(soltarSinAccion, 0); }, true);
+    window.addEventListener('blur', soltarSinAccion);
+    window.addEventListener('focus', soltarSinAccion);
+    window.addEventListener('pageshow', soltarSinAccion);
+    document.addEventListener('visibilitychange', soltarSinAccion);
   }
 
   /* Abre un input de archivo (galería o cámara) y devuelve el archivo elegido. */
