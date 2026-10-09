@@ -13,9 +13,12 @@
          llegar; con 3 llamadas ya se puede registrar (sin esperar 10 min); hasta
          10 fotos: cámara, galería (varias a la vez), carpeta (ordenador) o .zip.
        · Comprobación de versión al entrar (nexo-version.js + version.json).
+     v3.10.2 (2026-10-09): ADM y Embolsado reciben un aviso en el móvil con cada
+       incidencia nueva (botón "Activar avisos" aquí); la lectura del ticket enseña
+       cuánto ha tardado y, si no lee nada, lo dice claramente.
      Requiere Embolsado.js de la ronda 24 (finalizarIncidencia, anadirFotosIncidencia,
      panelIncidencias). -->
-<html lang="es" data-pagina="incidencias" data-version="v3.10.1">
+<html lang="es" data-pagina="incidencias" data-version="v3.10.2">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
@@ -168,6 +171,10 @@ body.nx { padding-bottom:40px; }
 .miniaturas img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; display:block; }
 .miniaturas button { position:absolute; top:4px; right:4px; width:28px; height:28px; border:0; border-radius:50%; background:rgba(11,36,71,.8); color:#fff;
   font:800 16px/1 var(--nx-texto); cursor:pointer; }
+.aviso-push { display:grid; grid-template-columns:22px minmax(0,1fr); gap:10px 12px; align-items:center; padding:12px 14px; border-radius:14px;
+  background:var(--nx-azul-fondo); color:var(--nx-azul); font-size:14px; font-weight:700; line-height:1.35; }
+.aviso-push button { grid-column:1 / -1; min-height:48px; border:0; border-radius:12px; background:var(--nx-tinta); color:var(--nx-tinta-clara); font:800 15px var(--nx-texto); cursor:pointer; }
+.aviso-push.info button { display:none; }
 #spin { position:fixed; inset:0; z-index:300; background:rgba(11,36,71,.62); display:none; align-items:center; justify-content:center;
   color:#fff; font-weight:800; font-size:16px; text-align:center; padding:20px; }
 #spin.on { display:flex; }
@@ -188,6 +195,11 @@ body.nx { padding-bottom:40px; }
     </div>
     <button class="btn-informar" onclick="abrirNueva()">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Informar incidencia</button>
+    <div class="aviso-push" id="avisoPush" style="display:none">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+      <span id="avisoPushTxt"></span>
+      <button type="button" id="btnAvisos" onclick="activarAvisos()">Activar avisos</button>
+    </div>
     <div class="nx-pestanas" role="tablist">
       <button class="on" id="fAb" role="tab" onclick="filtro('ABIERTA')">Pendientes</button>
       <button id="fTo" role="tab" onclick="filtro('TODAS')">Todas</button>
@@ -214,7 +226,7 @@ body.nx { padding-bottom:40px; }
     <div id="panelCuerpo"><div class="vacio">Cargando…</div></div>
   </section>
 
-  <div class="nx-version" data-nexo-version="Nexo · Incidencias">Nexo · Incidencias v3.10.1</div>
+  <div class="nx-version" data-nexo-version="Nexo · Incidencias">Nexo · Incidencias v3.10.2</div>
 </main>
 
 <!-- ===== Resolver: responsable y finalizar ===== -->
@@ -425,6 +437,7 @@ async function cargar() {
   if (abiertasPrev !== null && ab > abiertasPrev) pitido();
   abiertasPrev = ab;
   document.title = (ab ? '(' + ab + ') ' : '') + 'Nexo · Incidencias';
+  if (r.verPanel) revisarAvisos();
   if (!document.querySelector('.modal.on')) pintar();
 }
 
@@ -700,10 +713,18 @@ function rellenar(d, soloVacios) {
     if (!soloVacios || !el(x[0]).value.trim()) el(x[0]).value = x[1];
   });
 }
-function pintarAvisos(r, d) {
+function tiempoTxt(r) {
+  var t = r && r.tiempos; if (!t) return '';
+  return 'Lectura: ' + (t.lecturaMs / 1000).toFixed(1).replace('.', ',') + ' s' + (t.modelo ? ' (' + t.modelo + ')' : '') + ' · total ' + (t.totalMs / 1000).toFixed(1).replace('.', ',') + ' s';
+}
+function pintarAvisos(r, d, extraOk) {
   var av = (r && r.avisos || []).slice();
-  if (!d.caja || !d.ticket) av.push('No se ha podido leer ' + (!d.caja && !d.ticket ? 'la caja ni el nº de ticket' : (!d.caja ? 'la caja' : 'el nº de ticket')) + '. Escríbelo a mano mirando el ticket.');
-  el('nvAvisos').innerHTML = av.map(function (a) { return '<div class="aviso w">' + esc(a) + '</div>'; }).join('');
+  var leidos = ['caja', 'ticket', 'nombre', 'telefono', 'direccion'].filter(function (k) { return d[k]; }).length;
+  if (!leidos && !av.length) av.push('La lectura no ha devuelto ningún dato. Escríbelos a mano mirando el ticket.');
+  else if (!d.caja || !d.ticket) av.push('No se ha podido leer ' + (!d.caja && !d.ticket ? 'la caja ni el nº de ticket' : (!d.caja ? 'la caja' : 'el nº de ticket')) + '. Escríbelo a mano mirando el ticket.');
+  var h = (extraOk && leidos ? '<div class="aviso g">' + esc(extraOk) + '</div>' : '') + av.map(function (a) { return '<div class="aviso w">' + esc(a) + '</div>'; }).join('');
+  var t = tiempoTxt(r); if (t) h += '<div class="nota">' + esc(t) + '</div>';
+  el('nvAvisos').innerHTML = h;
 }
 async function fotoTicketElegida(f) {
   if (!f || !nv || nvOcupado) return;
@@ -711,7 +732,7 @@ async function fotoTicketElegida(f) {
   var mio = nv;
   try {
     spin(true, 'Leyendo el ticket…');
-    nv.foto = await reducir(f, 1600, 0.8);
+    nv.foto = await reducir(f, 1600, 0.75);
     el('nvFoto').src = nv.foto;
     var lento = false;
     mio.lectura = api('leerTicketIncidencia', { imagenBase64: nv.foto });
@@ -727,7 +748,7 @@ async function fotoTicketElegida(f) {
         if (!r2 || !r2.ok) { el('nvAvisos').innerHTML = '<div class="aviso w">' + esc((r2 && r2.error) || 'No se pudo leer el ticket.') + ' Vuelve a sacar la foto si no puedes continuar.</div>'; return; }
         mio.fileId = r2.fileId;
         rellenar(r2.datos || {}, true);
-        el('nvAvisos').innerHTML = '<div class="aviso g">Ticket leído: se han rellenado los campos que estaban vacíos. Revísalos.</div>';
+        pintarAvisos(r2, r2.datos || {}, 'Ticket leído: se han rellenado los campos que estaban vacíos. Revísalos.');
       });
       return;
     }
@@ -825,6 +846,65 @@ async function registrarNueva(forzar) {
   cerrarNueva(true);
   msg('Incidencia registrada. Se ha avisado a Embolsado y ADM.' + (r.vinculada ? ' El pedido queda en INCIDENCIA.' : ''), 'ok');
   filtro('ABIERTA'); cargar();
+}
+
+/* ================= AVISOS PUSH (ADM y Embolsado) =================
+   Mismo sistema que en %DIA: la suscripción del móvil se guarda en NEXO DIA (diaGuardarAviso).
+   Con ella llegan los avisos de incidencias nuevas (y, a quien reparta %DIA, los de pedidos asignados). */
+var _avisosRevisados = false;
+function pushSoportado() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+function esIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+function enPantallaInicio() { return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; }
+function claveBytes(b64) {
+  var s = String(b64).replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '=';
+  var bin = atob(s), a = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return a;
+}
+function mostrarAvisoPush(tipo) {
+  var box = el('avisoPush');
+  if (!tipo) { box.style.display = 'none'; return; }
+  el('avisoPushTxt').textContent = {
+    activar: 'Activa los avisos para enterarte al momento, aunque tengas la app cerrada, cuando llegue una incidencia nueva.',
+    ios: 'En iPhone, para recibir avisos, instala la app: Compartir → "Añadir a pantalla de inicio", y ábrela desde ese icono.',
+    bloqueado: 'Los avisos están bloqueados en este móvil. Permite las notificaciones de Nexo en los ajustes del navegador o del teléfono.'
+  }[tipo];
+  box.className = 'aviso-push' + (tipo === 'activar' ? '' : ' info');
+  box.style.display = 'grid';
+}
+async function suscribirPush() {
+  var reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) await navigator.serviceWorker.register('service-worker.js?v=8');
+  reg = await navigator.serviceWorker.ready;
+  var sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    var c = await fetch(PROXY + 'push/clave').then(function (r) { return r.json(); });
+    if (!c || !c.clave) throw new Error('los avisos aún no están configurados en el servidor');
+    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: claveBytes(c.clave) });
+  }
+  var r = await apiDia('diaGuardarAviso', { suscripcion: sub.toJSON(), dispositivo: navigator.userAgent });
+  if (!r.ok) throw new Error(r.error);
+  try { localStorage.setItem('nexo_push_activo_' + USUARIO, '1'); localStorage.setItem('nexo_push_dia_' + USUARIO, new Date().toISOString().slice(0, 10)); } catch (e) {}
+}
+async function revisarAvisos() {
+  if (_avisosRevisados) return; _avisosRevisados = true;
+  if (!pushSoportado()) { if (esIOS() && !enPantallaInicio()) mostrarAvisoPush('ios'); return; }
+  if (Notification.permission === 'denied') { mostrarAvisoPush('bloqueado'); return; }
+  if (Notification.permission === 'granted') {
+    var hecho = ''; try { hecho = localStorage.getItem('nexo_push_dia_' + USUARIO) || ''; } catch (e) {}
+    if (hecho === new Date().toISOString().slice(0, 10)) return;
+    try { await suscribirPush(); } catch (e) { console.warn('avisos:', e); mostrarAvisoPush('activar'); }
+    return;
+  }
+  mostrarAvisoPush('activar');
+}
+async function activarAvisos() {
+  if (!pushSoportado()) { mostrarAvisoPush(esIOS() ? 'ios' : null); return; }
+  try {
+    var p = await Notification.requestPermission();
+    if (p !== 'granted') { mostrarAvisoPush(p === 'denied' ? 'bloqueado' : 'activar'); return; }
+    spin(true, 'Activando avisos…'); await suscribirPush(); spin(false);
+    mostrarAvisoPush(null);
+    msg('Avisos activados. Te llegará un aviso al móvil con cada incidencia nueva.', 'ok');
+  } catch (e) { spin(false); msg('No se pudieron activar los avisos: ' + (e.message || e), 'err'); }
 }
 
 cargar();
