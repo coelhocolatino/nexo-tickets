@@ -5,8 +5,10 @@
      caja debajo), botones Incidencia / Entregar, y comprobación de versión
      al entrar (nexo-version.js + version.json). La lógica no cambia.
      v3.10.2 (2026-10-09): "Entregar" de un pedido %DIA abre directamente la
-     hoja de entrega en dia.html (?ent=1). -->
-<html lang="es" data-pagina="asignar" data-version="v3.10.2">
+     hoja de entrega en dia.html (?ent=1).
+     v3.10.3 (2026-10-09): incidencias con hasta 10 fotos y sin la espera de 10 min tras las 3 llamadas.
+-->
+<html lang="es" data-pagina="asignar" data-version="v3.10.3">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
@@ -178,7 +180,7 @@ details.entregados[open] > summary .flecha { transform:rotate(180deg); }
   <div class="info" id="info"></div>
   <div id="msg"></div>
   <div id="lista"></div>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.2</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.3</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
@@ -223,11 +225,11 @@ var USUARIO = SESION.usuario || '';
 document.getElementById('quien').textContent = (SESION.nombre || USUARIO);
 
 var TIPOS = {
-  CLIENTE_AUSENTE:      { etiqueta: 'Cliente ausente',            fotosMax: 2, obs: false },
-  DIRECCION_INCORRECTA: { etiqueta: 'Dirección incorrecta',       fotosMax: 0, obs: true },
-  PRODUCTO_FALTANTE:    { etiqueta: 'Producto faltante o dañado', fotosMax: 3, obs: true },
-  COMPRA_RECHAZADA:     { etiqueta: 'Compra rechazada',           fotosMax: 0, obs: true },
-  FRIO_OLVIDADO:        { etiqueta: 'Frío olvidado',              fotosMax: 0, obs: true }
+  CLIENTE_AUSENTE:      { etiqueta: 'Cliente ausente',            fotosMax: 10, obs: false },
+  DIRECCION_INCORRECTA: { etiqueta: 'Dirección incorrecta',       fotosMax: 10, obs: true },
+  PRODUCTO_FALTANTE:    { etiqueta: 'Producto faltante o dañado', fotosMax: 10, obs: true },
+  COMPRA_RECHAZADA:     { etiqueta: 'Compra rechazada',           fotosMax: 10, obs: true },
+  FRIO_OLVIDADO:        { etiqueta: 'Frío olvidado',              fotosMax: 10, obs: true }
 };
 
 function api(accion, datos) {
@@ -510,14 +512,14 @@ function pintarAusente() {
   clearInterval(incTimer); if (n) incTimer = setInterval(tick, 1000);
 }
 function nuevoIntento() { if (incIntentos.length < 3) { incIntentos.push(Date.now()); pintarAusente(); } }
-function faltaEspera() { return incIntentos.length ? Math.max(0, incIntentos[0] + 10 * 60 * 1000 - Date.now()) : 1; }
+// Ronda 24 (2026-10-09): con 3 llamadas ya se puede registrar, sin esperar 10 minutos.
+function faltaEspera() { return 0; }
 function tick() {
   var c = document.getElementById('cuenta'); if (!c) return;
   var f = faltaEspera(), n = incIntentos.length;
   var t = incIntentos.map(function (x) { return new Date(x).toLocaleTimeString('es-ES'); }).join(' · ');
   if (n < 3) c.textContent = 'Tentativas: ' + t;
-  else if (f > 0) c.textContent = 'Tentativas: ' + t + ' — espera ' + Math.floor(f / 60000) + ':' + String(Math.floor(f % 60000 / 1000)).padStart(2, '0') + ' para poder registrar.';
-  else c.textContent = 'Tentativas: ' + t + ' — espera de 10 min cumplida.';
+  else c.textContent = 'Tentativas: ' + t + ' — 3 llamadas hechas: ya puedes registrar la incidencia.';
 }
 
 document.getElementById('incFile').addEventListener('change', async function (ev) {
@@ -549,7 +551,6 @@ async function enviarIncidencia() {
   if (d.obs && !obs) { alert('Escribe las observaciones.'); return; }
   if (incTipo === 'CLIENTE_AUSENTE') {
     if (incIntentos.length < 3) { alert('Hacen falta 3 tentativas de contacto.'); return; }
-    if (faltaEspera() > 0) { alert('Aún no han pasado 10 minutos desde la primera tentativa.'); return; }
   }
   spin(true);
   var r = await api('registrarIncidencia', { id: incId, tipo: incTipo, observaciones: obs, intentos: incIntentos, fotos: incFotos });

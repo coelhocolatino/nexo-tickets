@@ -1,26 +1,30 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — incidencias.html
-     Cambios 2026-10-02 (informar incidencia directa):
-     1) Botón «➕ Informar incidencia» para TODOS los usuarios: permite
-        registrar una incidencia desde aquí, sin tener el pedido en «Pedidos
-        asignados». Pasos:
-          1. Foto del ticket (obligatoria): sacar foto o subir una imagen.
-          2. El servidor la lee (OCR) y el usuario CONFIRMA o corrige los datos
-             (caja, nº de ticket, cliente, teléfono, dirección).
-          3. Procedimiento normal: tipo de incidencia, tentativas (cliente
-             ausente = 3 tentativas y 10 min), observaciones y fotos.
-        Si el ticket coincide con un pedido aún no entregado, ese pedido queda
-        en INCIDENCIA; si no, se registra igualmente sin tocar ningún pedido.
-     2) ADM: botón «CERRAR» en las incidencias que no tienen pedido vinculado
-        (las que sí lo tienen siguen con RESTAURAR / ELIMINAR).
-     Requiere el Embolsado.gs del 2026-10-02 (acciones leerTicketIncidencia,
-     buscarPedidoIncidencia, registrarIncidenciaDirecta y cerrarIncidencia). -->
-<html lang="es">
+     v3.10.1 (2026-10-09, ronda 24): diseño nuevo y:
+       · Lista: Pendientes / Todas; cada incidencia con Ticket, Fotos y "Añadir fotos".
+       · Resolver (ADM y Embolsado): responsable (Usuario / Cliente / Tienda / No
+         identificado), cómo se solucionó, "Solo guardar" o "Finalizar". Restaurar o
+         eliminar el pedido vinculado: solo ADM. Todo queda en la hoja INCIDENCIAS
+         y en AUDITORIA. Las fotos se borran 60 días después de finalizar.
+       · Panel (ADM y Embolsado): pendientes, solucionadas, total; rankings por
+         repartidor, motivo y responsable, por mes o año.
+       · Informar incidencia: selector deslizante para la foto del ticket; si la
+         lectura tarda más de 15 s se sigue a mano y los datos se rellenan solos al
+         llegar; con 3 llamadas ya se puede registrar (sin esperar 10 min); hasta
+         10 fotos: cámara, galería (varias a la vez), carpeta (ordenador) o .zip.
+       · Comprobación de versión al entrar (nexo-version.js + version.json).
+     Requiere Embolsado.js de la ronda 24 (finalizarIncidencia, anadirFotosIncidencia,
+     panelIncidencias). -->
+<html lang="es" data-pagina="incidencias" data-version="v3.10.1">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Nexo · Incidencias de entrega</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#FEFEFE" />
+<title>Nexo · Incidencias</title>
 <link rel="icon" href="nexo-icon-192.png">
+<link rel="stylesheet" href="nexo-tema.css?v=24">
+<script src="nexo-version.js?v=1"></script>
+<script src="nexo-foto.js?v=3"></script>
 <script>
 (function () {
   try {
@@ -30,161 +34,327 @@
 })();
 </script>
 <style>
-* { box-sizing:border-box; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-body { margin:0; background:#f1f5f9; color:#0f172a; padding:14px 12px 40px; }
-.wrap { max-width:720px; margin:0 auto; }
-.top { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
-.top a { text-decoration:none; font-size:22px; color:#003366; }
-.top h1 { font-size:18px; margin:0; flex:1; color:#003366; }
-.badge { background:#dc2626; color:#fff; border-radius:999px; padding:2px 10px; font-weight:800; font-size:13px; }
-.filtros { display:flex; gap:8px; margin-bottom:12px; }
-.filtros button { flex:1; padding:9px; border:0; border-radius:10px; background:#e2e8f0; font-weight:700; }
-.filtros button.on { background:#003366; color:#fff; }
-#msg { padding:8px 10px; border-radius:10px; margin-bottom:10px; display:none; font-size:13px; }
-#msg.ok { display:block; background:#dcfce7; color:#166534; } #msg.err { display:block; background:#fee2e2; color:#991b1b; }
-.inc { background:#fff; border-radius:14px; padding:12px; margin-bottom:10px; border-left:6px solid #dc2626; box-shadow:0 2px 8px rgba(0,0,0,.08); }
-.inc.RESTAURADA { border-left-color:#16a34a; } .inc.ELIMINADA { border-left-color:#64748b; opacity:.75; }
-.inc .t { font-weight:800; font-size:15px; display:flex; justify-content:space-between; gap:8px; }
-.inc .est { font-size:11px; font-weight:800; padding:2px 8px; border-radius:8px; background:#fee2e2; color:#991b1b; }
-.inc.RESTAURADA .est { background:#dcfce7; color:#166534; } .inc.ELIMINADA .est { background:#e2e8f0; color:#334155; }
-.inc .l { font-size:13px; margin-top:4px; } .inc .l b { color:#475569; }
-.inc a { color:#0369a1; font-weight:700; }
-.acc { display:flex; gap:8px; margin-top:10px; }
-.acc button { flex:1; padding:10px; border:0; border-radius:10px; font-weight:800; color:#fff; }
-.r { background:#16a34a; } .e { background:#dc2626; }
-.vacio { text-align:center; color:#64748b; padding:30px; }
-.inc.CERRADA { border-left-color:#0369a1; opacity:.8; }
-.inc.CERRADA .est { background:#e0f2fe; color:#075985; }
-.inc .tag { display:inline-block; font-size:11px; font-weight:800; padding:2px 8px; border-radius:8px; background:#e0f2fe; color:#075985; margin-top:6px; }
-.c { background:#0369a1; }
-/* ===== Informar incidencia (2026-10-02) ===== */
-.nueva { display:block; width:100%; padding:14px; border:0; border-radius:12px; background:#dc2626; color:#fff; font-size:16px; font-weight:800;
-  margin-bottom:12px; box-shadow:0 4px 12px rgba(220,38,38,.3); }
-.nueva:active { transform:scale(.98); }
-.modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:flex-start; justify-content:center; overflow:auto; padding:16px 10px; z-index:50; }
+body.nx { padding-bottom:40px; }
+.top-tit { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.top-tit .nx-titulo { margin:0; }
+.btn-sec { flex:0 0 auto; min-height:48px; padding:0 14px; border:0; border-radius:12px; background:var(--nx-azul-fondo); color:var(--nx-azul);
+  font:800 15px var(--nx-texto); display:inline-flex; align-items:center; gap:8px; cursor:pointer; text-decoration:none; }
+.btn-sec:disabled { opacity:.5; cursor:default; }
+.btn-informar { width:100%; min-height:60px; border:0; border-radius:16px; background:var(--nx-tinta); color:var(--nx-tinta-clara);
+  font:800 17px var(--nx-texto); display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; }
+#msg { display:none; padding:10px 12px; border-radius:12px; font-size:14px; font-weight:700; line-height:1.4; }
+#msg.ok { display:block; background:var(--nx-verde-fondo); color:var(--nx-verde-tinta); }
+#msg.err { display:block; background:var(--nx-rojo-fondo); color:#7A1A12; }
+.vacio { text-align:center; color:var(--nx-suave); font-weight:700; padding:32px 12px; background:var(--nx-superficie); border-radius:var(--nx-r-tarjeta); }
+#lista { display:flex; flex-direction:column; gap:12px; }
+
+/* Tarjeta de incidencia */
+.inc { background:var(--nx-superficie); border-radius:var(--nx-r-tarjeta); padding:16px; display:flex; flex-direction:column; gap:10px; }
+.inc .cab { display:flex; align-items:flex-start; gap:10px; }
+.inc h3 { flex:1; margin:0; font-family:var(--nx-display); font-weight:800; font-size:28px; line-height:1.02; }
+.chip-est { flex:0 0 auto; margin-top:3px; padding:4px 10px; border-radius:8px; font-size:12px; font-weight:800; white-space:nowrap; }
+.chip-est.pend { background:var(--nx-ambar-fondo); color:var(--nx-ambar-tinta); }
+.chip-est.ok { background:var(--nx-verde-fondo); color:var(--nx-verde-tinta); }
+.chip-est.gris { background:var(--nx-chip); color:var(--nx-suave); }
+.meta { font-size:13px; font-weight:700; color:var(--nx-suave); }
+.cli { font-size:16px; font-weight:800; line-height:1.3; text-transform:uppercase; overflow-wrap:anywhere; }
+.cli span { display:block; font-weight:600; text-transform:none; }
+.linea { font-size:14px; font-weight:600; overflow-wrap:anywhere; }
+.linea b { font-weight:800; }
+.links { display:flex; gap:8px; flex-wrap:wrap; }
+.links a, .links button { min-height:44px; padding:0 12px; border:0; border-radius:12px; background:var(--nx-campo); color:var(--nx-tinta);
+  font:800 14px var(--nx-texto); display:inline-flex; align-items:center; gap:6px; text-decoration:none; cursor:pointer; }
+.resp { display:flex; align-items:flex-start; gap:8px; font-size:14px; font-weight:700; color:var(--nx-suave); }
+.resp b { color:var(--nx-tinta); font-weight:800; }
+.resp svg { flex:0 0 auto; margin-top:1px; }
+.b-fin { width:100%; min-height:52px; border:0; border-radius:12px; background:var(--nx-verde); color:#fff; font:800 16px var(--nx-texto); cursor:pointer; }
+.fin-por { font-size:13px; font-weight:600; color:var(--nx-suave); }
+
+/* Panel */
+#panel { display:none; flex-direction:column; gap:12px; }
+.nav-per { display:grid; grid-template-columns:52px minmax(0,1fr) 52px; gap:8px; }
+.nav-per button { min-height:52px; border:0; border-radius:12px; background:var(--nx-superficie); color:var(--nx-tinta); cursor:pointer; display:grid; place-items:center; }
+.nav-per button:disabled { opacity:.4; cursor:default; }
+.nav-per .per { display:flex; align-items:center; justify-content:center; border-radius:12px; background:var(--nx-tinta); color:var(--nx-tinta-clara); font-weight:800; font-size:17px; }
+.tiles { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.tile { background:var(--nx-superficie); border-radius:16px; padding:12px; display:flex; flex-direction:column; gap:4px; min-width:0; }
+.tile i { display:block; width:28px; height:5px; border-radius:99px; }
+.tile b { font-family:var(--nx-display); font-weight:800; font-size:44px; line-height:1; }
+.tile span { font-size:13px; font-weight:700; color:var(--nx-suave); }
+.tile.oscuro { background:var(--nx-tinta); color:var(--nx-tinta-clara); }
+.tile.oscuro span { color:#B9C7DD; }
+.rank { background:var(--nx-superficie); border-radius:var(--nx-r-tarjeta); padding:16px; display:flex; flex-direction:column; gap:10px; }
+.rank h3 { margin:0; font-family:var(--nx-display); font-weight:800; font-size:26px; line-height:1.05; }
+.rk { display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:4px 10px; align-items:center; }
+.rk .pos { font-weight:800; font-size:18px; color:var(--nx-suave); grid-row:span 2; }
+.rk .nom { font-size:15px; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rk .num { font-family:var(--nx-display); font-weight:800; font-size:24px; grid-row:span 2; text-align:right; min-width:28px; }
+.rk .pista { height:10px; border-radius:99px; background:var(--nx-chip); overflow:hidden; }
+.rk .barra { height:100%; border-radius:99px; background:var(--nx-tinta); min-width:6px; }
+.rank.azul .rk .barra { background:var(--nx-azul); }
+.rank .nada { font-size:14px; font-weight:700; color:var(--nx-suave); }
+
+/* Hojas */
+.modal { position:fixed; inset:0; z-index:200; background:rgba(11,36,71,.62); display:none; align-items:flex-end; justify-content:center; }
 .modal.on { display:flex; }
-.modal .box { background:#fff; color:#0f172a; border-radius:16px; padding:14px; width:100%; max-width:440px; }
-.modal h2 { margin:0 0 4px; font-size:17px; color:#003366; }
-.pasos { display:flex; gap:6px; margin:8px 0 12px; }
-.pasos span { flex:1; text-align:center; font-size:11px; font-weight:800; padding:6px 2px; border-radius:8px; background:#e2e8f0; color:#64748b; }
-.pasos span.on { background:#003366; color:#fff; }
-.pasos span.ok { background:#dcfce7; color:#166534; }
-.ayuda { font-size:13px; color:#475569; margin:0 0 10px; }
-.btn-grande { display:block; width:100%; padding:16px; border:0; border-radius:12px; font-size:16px; font-weight:800; margin-bottom:10px; }
-.b-azul { background:#0077cc; color:#fff; } .b-gris { background:#e2e8f0; color:#0f172a; } .b-rojo { background:#dc2626; color:#fff; } .b-osc { background:#003366; color:#fff; }
-.foto-ticket { width:100%; max-height:230px; object-fit:contain; background:#0f172a; border-radius:10px; display:block; margin-bottom:6px; }
+.modal .box { width:100%; max-width:560px; max-height:94vh; overflow:auto; background:var(--nx-superficie); color:var(--nx-tinta);
+  border-radius:24px 24px 0 0; padding:12px 20px calc(24px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:12px; }
+.modal .box::before { content:''; align-self:center; width:40px; height:5px; border-radius:99px; background:var(--nx-linea); flex:0 0 auto; }
+.modal h2 { margin:0; font-family:var(--nx-display); font-weight:800; font-size:32px; line-height:1.05; }
+.box label, .etq { display:block; font-size:12px; font-weight:700; color:var(--nx-suave); margin:0 0 4px; }
+.box input, .box select, .box textarea { width:100%; min-height:48px; border:1.5px solid var(--nx-linea); border-radius:12px; padding:0 12px;
+  background:var(--nx-campo); color:var(--nx-tinta); font:700 16px var(--nx-texto); }
+.box textarea { min-height:76px; padding:10px 12px; font-weight:600; line-height:1.35; resize:vertical; }
+.box select { -webkit-appearance:none; appearance:none; padding-right:36px; font-weight:800;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%230B2447' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 10px center; }
+.box .row { display:flex; gap:8px; }
+.box .row button { flex:1; min-height:56px; border:0; border-radius:14px; font:800 16px var(--nx-texto); cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:8px; }
+.box .row button:disabled { opacity:.5; cursor:default; }
+.b-gris { background:var(--nx-azul-fondo); color:var(--nx-azul); }
+.b-azul { background:var(--nx-tinta); color:var(--nx-tinta-clara); }
+.b-rojo { background:var(--nx-rojo); color:#fff; }
+.b-verde { background:var(--nx-verde); color:#fff; }
+.info-box { background:var(--nx-campo); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:4px; }
+.info-box b { font-size:18px; font-weight:800; }
+.info-box span { font-size:13px; font-weight:700; color:var(--nx-suave); }
+.opciones { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.opciones.una { grid-template-columns:1fr; }
+.op { min-height:52px; border:1.5px solid var(--nx-linea); border-radius:12px; background:var(--nx-campo); color:var(--nx-tinta);
+  font:700 15px var(--nx-texto); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; padding:0 10px; text-align:center; }
+.op.on { border:2px solid var(--nx-tinta); background:var(--nx-superficie); font-weight:800; }
+.nota { margin:0; font-size:13px; font-weight:600; color:var(--nx-suave); line-height:1.4; }
+.aviso { border-radius:12px; padding:10px 12px; font-size:14px; font-weight:700; line-height:1.4; }
+.aviso.w { background:var(--nx-ambar-fondo); color:var(--nx-ambar-tinta); }
+.aviso.i { background:var(--nx-azul-fondo); color:var(--nx-azul); }
+.aviso.g { background:var(--nx-verde-fondo); color:var(--nx-verde-tinta); }
+
+/* Informar incidencia */
+.pasos { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.pasos span { min-height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; gap:4px; font-size:13px; font-weight:800;
+  background:var(--nx-chip); color:var(--nx-suave); text-align:center; padding:0 4px; }
+.pasos span.on { background:var(--nx-tinta); color:var(--nx-tinta-clara); }
+.pasos span.ok { background:var(--nx-verde-fondo); color:var(--nx-verde-tinta); }
+.sel-centro { display:flex; justify-content:center; }
+.foto-ticket { width:100%; max-height:240px; object-fit:contain; background:var(--nx-tinta); border-radius:12px; display:block; }
 .foto-ticket.grande { max-height:none; }
-.mini-ayuda { font-size:11px; color:#64748b; text-align:center; margin-bottom:8px; }
-.campo { margin-bottom:8px; }
-.campo label { display:block; font-size:12px; font-weight:800; color:#475569; margin-bottom:3px; }
-.campo input, .campo textarea, #nvObs { width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:10px; font-size:16px; background:#fff; color:#0f172a; }
-.campo textarea { min-height:60px; resize:vertical; }
-#nvObs { min-height:70px; font-size:15px; }
-.dos { display:flex; gap:8px; } .dos .campo { flex:1; min-width:0; }
-.aviso { font-size:13px; padding:8px 10px; border-radius:10px; margin-bottom:8px; }
-.aviso.w { background:#fef3c7; color:#92400e; } .aviso.i { background:#e0f2fe; color:#075985; } .aviso.g { background:#dcfce7; color:#166534; }
-.resumen { font-size:14px; font-weight:800; margin-bottom:8px; }
-.tipo { display:block; width:100%; text-align:left; padding:12px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; margin-bottom:8px; font-weight:700; font-size:14px; color:#0f172a; }
-.tipo.on { border-color:#0077cc; background:#e0f2fe; }
-.fila-btn { display:flex; gap:8px; margin-top:10px; }
-.fila-btn button { flex:1; padding:13px; border:0; border-radius:10px; font-weight:800; font-size:14px; }
-.miniaturas { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
-.miniaturas img { width:64px; height:64px; object-fit:cover; border-radius:8px; }
-.ausente button.intento { width:100%; padding:12px; border:0; border-radius:10px; background:#f59e0b; color:#fff; font-weight:800; margin-bottom:8px; }
-.ausente button.intento:disabled { opacity:.55; }
-.ausente .cuenta { font-size:13px; margin-bottom:8px; }
-.btn-foto { width:100%; padding:11px; border:1px dashed #64748b; border-radius:10px; background:#f8fafc; font-weight:700; margin-top:8px; color:#0f172a; }
-#spin { position:fixed; inset:0; background:rgba(0,20,40,.75); color:#fff; display:none; align-items:center; justify-content:center; z-index:99;
-  font-weight:800; font-size:16px; text-align:center; padding:20px; }
+.g2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
+.cab-tk { display:grid; grid-template-columns:auto minmax(0,1fr); gap:12px; align-items:center; background:var(--nx-campo); border-radius:14px; padding:10px; }
+.cab-tk .nb { background:var(--nx-tinta); color:var(--nx-tinta-clara); border-radius:10px; padding:6px 10px; text-align:center; min-width:84px; }
+.cab-tk .nb b { display:block; font-family:var(--nx-display); font-weight:800; font-size:34px; line-height:1; white-space:nowrap; }
+.cab-tk .nb span { font-size:11px; font-weight:700; color:#B9C7DD; }
+.cab-tk .dt b { display:block; font-size:16px; font-weight:800; text-transform:uppercase; overflow-wrap:anywhere; }
+.cab-tk .dt span { font-size:13px; font-weight:600; color:var(--nx-suave); }
+#nvTipos { display:flex; flex-direction:column; gap:8px; }
+.tipo { display:flex; align-items:center; justify-content:space-between; width:100%; min-height:48px; text-align:left; padding:0 14px; border:1.5px solid var(--nx-linea);
+  border-radius:12px; background:var(--nx-campo); color:var(--nx-tinta); margin:0; font:700 16px var(--nx-texto); cursor:pointer; }
+.tipo.on { border:2px solid var(--nx-tinta); background:var(--nx-superficie); font-weight:800; }
+.perf { position:relative; height:0; margin:4px -20px; border-top:2px dashed var(--nx-linea); }
+.llamadas { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.llamadas div { min-height:64px; border-radius:12px; background:var(--nx-campo); display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.llamadas div.hecha { background:var(--nx-verde-fondo); color:var(--nx-verde-tinta); }
+.llamadas small { font-size:12px; font-weight:800; }
+.llamadas b { font-family:var(--nx-display); font-weight:800; font-size:26px; line-height:1; }
+.b-llamada { width:100%; min-height:52px; border:0; border-radius:12px; background:var(--nx-ambar-fondo); color:var(--nx-ambar-tinta); font:800 16px var(--nx-texto); cursor:pointer; }
+/* Colector de fotos */
+.colector { display:flex; flex-direction:column; gap:8px; }
+.col-fila { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.col-fila .b-varias { min-height:52px; padding:0 12px; border:0; border-radius:12px; background:var(--nx-azul-fondo); color:var(--nx-azul);
+  font:800 14px var(--nx-texto); display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+.col-cuenta { font-size:13px; font-weight:700; color:var(--nx-suave); }
+.miniaturas { display:grid; grid-template-columns:repeat(auto-fill,minmax(72px,1fr)); gap:8px; }
+.miniaturas div { position:relative; }
+.miniaturas img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; display:block; }
+.miniaturas button { position:absolute; top:4px; right:4px; width:28px; height:28px; border:0; border-radius:50%; background:rgba(11,36,71,.8); color:#fff;
+  font:800 16px/1 var(--nx-texto); cursor:pointer; }
+#spin { position:fixed; inset:0; z-index:300; background:rgba(11,36,71,.62); display:none; align-items:center; justify-content:center;
+  color:#fff; font-weight:800; font-size:16px; text-align:center; padding:20px; }
 #spin.on { display:flex; }
 </style>
 </head>
-<body>
-<div class="wrap">
-  <div class="top"><a href="index.html">←</a><h1 id="titulo">Incidencias de entrega</h1><span class="badge" id="badge" style="display:none"></span></div>
-  <button class="nueva" id="btnNueva" onclick="abrirNueva()">➕ Informar incidencia</button>
-  <div class="filtros">
-    <button id="fAb" class="on" onclick="filtro('ABIERTA')">Abiertas</button>
-    <button id="fTo" onclick="filtro('TODAS')">Todas</button>
-  </div>
-  <div id="msg"></div>
-  <div id="lista"><div class="vacio">Cargando…</div></div>
-</div>
+<body class="nx">
+<header class="nx-cab">
+  <a class="nx-cab-logo" href="index.html" aria-label="Ir al inicio"><img src="nexo-logo-oficial.png" alt="Nexo"><span class="nx-cab-seccion">Incidencias</span></a>
+  <div class="nx-cab-usuario"><span id="quien"></span></div>
+</header>
+<main class="nx-pag">
+  <!-- ===== Lista ===== -->
+  <section id="vLista" style="display:flex;flex-direction:column;gap:12px">
+    <div class="top-tit">
+      <h1 class="nx-titulo" id="titulo">Incidencias</h1>
+      <button class="btn-sec" id="btnPanel" style="display:none" onclick="verPanel(true)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 20V11M12 20V5M18 20v-6"/></svg>Panel</button>
+    </div>
+    <button class="btn-informar" onclick="abrirNueva()">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Informar incidencia</button>
+    <div class="nx-pestanas" role="tablist">
+      <button class="on" id="fAb" role="tab" onclick="filtro('ABIERTA')">Pendientes</button>
+      <button id="fTo" role="tab" onclick="filtro('TODAS')">Todas</button>
+    </div>
+    <div id="msg"></div>
+    <div id="lista"><div class="vacio">Cargando…</div></div>
+  </section>
 
-<!-- Informar incidencia (2026-10-02): foto del ticket -> confirmar datos -> incidencia -->
+  <!-- ===== Panel (ADM y Embolsado) ===== -->
+  <section id="panel">
+    <div class="top-tit">
+      <h1 class="nx-titulo">Panel de incidencias</h1>
+      <button class="btn-sec" onclick="verPanel(false)">Lista</button>
+    </div>
+    <div class="nx-pestanas" role="tablist">
+      <button class="on" id="pMes" role="tab" onclick="periodo('mes')">Mes</button>
+      <button id="pAnio" role="tab" onclick="periodo('anio')">Año</button>
+    </div>
+    <div class="nav-per">
+      <button onclick="moverPer(-1)" aria-label="Anterior"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <div class="per" id="perTxt">—</div>
+      <button id="btnSig" onclick="moverPer(1)" aria-label="Siguiente"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
+    <div id="panelCuerpo"><div class="vacio">Cargando…</div></div>
+  </section>
+
+  <div class="nx-version" data-nexo-version="Nexo · Incidencias">Nexo · Incidencias v3.10.1</div>
+</main>
+
+<!-- ===== Resolver: responsable y finalizar ===== -->
+<div class="modal" id="mRes"><div class="box">
+  <h2>Resolver incidencia</h2>
+  <div class="info-box"><b id="resTipo"></b><span id="resSub"></span></div>
+  <div>
+    <span class="etq">Responsable</span>
+    <div class="opciones" id="resOps">
+      <button class="op" data-r="USUARIO" onclick="elegirResp('USUARIO')">Usuario</button>
+      <button class="op" data-r="CLIENTE" onclick="elegirResp('CLIENTE')">Cliente</button>
+      <button class="op" data-r="TIENDA" onclick="elegirResp('TIENDA')">Tienda</button>
+      <button class="op" data-r="NO_IDENTIFICADO" onclick="elegirResp('NO_IDENTIFICADO')">No identificado</button>
+    </div>
+  </div>
+  <div id="resUsuWrap" style="display:none"><label for="resUsu">Qué usuario</label><select id="resUsu"></select></div>
+  <div><label for="resSol">Cómo se solucionó</label><textarea id="resSol"></textarea></div>
+  <div id="resPedWrap" style="display:none">
+    <span class="etq">Pedido vinculado</span>
+    <div class="opciones una" id="resPedOps">
+      <button class="op" data-a="" onclick="elegirAccion('')">Dejar el pedido como está</button>
+      <button class="op" data-a="RESTAURAR" onclick="elegirAccion('RESTAURAR')">Restaurar: vuelve a reparto</button>
+      <button class="op" data-a="ELIMINAR" onclick="elegirAccion('ELIMINAR')">Eliminar el pedido</button>
+    </div>
+  </div>
+  <p class="nota" id="resPedNota" style="display:none"></p>
+  <p class="nota">Queda grabado en la planilla para auditoría. Las fotos se borran a los 60 días de finalizar.</p>
+  <div class="row">
+    <button class="b-gris" id="btnResGuardar" onclick="guardarRes(false)">Solo guardar</button>
+    <button class="b-verde" id="btnResFin" onclick="guardarRes(true)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Finalizar</button>
+  </div>
+  <div class="row"><button class="b-gris" onclick="cerrar('mRes')">Cancelar</button></div>
+</div></div>
+
+<!-- ===== Añadir fotos a una incidencia pendiente ===== -->
+<div class="modal" id="mFotos"><div class="box">
+  <h2>Añadir fotos</h2>
+  <div class="info-box"><b id="afTipo"></b><span id="afSub"></span></div>
+  <div id="afColector"></div>
+  <div class="row">
+    <button class="b-gris" onclick="cerrar('mFotos')">Cancelar</button>
+    <button class="b-azul" id="btnAfEnviar" onclick="enviarFotosExtra()">Enviar fotos</button>
+  </div>
+</div></div>
+
+<!-- ===== Informar incidencia: foto del ticket → datos → incidencia ===== -->
 <div class="modal" id="mNueva"><div class="box">
   <h2>Informar incidencia</h2>
-  <div class="pasos"><span id="ps1">1 · Foto del ticket</span><span id="ps2">2 · Confirmar datos</span><span id="ps3">3 · Incidencia</span></div>
+  <div class="pasos"><span id="ps1">1 · Ticket</span><span id="ps2">2 · Datos</span><span id="ps3">3 · Incidencia</span></div>
 
   <!-- Paso 1 -->
-  <div id="nvP1">
-    <p class="ayuda">Hace falta la <b>foto del ticket</b> del pedido. Que se lea bien la parte de arriba (caja y nº de ticket) y los datos del cliente.</p>
-    <button class="btn-grande b-azul" id="btnCam" onclick="document.getElementById('nvCam').click()">📷 Sacar foto</button>
-    <button class="btn-grande b-gris" id="btnArch" onclick="document.getElementById('nvArch').click()">🖼️ Subir foto</button>
-    <button class="btn-grande b-gris" onclick="cerrarNueva()">Cancelar</button>
+  <div id="nvP1" style="display:flex;flex-direction:column;gap:12px">
+    <p class="nota" style="font-size:15px;color:var(--nx-tinta)">Hace falta la <b>foto del ticket</b>. Que se lea bien la parte de arriba (caja y nº de ticket) y los datos del cliente.</p>
+    <p class="nota">Desliza a la <b>derecha</b> para sacar la foto o a la <b>izquierda</b> para subirla de la galería.</p>
+    <div class="sel-centro"><div id="nvSelTicket"></div></div>
+    <div class="row"><button class="b-gris" onclick="cerrarNueva()">Cancelar</button></div>
   </div>
 
   <!-- Paso 2 -->
-  <div id="nvP2" style="display:none">
+  <div id="nvP2" style="display:none;flex-direction:column;gap:12px">
     <img class="foto-ticket" id="nvFoto" alt="Foto del ticket" onclick="this.classList.toggle('grande')" />
-    <div class="mini-ayuda">Toca la foto para verla más grande</div>
-    <div id="nvAvisos"></div>
-    <p class="ayuda">Comprueba que los datos coinciden con el ticket y corrige lo que haga falta.</p>
-    <div class="dos">
-      <div class="campo"><label for="nvCaja">Caja *</label><input id="nvCaja" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="000" /></div>
-      <div class="campo"><label for="nvTicket">Nº de ticket *</label><input id="nvTicket" inputmode="numeric" maxlength="12" autocomplete="off" /></div>
+    <div id="nvAvisos" style="display:flex;flex-direction:column;gap:8px"></div>
+    <p class="nota">Comprueba que los datos coinciden con el ticket y corrige lo que haga falta. Toca la foto para verla más grande.</p>
+    <div class="g2">
+      <div><label for="nvCaja">Caja *</label><input id="nvCaja" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="000" /></div>
+      <div><label for="nvTicket">Nº de ticket *</label><input id="nvTicket" inputmode="numeric" maxlength="12" autocomplete="off" /></div>
     </div>
-    <div class="campo"><label for="nvNombre">Cliente</label><input id="nvNombre" autocomplete="off" /></div>
-    <div class="campo"><label for="nvTel">Teléfono</label><input id="nvTel" inputmode="tel" autocomplete="off" /></div>
-    <div class="campo"><label for="nvDir">Dirección</label><textarea id="nvDir"></textarea></div>
-    <div class="fila-btn">
+    <div><label for="nvNombre">Cliente</label><input id="nvNombre" autocomplete="off" /></div>
+    <div><label for="nvTel">Teléfono</label><input id="nvTel" inputmode="tel" autocomplete="off" /></div>
+    <div><label for="nvDir">Dirección</label><textarea id="nvDir"></textarea></div>
+    <div class="row">
       <button class="b-gris" onclick="repetirFoto()">Repetir foto</button>
-      <button class="b-osc" id="btnConfirmar" onclick="confirmarDatos()">Confirmar datos</button>
+      <button class="b-azul" onclick="confirmarDatos()">Confirmar datos</button>
     </div>
-    <div class="fila-btn"><button class="b-gris" onclick="cerrarNueva()">Cancelar</button></div>
+    <div class="row"><button class="b-gris" onclick="cerrarNueva()">Cancelar</button></div>
   </div>
 
   <!-- Paso 3 -->
-  <div id="nvP3" style="display:none">
-    <div class="resumen" id="nvResumen"></div>
-    <div id="nvPedido"></div>
-    <div id="nvTipos"></div>
-    <div id="nvAusente" class="ausente" style="display:none"></div>
-    <div id="nvObsWrap" style="display:none"><textarea id="nvObs" placeholder="Observaciones"></textarea></div>
-    <div id="nvFotoWrap" style="display:none">
-      <button class="btn-foto" id="btnNvFoto" onclick="document.getElementById('nvFotoInc').click()">📷 Añadir foto</button>
-      <div class="miniaturas" id="nvMini"></div>
+  <div id="nvP3" style="display:none;flex-direction:column;gap:12px">
+    <div class="cab-tk"><div class="nb"><b id="nvNum"></b><span id="nvCajaTxt"></span></div><div class="dt"><b id="nvCli"></b><span id="nvDirTxt"></span></div></div>
+    <div id="nvPedido" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div><span class="etq">Motivo</span><div id="nvTipos"></div></div>
+    <div id="nvAusente" style="display:none;flex-direction:column;gap:8px">
+      <div class="perf" aria-hidden="true"></div>
+      <span class="etq">Llamadas al cliente</span>
+      <div class="llamadas" id="nvLlamadas"></div>
+      <button class="b-llamada" id="btnLlamada" onclick="nuevoIntentoNv()">Registrar llamada</button>
+      <div id="nvLlamOk" class="aviso g" style="display:none">3 llamadas hechas. Ya puedes registrar la incidencia, sin esperar.</div>
     </div>
-    <div class="fila-btn">
+    <div id="nvFotoWrap" style="display:none;flex-direction:column;gap:8px">
+      <div class="perf" aria-hidden="true"></div>
+      <span class="etq" id="nvFotosTit">Fotos de la incidencia</span>
+      <div id="nvColector"></div>
+      <p class="nota">Se guardan juntas en la carpeta de la incidencia y se borran a los 60 días de finalizarla.</p>
+    </div>
+    <div id="nvObsWrap" style="display:none"><label for="nvObs" id="nvObsLab">Observaciones</label><textarea id="nvObs"></textarea></div>
+    <div class="row">
       <button class="b-gris" onclick="pasoNueva(2)">Atrás</button>
-      <button class="b-rojo" id="btnRegistrar" onclick="registrarNueva(false)">Registrar</button>
+      <button class="b-rojo" onclick="registrarNueva(false)">Registrar incidencia</button>
     </div>
-    <div class="fila-btn"><button class="b-gris" onclick="cerrarNueva()">Cancelar</button></div>
+    <div class="row"><button class="b-gris" onclick="cerrarNueva()">Cancelar</button></div>
   </div>
-
-  <input type="file" id="nvCam" accept="image/*" capture="environment" style="display:none" />
-  <input type="file" id="nvArch" accept="image/*" style="display:none" />
-  <input type="file" id="nvFotoInc" accept="image/*" capture="environment" style="display:none" />
 </div></div>
+
 <div id="spin">Procesando…</div>
 
 <script>
-/* URL /exec del NUEVO Apps Script del módulo Embolsado (la misma que en asignar.html) */
+/* URL /exec del Apps Script del módulo Embolsado (la misma que en asignar.html) */
 var EMBOLSADO_URL = 'https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoDisEn4qrGWh0tEGfGHn4NXoEqP1ShODyIWQ1bzYyWfcuz_Pqh/exec';
+/* Incidencias de pedidos %DIA (ID RESERVA = "DIA-…"): restaurar/eliminar el pedido lo hace NEXO · DIA. */
+var DIA_URL = 'https://script.google.com/macros/s/AKfycbwrX90CKa7GQki-DUDZFpdGVlGIXZvmiHsRKCEW7ZwBbYkKfYPr3R1kx96Uz9GKL_0m/exec';
 var PROXY = 'https://sad-proxy.colatino-ventas-enlinea.workers.dev/';
+var JSZIP_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
 var SESION = {}; try { SESION = JSON.parse(sessionStorage.getItem('sad_user') || '{}'); } catch (e) {}
 var USUARIO = SESION.usuario || '';
-var filtroAct = 'ABIERTA', datos = [], esAdmin = false, soloPropias = false, abiertasPrev = null;
+document.getElementById('quien').textContent = SESION.nombre || USUARIO;
 
-function api(accion, extra) {
-  return fetch(PROXY + '?url=' + encodeURIComponent(EMBOLSADO_URL), {
+var filtroAct = 'ABIERTA', datos = [], esAdmin = false, soloPropias = false, puedeFinalizar = false, abiertasPrev = null;
+var USUARIOS = [], NOMBRES = {}, FOTOS_MAX = 10;
+
+function llamar(url, accion, extra) {
+  return fetch(PROXY + '?url=' + encodeURIComponent(url), {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(Object.assign({ accion: accion, usuario: USUARIO }, extra || {}))
   }).then(function (r) { return r.json(); }).catch(function () { return { ok: false, error: 'Sin conexión con el servidor.' }; });
 }
+function api(accion, extra) { return llamar(EMBOLSADO_URL, accion, extra); }
+function apiDia(accion, extra) { return llamar(DIA_URL, accion, extra); }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-function msg(t, tipo) { var m = document.getElementById('msg'); m.className = tipo || ''; m.textContent = t || ''; if (t) setTimeout(function () { msg(''); }, 6000); }
-function filtro(f) { filtroAct = f; document.getElementById('fAb').classList.toggle('on', f === 'ABIERTA'); document.getElementById('fTo').classList.toggle('on', f === 'TODAS'); pintar(); }
+function el(id) { return document.getElementById(id); }
+function msg(t, tipo) { var m = el('msg'); m.className = tipo || ''; m.textContent = t || ''; if (t) setTimeout(function () { if (m.textContent === t) msg(''); }, 7000); }
+function spin(on, texto) { var s = el('spin'); s.textContent = texto || 'Procesando…'; s.classList.toggle('on', !!on); }
+function cerrar(id) { el(id).classList.remove('on'); }
+function nombreDe(u) { u = String(u || '').toLowerCase(); return NOMBRES[u] || u; }
+function svg(d, w) { return '<svg width="' + (w || 18) + '" height="' + (w || 18) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>'; }
+var IC_CAM = svg('<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13.5" r="3.2"/>');
+var IC_IMG = svg('<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l4.5-4.5 3.5 3.5 3-3 5 5"/><circle cx="9" cy="9.5" r="1.4"/>');
+var IC_MAS = svg('<path d="M12 5v14M5 12h14"/>');
+var IC_PERS = svg('<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-3.5 3.8-5 7-5s6 1.5 7 5"/>');
+var IC_OK = svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>');
 
 function pitido() {
   try {
@@ -193,156 +363,384 @@ function pitido() {
   } catch (e) {}
 }
 
+/* ================= LISTA ================= */
+function filtro(f) {
+  filtroAct = f;
+  el('fAb').classList.toggle('on', f === 'ABIERTA'); el('fTo').classList.toggle('on', f === 'TODAS');
+  pintar();
+}
+function fechaCortaDMY(f) { var m = /^(\d{2})\/(\d{2})/.exec(String(f || '')); return m ? m[1] + '/' + m[2] : String(f || ''); }
+function hm(h) { var m = /(\d{1,2}:\d{2})/.exec(String(h || '')); return m ? m[1] : ''; }
+function estadoChip(e) {
+  var t = { ABIERTA: ['Pendiente', 'pend'], SOLUCIONADA: ['Solucionada', 'ok'], RESTAURADA: ['Restaurada', 'ok'], CERRADA: ['Cerrada', 'ok'], ELIMINADA: ['Eliminada', 'gris'] }[e] || [e || 'Pendiente', 'gris'];
+  return '<span class="chip-est ' + t[1] + '">' + esc(t[0]) + '</span>';
+}
 function pintar() {
-  var l = document.getElementById('lista');
-  var v = datos.filter(function (i) { return filtroAct === 'TODAS' || i['ESTADO'] === 'ABIERTA'; });
-  if (!v.length) { l.innerHTML = '<div class="vacio">' + (soloPropias ? 'No tienes incidencias' : 'No hay incidencias') + (filtroAct === 'ABIERTA' ? ' abiertas' : '') + '.</div>'; return; }
-  l.innerHTML = v.map(function (i) {
-    var h = '<div class="inc ' + esc(i['ESTADO']) + '"><div class="t"><span>' + esc(i['TIPO']) + '</span><span class="est">' + esc(i['ESTADO']) + '</span></div>';
-    h += '<div class="l"><b>Fecha/hora:</b> ' + esc(i['FECHA']) + ' ' + esc(i['HORA']) + ' · <b>Usuario:</b> ' + esc(i['USUARIO']) + '</div>';
-    h += i['CAJA'] === '%DIA'
-      ? '<div class="l"><b>Pedido %DIA</b> · <b>Albarán:</b> ' + esc(i['TICKET']) + '</div>'
-      : '<div class="l"><b>Caja:</b> ' + esc(i['CAJA']) + ' · <b>Ticket:</b> ' + esc(i['TICKET']) + '</div>';
-    h += '<div class="l"><b>Cliente:</b> ' + esc(i['NOMBRE']) + ' · <b>Tel:</b> ' + (i['TELEFONO'] ? '<a href="tel:' + esc(i['TELEFONO']) + '">' + esc(i['TELEFONO']) + '</a>' : '—') + '</div>';
-    h += '<div class="l"><b>Dirección:</b> ' + esc(i['DIRECCION']) + '</div>';
-    if (i['OBSERVACIONES']) h += '<div class="l"><b>Observaciones:</b> ' + esc(i['OBSERVACIONES']) + '</div>';
-    if (i['INTENTOS']) h += '<div class="l"><b>Tentativas:</b> ' + esc(i['INTENTOS']) + '</div>';
-    var links = [];
-    if (i['URL TICKET']) links.push('<a target="_blank" rel="noopener" href="' + esc(i['URL TICKET']) + '">Foto ticket</a>');
-    if (i['URL CARPETA FOTOS']) links.push('<a target="_blank" rel="noopener" href="' + esc(i['URL CARPETA FOTOS']) + '">Fotos incidencia</a>');
-    if (links.length) h += '<div class="l">' + links.join(' · ') + '</div>';
-    if (i['RESUELTO POR']) h += '<div class="l"><b>Resuelto por:</b> ' + esc(i['RESUELTO POR']) + ' · ' + esc(i['RESUELTO HORA']) + '</div>';
-    // 2026-10-02: incidencias informadas desde esta página (con foto del ticket).
-    if (i['ORIGEN'] === 'DIRECTA') h += '<span class="tag">Informada con foto del ticket' + (i['ID RESERVA'] ? '' : ' · sin pedido vinculado') + '</span>';
-    if (esAdmin && i['ESTADO'] === 'ABIERTA' && !i['ID RESERVA']) {
-      // Sin pedido vinculado no hay nada que restaurar ni eliminar: ADM solo la cierra.
-      h += '<div class="acc"><button class="c" onclick="accion(\'cerrarIncidencia\',\'' + esc(i['ID INCIDENCIA']) + '\',\'¿Cerrar esta incidencia? No está vinculada a ningún pedido.\')">CERRAR</button></div>';
-    } else if (esAdmin && i['ESTADO'] === 'ABIERTA') {
-      var id = esc(i['ID INCIDENCIA']);
-      h += '<div class="acc"><button class="r" onclick="accion(\'restaurarPedido\',\'' + id + '\',\'¿Restaurar el pedido? Volverá a estar disponible para reparto.\')">RESTAURAR</button><button class="e" onclick="accion(\'eliminarPedido\',\'' + id + '\',\'¿ELIMINAR el pedido? Quedará excluido.\')">ELIMINAR</button></div>';
-    }
-    return h + '</div>';
-  }).join('');
+  var l = el('lista');
+  var ab = datos.filter(function (i) { return (i['ESTADO'] || 'ABIERTA') === 'ABIERTA'; });
+  el('fAb').textContent = 'Pendientes · ' + ab.length;
+  el('fTo').textContent = 'Todas · ' + datos.length;
+  var v = filtroAct === 'TODAS' ? datos : ab;
+  if (!v.length) { l.innerHTML = '<div class="vacio">' + (soloPropias ? 'No tienes incidencias' : 'No hay incidencias') + (filtroAct === 'ABIERTA' ? ' pendientes' : '') + '.</div>'; return; }
+  l.innerHTML = v.map(cardHTML).join('');
 }
-
-/* Incidencias de pedidos %DIA (ID RESERVA = "DIA-…"): se resuelven en el backend NEXO · DIA. */
-var DIA_URL = 'https://script.google.com/macros/s/AKfycbwrX90CKa7GQki-DUDZFpdGVlGIXZvmiHsRKCEW7ZwBbYkKfYPr3R1kx96Uz9GKL_0m/exec';
-function apiDia(accion, extra) {
-  return fetch(PROXY + '?url=' + encodeURIComponent(DIA_URL), {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(Object.assign({ accion: accion, usuario: USUARIO }, extra || {}))
-  }).then(function (r) { return r.json(); }).catch(function () { return { ok: false, error: 'Sin conexión con el servidor.' }; });
-}
-async function accion(a, idInc, pregunta) {
-  if (!confirm(pregunta)) return;
-  var fila = datos.filter(function (i) { return i['ID INCIDENCIA'] === idInc; })[0] || {};
-  var esDia = /^DIA-/.test(fila['ID RESERVA'] || '');
-  var r = esDia
-    ? await apiDia(a === 'restaurarPedido' ? 'diaRestaurar' : 'diaEliminar', { idIncidencia: idInc })
-    : await api(a, { idIncidencia: idInc });
-  if (r.ok) { msg('Hecho.', 'ok'); cargar(); } else msg(r.error, 'err');
+function cardHTML(i) {
+  var id = esc(i['ID INCIDENCIA']), est = i['ESTADO'] || 'ABIERTA', pend = est === 'ABIERTA';
+  var h = '<article class="inc"><div class="cab"><h3>' + esc(i['TIPO']) + '</h3>' + estadoChip(est) + '</div>';
+  var donde = i['CAJA'] === '%DIA' ? '%DIA, albarán ' + esc(i['TICKET']) : 'Caja ' + esc(i['CAJA']) + ', ticket ' + esc(i['TICKET']);
+  h += '<div class="meta">' + esc(fechaCortaDMY(i['FECHA'])) + ', ' + esc(hm(i['HORA'])) + ' · ' + esc(nombreDe(i['USUARIO'])) + ' · ' + donde + '</div>';
+  if (i['NOMBRE'] || i['DIRECCION']) h += '<div class="cli">' + esc(i['NOMBRE'] || '—') + (i['DIRECCION'] ? '<span>' + esc(i['DIRECCION']) + '</span>' : '') + '</div>';
+  if (i['TELEFONO']) h += '<div class="linea"><b>Tel.</b> <a href="tel:' + esc(i['TELEFONO']) + '" style="color:var(--nx-azul);font-weight:800">' + esc(i['TELEFONO']) + '</a></div>';
+  if (i['INTENTOS']) h += '<div class="linea"><b>Llamadas:</b> ' + esc(i['INTENTOS'].split('|').map(function (x) { return hm(x); }).filter(Boolean).join(', ')) + '</div>';
+  if (i['OBSERVACIONES']) h += '<div class="linea"><b>Obs:</b> ' + esc(i['OBSERVACIONES']) + '</div>';
+  var links = [];
+  if (i['URL TICKET']) links.push('<a target="_blank" rel="noopener" href="' + esc(i['URL TICKET']) + '">' + IC_CAM + 'Ticket</a>');
+  if (i['FOTOS BORRADAS']) links.push('<span class="meta" style="align-self:center">Fotos borradas (60 días)</span>');
+  else if (i['URL CARPETA FOTOS']) links.push('<a target="_blank" rel="noopener" href="' + esc(i['URL CARPETA FOTOS']) + '">' + IC_IMG + 'Fotos</a>');
+  if (pend && !i['FINALIZADA']) links.push('<button type="button" onclick="abrirFotosExtra(\'' + id + '\')">' + IC_MAS + 'Añadir fotos</button>');
+  if (links.length) h += '<div class="links">' + links.join('') + '</div>';
+  if (/^DIA-/.test(i['ID RESERVA'] || '') || i['ID RESERVA']) { /* vinculada */ }
+  else if (i['ORIGEN'] === 'DIRECTA') h += '<div class="meta">Informada con foto del ticket · sin pedido vinculado</div>';
+  var resp = i['RESPONSABLE'] ? i['RESPONSABLE'] + (i['RESPONSABLE USUARIO'] ? ' (' + nombreDe(i['RESPONSABLE USUARIO']) + ')' : '') : '';
+  if (resp || pend) h += '<div class="resp">' + IC_PERS + '<span>Responsable: <b>' + esc(resp || 'sin asignar') + '</b></span></div>';
+  if (i['SOLUCION']) h += '<div class="linea"><b>Solución:</b> ' + esc(i['SOLUCION']) + '</div>';
+  if (pend && puedeFinalizar) h += '<button class="b-fin" onclick="abrirRes(\'' + id + '\')">' + (resp ? 'Finalizar' : 'Responsable y finalizar') + '</button>';
+  if (!pend && i['RESUELTO POR']) {
+    var rh = String(i['RESUELTO HORA'] || ''), m = /^(\d{2}\/\d{2})\/\d{4}\s+(\d{1,2}:\d{2})/.exec(rh);
+    h += '<div class="fin-por">' + (i['FINALIZADA'] ? 'Finalizó ' : 'Resolvió ') + esc(nombreDe(i['RESUELTO POR'])) + (m ? ', ' + m[1] + ' a las ' + m[2] : (rh ? ', ' + esc(rh) : '')) + '</div>';
+  }
+  return h + '</article>';
 }
 
 async function cargar() {
   var r = await api('listarIncidencias');
-  if (!r.ok) { document.getElementById('lista').innerHTML = '<div class="vacio">' + esc(r.error) + '</div>'; return; }
-  esAdmin = r.esAdmin; datos = r.incidencias;
-  // 2026-10-02: los repartidores ven solo SUS incidencias (lo filtra el backend).
-  soloPropias = !!r.soloPropias;
-  document.getElementById('titulo').textContent = soloPropias ? 'Mis incidencias' : 'Incidencias de entrega';
-  var ab = datos.filter(function (i) { return i['ESTADO'] === 'ABIERTA'; }).length;
-  var b = document.getElementById('badge'); b.style.display = ab ? 'inline-block' : 'none'; b.textContent = ab + ' abiertas';
+  if (!r.ok) { el('lista').innerHTML = '<div class="vacio">' + esc(r.error) + '</div>'; return; }
+  esAdmin = !!r.esAdmin; datos = r.incidencias || []; soloPropias = !!r.soloPropias; puedeFinalizar = !!r.puedeFinalizar;
+  FOTOS_MAX = r.fotosMax || 10;
+  USUARIOS = r.usuarios || [];
+  NOMBRES = {}; USUARIOS.forEach(function (u) { NOMBRES[u.usuario] = u.nombre; });
+  el('titulo').textContent = soloPropias ? 'Mis incidencias' : 'Incidencias';
+  el('btnPanel').style.display = r.verPanel ? 'inline-flex' : 'none';
+  var ab = datos.filter(function (i) { return (i['ESTADO'] || 'ABIERTA') === 'ABIERTA'; }).length;
   if (abiertasPrev !== null && ab > abiertasPrev) pitido();
   abiertasPrev = ab;
   document.title = (ab ? '(' + ab + ') ' : '') + 'Nexo · Incidencias';
-  pintar();
+  if (!document.querySelector('.modal.on')) pintar();
 }
 
-/* =====================================================================
-   INFORMAR INCIDENCIA (2026-10-02)
-   Paso 1: foto del ticket (cámara o archivo) -> leerTicketIncidencia (OCR)
-   Paso 2: el usuario confirma/corrige -> buscarPedidoIncidencia
-   Paso 3: tipo + tentativas + observaciones + fotos -> registrarIncidenciaDirecta
-   Mismas reglas que la incidencia desde la tarjeta del pedido (asignar.html).
-   ===================================================================== */
-var TIPOS = {
-  CLIENTE_AUSENTE:      { etiqueta: 'Cliente ausente',            fotosMax: 2, obs: false },
-  DIRECCION_INCORRECTA: { etiqueta: 'Dirección incorrecta',       fotosMax: 0, obs: true },
-  PRODUCTO_FALTANTE:    { etiqueta: 'Producto faltante o dañado', fotosMax: 3, obs: true },
-  COMPRA_RECHAZADA:     { etiqueta: 'Compra rechazada',           fotosMax: 0, obs: true },
-  FRIO_OLVIDADO:        { etiqueta: 'Frío olvidado',              fotosMax: 0, obs: true }
-};
-var nv = null, nvTimer = null, nvOcupado = false;
-
-function spin(on, texto) { var s = document.getElementById('spin'); s.textContent = texto || 'Procesando…'; s.classList.toggle('on', !!on); }
-function el(id) { return document.getElementById(id); }
-
-function abrirNueva() {
-  clearInterval(nvTimer);
-  nv = { paso: 1, foto: '', fileId: '', datos: null, pedido: null, tipo: null, fotos: [], intentos: [] };
-  ['nvCaja', 'nvTicket', 'nvNombre', 'nvTel', 'nvDir', 'nvObs'].forEach(function (x) { el(x).value = ''; });
-  el('nvAvisos').innerHTML = ''; el('nvFoto').removeAttribute('src'); el('nvFoto').classList.remove('grande');
-  pasoNueva(1);
-  el('mNueva').classList.add('on');
+/* ================= RESOLVER (responsable + finalizar) ================= */
+var RES = null;
+function incPorId(id) { return datos.filter(function (i) { return i['ID INCIDENCIA'] === id; })[0]; }
+function abrirRes(id) {
+  var i = incPorId(id); if (!i) return;
+  var idRes = i['ID RESERVA'] || '';
+  RES = { id: id, inc: i, resp: '', accion: '', esDia: /^DIA-/.test(idRes), vinculada: !!idRes, diaHecho: false };
+  el('resTipo').textContent = i['TIPO'];
+  el('resSub').textContent = (i['CAJA'] === '%DIA' ? '%DIA, albarán ' + i['TICKET'] : 'Caja ' + i['CAJA'] + ', ticket ' + i['TICKET']) + (i['NOMBRE'] ? ' · ' + i['NOMBRE'] : '');
+  el('resUsu').innerHTML = '<option value="">— Elige el usuario —</option>' + USUARIOS.map(function (u) {
+    return '<option value="' + esc(u.usuario) + '">' + esc(u.nombre) + '</option>';
+  }).join('');
+  el('resUsu').value = (i['RESPONSABLE USUARIO'] || i['USUARIO'] || '').toLowerCase();
+  el('resSol').value = i['SOLUCION'] || '';
+  var inv = { 'Usuario': 'USUARIO', 'Cliente': 'CLIENTE', 'Tienda': 'TIENDA', 'No identificado': 'NO_IDENTIFICADO' };
+  elegirResp(inv[i['RESPONSABLE']] || '');
+  // Pedido vinculado: restaurar / eliminar solo ADM
+  el('resPedWrap').style.display = RES.vinculada && esAdmin ? 'block' : 'none';
+  var nota = el('resPedNota');
+  if (RES.vinculada && !esAdmin) { nota.style.display = 'block'; nota.textContent = 'Esta incidencia tiene un pedido vinculado: sigue en INCIDENCIA. Si hay que restaurarlo o eliminarlo, avisa a ADM.'; }
+  else nota.style.display = 'none';
+  elegirAccion('');
+  el('mRes').classList.add('on');
 }
-function cerrarNueva(sinPreguntar) {
-  if (!nv) return;
-  if (!sinPreguntar && nv.paso > 1 && !confirm('¿Cancelar? Se perderá lo que has rellenado.')) return;
-  clearInterval(nvTimer); nv = null;
-  el('mNueva').classList.remove('on');
-}
-function pasoNueva(n) {
-  if (!nv) return;
-  nv.paso = n;
-  [1, 2, 3].forEach(function (k) {
-    el('nvP' + k).style.display = k === n ? 'block' : 'none';
-    el('ps' + k).className = k === n ? 'on' : (k < n ? 'ok' : '');
+function elegirResp(r) {
+  if (!RES) return;
+  RES.resp = r;
+  document.querySelectorAll('#resOps .op').forEach(function (b) {
+    var on = b.getAttribute('data-r') === r;
+    b.classList.toggle('on', on);
+    b.innerHTML = (on ? IC_OK : '') + b.textContent;
   });
-  el('mNueva').scrollTop = 0;
+  el('resUsuWrap').style.display = r === 'USUARIO' ? 'block' : 'none';
 }
-function repetirFoto() { if (nv) { nv.foto = ''; nv.fileId = ''; pasoNueva(1); } }
+function elegirAccion(a) {
+  if (!RES) return;
+  RES.accion = a;
+  document.querySelectorAll('#resPedOps .op').forEach(function (b) {
+    var on = b.getAttribute('data-a') === a;
+    b.classList.toggle('on', on);
+    b.innerHTML = (on ? IC_OK : '') + b.textContent;
+  });
+}
+async function guardarRes(finalizar) {
+  if (!RES) return;
+  var usu = RES.resp === 'USUARIO' ? el('resUsu').value : '';
+  if (finalizar && !RES.resp) { alert('Elige el responsable.'); return; }
+  if (finalizar && RES.resp === 'USUARIO' && !usu) { alert('Elige qué usuario.'); return; }
+  if (RES.accion && !confirm(RES.accion === 'RESTAURAR' ? '¿Restaurar el pedido? Volverá a estar disponible para reparto.' : '¿ELIMINAR el pedido? Quedará excluido.')) return;
+  var accion = RES.accion;
+  spin(true, finalizar ? 'Finalizando…' : 'Guardando…');
+  // %DIA: el pedido lo restaura/elimina NEXO · DIA; después se apunta el responsable aquí.
+  if (accion && RES.esDia && !RES.diaHecho) {
+    var rd = await apiDia(accion === 'RESTAURAR' ? 'diaRestaurar' : 'diaEliminar', { idIncidencia: RES.id });
+    if (!rd.ok) { spin(false); alert(rd.error || 'No se pudo cambiar el pedido %DIA.'); return; }
+    RES.diaHecho = true;
+  }
+  var r = await api('finalizarIncidencia', {
+    idIncidencia: RES.id, responsable: RES.resp, responsableUsuario: usu, solucion: el('resSol').value.trim(),
+    accionPedido: RES.esDia ? '' : accion, finalizar: !!finalizar
+  });
+  spin(false);
+  if (!r.ok) {
+    alert((r.error || 'No se pudo guardar.') + (RES.diaHecho ? '\n\nEl pedido %DIA ya se ha cambiado: vuelve a pulsar ' + (finalizar ? 'Finalizar.' : 'Solo guardar.') : ''));
+    return;
+  }
+  cerrar('mRes'); RES = null;
+  msg(finalizar ? 'Incidencia finalizada.' : 'Guardado. La incidencia sigue pendiente.', 'ok');
+  cargar();
+}
 
-/** Reduce la foto antes de subirla (lado mayor = max px) y la devuelve como dataURL JPEG. */
+/* ================= COLECTOR DE FOTOS (cámara, galería, varias, carpeta, .zip) ================= */
+function cargarJSZip() {
+  if (window.JSZip) return Promise.resolve(window.JSZip);
+  return new Promise(function (ok, mal) {
+    var s = document.createElement('script'); s.src = JSZIP_URL;
+    s.onload = function () { ok(window.JSZip); }; s.onerror = function () { mal(new Error('No se pudo cargar el lector de .zip')); };
+    document.head.appendChild(s);
+  });
+}
 function reducir(file, max, calidad) {
   return new Promise(function (res, rej) {
     var img = new Image(), url = URL.createObjectURL(file);
     img.onload = function () {
       var s = Math.min(1, max / Math.max(img.width, img.height));
       var c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', calidad || 0.75));
     };
     img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('No se pudo leer la foto')); };
     img.src = url;
   });
 }
+var ES_IMAGEN = /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i;
+function crearColector(cont, alCambiar) {
+  var fotos = [];
+  var escritorio = !('ontouchstart' in window) && 'webkitdirectory' in document.createElement('input');
+  cont.innerHTML = '<div class="colector"><div class="col-fila"><div class="c-sel"></div>' +
+    '<button type="button" class="b-varias c-varias">' + IC_IMG + 'Varias o .zip</button>' +
+    (escritorio ? '<button type="button" class="b-varias c-carpeta">' + svg('<path d="M3 7h6l2 2h10v10H3z"/>') + 'Carpeta</button>' : '') +
+    '</div><span class="col-cuenta"></span><div class="miniaturas"></div>' +
+    '<input type="file" class="in-varias" accept="image/*,.zip,application/zip,application/x-zip-compressed" multiple hidden>' +
+    (escritorio ? '<input type="file" class="in-carpeta" webkitdirectory multiple hidden>' : '') + '</div>';
+  var q = function (s) { return cont.querySelector(s); };
+  NexoFoto.crear(q('.c-sel'), { clase: 'mini', alElegir: function (f) { anadir([f]); } });
+  q('.c-varias').onclick = function () { q('.in-varias').click(); };
+  q('.in-varias').onchange = function (e) { var l = [].slice.call(e.target.files || []); e.target.value = ''; anadir(l); };
+  if (escritorio) {
+    q('.c-carpeta').onclick = function () { q('.in-carpeta').click(); };
+    q('.in-carpeta').onchange = function (e) { var l = [].slice.call(e.target.files || []); e.target.value = ''; anadir(l); };
+  }
+  async function anadir(archivos) {
+    var lista = [], omitidas = 0;
+    spin(true, 'Preparando fotos…');
+    try {
+      for (var i = 0; i < archivos.length; i++) {
+        var f = archivos[i];
+        if (/\.zip$/i.test(f.name) || /zip/.test(f.type)) {
+          try {
+            var JSZip = await cargarJSZip();
+            var zip = await JSZip.loadAsync(f);
+            var nombres = Object.keys(zip.files).filter(function (n) { return !zip.files[n].dir && ES_IMAGEN.test(n) && !/(^|\/)(__MACOSX|\.)/.test(n); }).sort();
+            for (var k = 0; k < nombres.length; k++) {
+              var blob = await zip.files[nombres[k]].async('blob');
+              lista.push(new File([blob], nombres[k].split('/').pop(), { type: /png$/i.test(nombres[k]) ? 'image/png' : 'image/jpeg' }));
+            }
+          } catch (ez) { alert('No se pudo abrir ' + f.name + ': ' + (ez.message || ez)); }
+        } else if (/^image\//.test(f.type) || ES_IMAGEN.test(f.name)) lista.push(f);
+        else omitidas++;
+      }
+      for (var j = 0; j < lista.length; j++) {
+        if (fotos.length >= FOTOS_MAX) { omitidas += lista.length - j; break; }
+        try { fotos.push(await reducir(lista[j], 1400, 0.72)); } catch (e) { omitidas++; }
+      }
+    } catch (e) { alert(e.message || 'No se pudieron leer las fotos.'); }
+    spin(false);
+    if (omitidas) alert(omitidas + ' archivo(s) no se han añadido' + (fotos.length >= FOTOS_MAX ? ' (máximo ' + FOTOS_MAX + ' fotos por incidencia)' : ' (no son fotos que se puedan leer)') + '.');
+    pintarC();
+  }
+  function pintarC() {
+    q('.col-cuenta').textContent = fotos.length ? fotos.length + ' de ' + FOTOS_MAX + ' fotos' : 'Hasta ' + FOTOS_MAX + ' fotos';
+    q('.miniaturas').innerHTML = fotos.map(function (x, i) {
+      return '<div><img src="' + x + '" alt="Foto ' + (i + 1) + '"><button type="button" aria-label="Quitar foto" data-i="' + i + '">×</button></div>';
+    }).join('');
+    [].forEach.call(q('.miniaturas').querySelectorAll('button'), function (b) {
+      b.onclick = function () { fotos.splice(Number(b.getAttribute('data-i')), 1); pintarC(); };
+    });
+    if (alCambiar) alCambiar(fotos.length);
+  }
+  pintarC();
+  return { fotos: function () { return fotos.slice(); }, limpiar: function () { fotos = []; pintarC(); } };
+}
+
+/* ---- Añadir fotos a una incidencia pendiente ---- */
+var AF = null, afCol = null;
+function abrirFotosExtra(id) {
+  var i = incPorId(id); if (!i) return;
+  AF = id;
+  el('afTipo').textContent = i['TIPO'];
+  el('afSub').textContent = (i['CAJA'] === '%DIA' ? '%DIA, albarán ' + i['TICKET'] : 'Caja ' + i['CAJA'] + ', ticket ' + i['TICKET']) + ' · máximo ' + FOTOS_MAX + ' fotos en total';
+  if (!afCol) afCol = crearColector(el('afColector'), function (n) { el('btnAfEnviar').disabled = !n; });
+  afCol.limpiar();
+  el('mFotos').classList.add('on');
+}
+async function enviarFotosExtra() {
+  var f = afCol ? afCol.fotos() : [];
+  if (!AF || !f.length) return;
+  spin(true, 'Subiendo ' + f.length + ' foto(s)…');
+  var r = await api('anadirFotosIncidencia', { idIncidencia: AF, fotos: f });
+  spin(false);
+  if (!r.ok) { alert(r.error); return; }
+  cerrar('mFotos'); msg(r.anadidas + ' foto(s) añadidas. La incidencia tiene ' + r.total + '.', 'ok'); cargar();
+}
+
+/* ================= PANEL ================= */
+var PER = { tipo: 'mes', anio: new Date().getFullYear(), mes: new Date().getMonth() + 1 };
+var MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+function verPanel(on) {
+  el('vLista').style.display = on ? 'none' : 'flex';
+  el('panel').style.display = on ? 'flex' : 'none';
+  window.scrollTo(0, 0);
+  if (on) cargarPanel();
+}
+function periodo(t) { PER.tipo = t; el('pMes').classList.toggle('on', t === 'mes'); el('pAnio').classList.toggle('on', t === 'anio'); cargarPanel(); }
+function moverPer(d) {
+  if (PER.tipo === 'anio') PER.anio += d;
+  else { PER.mes += d; if (PER.mes < 1) { PER.mes = 12; PER.anio--; } if (PER.mes > 12) { PER.mes = 1; PER.anio++; } }
+  cargarPanel();
+}
+var _panelPide = 0;
+async function cargarPanel() {
+  var hoy = new Date();
+  el('perTxt').textContent = PER.tipo === 'anio' ? String(PER.anio) : MESES[PER.mes - 1] + ' ' + PER.anio;
+  el('btnSig').disabled = PER.tipo === 'anio' ? PER.anio >= hoy.getFullYear() : (PER.anio > hoy.getFullYear() || (PER.anio === hoy.getFullYear() && PER.mes >= hoy.getMonth() + 1));
+  el('panelCuerpo').innerHTML = '<div class="vacio">Cargando…</div>';
+  var n = ++_panelPide;
+  var r = await api('panelIncidencias', { periodo: PER.tipo, anio: PER.anio, mes: PER.mes });
+  if (n !== _panelPide) return;
+  if (!r.ok) { el('panelCuerpo').innerHTML = '<div class="vacio">' + esc(r.error) + '</div>'; return; }
+  var t = r.totales || {};
+  var h = '<div class="tiles">' +
+    '<div class="tile"><i style="background:var(--nx-lampara)"></i><b>' + (t.pendientes || 0) + '</b><span>Pendientes</span></div>' +
+    '<div class="tile"><i style="background:#22C55E"></i><b>' + (t.solucionadas || 0) + '</b><span>Solucionadas</span></div>' +
+    '<div class="tile oscuro"><i style="background:#8A9BB4"></i><b>' + (t.total || 0) + '</b><span>Total del ' + (PER.tipo === 'anio' ? 'año' : 'mes') + '</span></div></div>';
+  h += rankHTML('Repartidores con más incidencias', r.repartidores, '');
+  h += rankHTML('Motivos más frecuentes', r.motivos, 'azul');
+  h += rankHTML('Responsables', r.responsables, '');
+  if ((r.usuariosResponsables || []).length) h += rankHTML('Usuarios responsables', r.usuariosResponsables, 'azul');
+  el('panelCuerpo').innerHTML = '<div style="display:flex;flex-direction:column;gap:12px">' + h + '</div>';
+}
+function rankHTML(titulo, lista, cls) {
+  lista = lista || [];
+  var max = lista.reduce(function (m, x) { return Math.max(m, x.n); }, 0) || 1;
+  var filas = lista.length ? lista.map(function (x, i) {
+    return '<div class="rk" title="' + esc(x.nombre) + ': ' + x.n + '"><span class="pos">' + (i + 1) + '</span><span class="nom">' + esc(x.nombre) + '</span>' +
+      '<span class="num">' + x.n + '</span><div class="pista"><div class="barra" style="width:' + Math.round(x.n / max * 100) + '%"></div></div></div>';
+  }).join('') : '<div class="nada">Sin datos en este periodo.</div>';
+  return '<section class="rank ' + cls + '"><h3>' + esc(titulo) + '</h3>' + filas + '</section>';
+}
+
+/* ================= INFORMAR INCIDENCIA =================
+   Paso 1: foto del ticket → leerTicketIncidencia (sube la foto y la lee).
+           Si tarda más de 15 s se pasa al paso 2 para escribir a mano; la lectura
+           sigue y, al llegar, rellena los campos que sigan vacíos.
+   Paso 2: confirmar caja y ticket → buscarPedidoIncidencia.
+   Paso 3: motivo, llamadas (cliente ausente: 3, sin espera), fotos (hasta 10), observaciones
+           → registrarIncidenciaDirecta. */
+var TIPOS = {
+  CLIENTE_AUSENTE:      { etiqueta: 'Cliente ausente',            obs: false },
+  DIRECCION_INCORRECTA: { etiqueta: 'Dirección incorrecta',       obs: true },
+  PRODUCTO_FALTANTE:    { etiqueta: 'Producto faltante o dañado', obs: true },
+  COMPRA_RECHAZADA:     { etiqueta: 'Compra rechazada',           obs: true },
+  FRIO_OLVIDADO:        { etiqueta: 'Frío olvidado',              obs: true }
+};
+var nv = null, nvOcupado = false, nvCol = null;
+
+function abrirNueva() {
+  nv = { paso: 1, foto: '', fileId: '', lectura: null, datos: null, pedido: null, tipo: null, intentos: [] };
+  ['nvCaja', 'nvTicket', 'nvNombre', 'nvTel', 'nvDir', 'nvObs'].forEach(function (x) { el(x).value = ''; });
+  el('nvAvisos').innerHTML = ''; el('nvFoto').removeAttribute('src'); el('nvFoto').classList.remove('grande');
+  if (!nvCol) nvCol = crearColector(el('nvColector'), function (n) { el('nvFotosTit').textContent = 'Fotos de la incidencia' + (n ? ' · ' + n : ''); });
+  nvCol.limpiar();
+  pasoNueva(1);
+  el('mNueva').classList.add('on');
+}
+function cerrarNueva(sinPreguntar) {
+  if (!nv) return;
+  if (!sinPreguntar && nv.paso > 1 && !confirm('¿Cancelar? Se perderá lo que has rellenado.')) return;
+  nv = null; cerrar('mNueva');
+}
+function pasoNueva(n) {
+  if (!nv) return;
+  nv.paso = n;
+  [1, 2, 3].forEach(function (k) {
+    el('nvP' + k).style.display = k === n ? 'flex' : 'none';
+    var p = el('ps' + k);
+    p.className = k === n ? 'on' : (k < n ? 'ok' : '');
+    var nom = ['', 'Ticket', 'Datos', 'Incidencia'][k];
+    p.innerHTML = k < n ? IC_OK + nom : k + ' · ' + nom;
+  });
+  el('mNueva').querySelector('.box').scrollTop = 0;
+}
+function repetirFoto() { if (nv) { nv.foto = ''; nv.fileId = ''; nv.lectura = null; pasoNueva(1); } }
 
 /* ---- Paso 1: foto del ticket ---- */
-async function fotoTicketElegida(ev) {
-  var f = ev.target.files[0]; ev.target.value = '';
+NexoFoto.crear(el('nvSelTicket'), { alElegir: fotoTicketElegida });
+function rellenar(d, soloVacios) {
+  [['nvCaja', d.caja], ['nvTicket', d.ticket], ['nvNombre', d.nombre], ['nvTel', d.telefono], ['nvDir', d.direccion]].forEach(function (x) {
+    if (!x[1]) return;
+    if (!soloVacios || !el(x[0]).value.trim()) el(x[0]).value = x[1];
+  });
+}
+function pintarAvisos(r, d) {
+  var av = (r && r.avisos || []).slice();
+  if (!d.caja || !d.ticket) av.push('No se ha podido leer ' + (!d.caja && !d.ticket ? 'la caja ni el nº de ticket' : (!d.caja ? 'la caja' : 'el nº de ticket')) + '. Escríbelo a mano mirando el ticket.');
+  el('nvAvisos').innerHTML = av.map(function (a) { return '<div class="aviso w">' + esc(a) + '</div>'; }).join('');
+}
+async function fotoTicketElegida(f) {
   if (!f || !nv || nvOcupado) return;
   nvOcupado = true;
+  var mio = nv;
   try {
     spin(true, 'Leyendo el ticket…');
-    nv.foto = await reducir(f, 1800, 0.85);
-    var r = await api('leerTicketIncidencia', { imagenBase64: nv.foto });
-    if (!nv) return;
+    nv.foto = await reducir(f, 1600, 0.8);
+    el('nvFoto').src = nv.foto;
+    var lento = false;
+    mio.lectura = api('leerTicketIncidencia', { imagenBase64: nv.foto });
+    var r = await Promise.race([mio.lectura, new Promise(function (ok) { setTimeout(function () { ok(null); }, 15000); })]);
+    if (nv !== mio) return;
+    if (!r) {
+      // Más de 15 s: se sigue a mano; la lectura continúa en segundo plano.
+      lento = true;
+      el('nvAvisos').innerHTML = '<div class="aviso w">La lectura tarda más de 15 s. La foto está guardada: escribe caja y ticket. Seguimos leyendo y los datos se rellenan solos.</div>';
+      pasoNueva(2);
+      mio.lectura.then(function (r2) {
+        if (nv !== mio) return;
+        if (!r2 || !r2.ok) { el('nvAvisos').innerHTML = '<div class="aviso w">' + esc((r2 && r2.error) || 'No se pudo leer el ticket.') + ' Vuelve a sacar la foto si no puedes continuar.</div>'; return; }
+        mio.fileId = r2.fileId;
+        rellenar(r2.datos || {}, true);
+        el('nvAvisos').innerHTML = '<div class="aviso g">Ticket leído: se han rellenado los campos que estaban vacíos. Revísalos.</div>';
+      });
+      return;
+    }
     if (!r.ok) { alert(r.error || 'No se pudo leer la foto.'); return; }
     nv.fileId = r.fileId;
     var d = r.datos || {};
-    el('nvFoto').src = nv.foto;
-    el('nvCaja').value = d.caja || ''; el('nvTicket').value = d.ticket || '';
-    el('nvNombre').value = d.nombre || ''; el('nvTel').value = d.telefono || ''; el('nvDir').value = d.direccion || '';
-    var av = (r.avisos || []).slice();
-    if (!d.caja || !d.ticket) av.push('No se ha podido leer ' + (!d.caja && !d.ticket ? 'la caja ni el nº de ticket' : (!d.caja ? 'la caja' : 'el nº de ticket')) + '. Escríbelo a mano mirando el ticket.');
-    el('nvAvisos').innerHTML = av.map(function (a) { return '<div class="aviso w">⚠️ ' + esc(a) + '</div>'; }).join('');
+    rellenar(d, false);
+    pintarAvisos(r, d);
     pasoNueva(2);
   } catch (e) {
     alert('No se pudo usar esa foto. Prueba otra vez.');
   } finally { nvOcupado = false; spin(false); }
 }
-el('nvCam').addEventListener('change', fotoTicketElegida);
-el('nvArch').addEventListener('change', fotoTicketElegida);
 
 /* ---- Paso 2: confirmar datos ---- */
 function fechaCorta(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '')); return m ? m[3] + '/' + m[2] : String(iso || ''); }
@@ -359,79 +757,67 @@ async function confirmarDatos() {
   nv.datos = { caja: r.caja, ticket: r.ticket, nombre: el('nvNombre').value.trim(), telefono: el('nvTel').value.trim(), direccion: el('nvDir').value.trim() };
   nv.pedido = r.pedido || { encontrado: false };
   el('nvCaja').value = r.caja;
-  el('nvResumen').textContent = 'Caja ' + r.caja + ' · Ticket ' + r.ticket + (nv.datos.nombre ? ' · ' + nv.datos.nombre.toUpperCase() : '');
+  el('nvNum').textContent = r.ticket; el('nvCajaTxt').textContent = 'caja ' + r.caja;
+  el('nvCli').textContent = nv.datos.nombre || 'Cliente sin nombre'; el('nvDirTxt').textContent = nv.datos.direccion || '';
   var p = nv.pedido, h = '';
-  if (r.duplicada) h += '<div class="aviso w">⚠️ Ya hay una incidencia abierta de este ticket (' + esc(r.duplicada.tipo) + ', ' + esc(r.duplicada.usuario) + ', ' + esc(r.duplicada.fecha) + ' ' + esc(r.duplicada.hora) + ').</div>';
-  if (p.encontrado && p.abierto) {
-    h += '<div class="aviso g">📦 Pedido encontrado: entrega ' + esc(fechaCorta(p.fecha)) + ' · ' + esc(p.franja) + (p.asignado ? ' · asignado a ' + esc(p.asignado) : ' · sin asignar') +
-         '. Al registrar quedará en <b>INCIDENCIA</b>.</div>';
-  } else if (p.encontrado) {
-    h += '<div class="aviso i">ℹ️ Este pedido ya figura como <b>' + esc(p.entregaEstado) + '</b>. La incidencia se registrará sin modificar el pedido.</div>';
-  } else {
-    h += '<div class="aviso i">ℹ️ No hay ningún pedido en Reservas con esa caja y ticket. La incidencia se registrará igualmente con los datos del ticket.</div>';
-  }
+  if (r.duplicada) h += '<div class="aviso w">Ya hay una incidencia pendiente de este ticket (' + esc(r.duplicada.tipo) + ', ' + esc(r.duplicada.usuario) + ', ' + esc(r.duplicada.fecha) + ' ' + esc(r.duplicada.hora) + ').</div>';
+  if (p.encontrado && p.abierto) h += '<div class="aviso g">Pedido encontrado: entrega ' + esc(fechaCorta(p.fecha)) + ' · ' + esc(p.franja) + (p.asignado ? ' · asignado a ' + esc(p.asignado) : ' · sin asignar') + '. Al registrar quedará en INCIDENCIA.</div>';
+  else if (p.encontrado) h += '<div class="aviso i">Este pedido ya figura como ' + esc(p.entregaEstado) + '. La incidencia se registrará sin modificar el pedido.</div>';
+  else h += '<div class="aviso i">No hay ningún pedido en Reservas con esa caja y ticket. La incidencia se registrará igualmente con los datos del ticket.</div>';
   el('nvPedido').innerHTML = h;
-  // tipos (se conserva lo elegido si se vuelve atrás y se confirma de nuevo)
   el('nvTipos').innerHTML = Object.keys(TIPOS).map(function (k) {
-    return '<button class="tipo' + (nv.tipo === k ? ' on' : '') + '" id="nt_' + k + '" onclick="elegirTipoNv(\'' + k + '\')">' + TIPOS[k].etiqueta + '</button>';
+    return '<button class="tipo' + (nv.tipo === k ? ' on' : '') + '" id="nt_' + k + '" onclick="elegirTipoNv(\'' + k + '\')"><span>' + TIPOS[k].etiqueta + '</span>' + (nv.tipo === k ? IC_OK : '') + '</button>';
   }).join('');
   if (!nv.tipo) ['nvAusente', 'nvObsWrap', 'nvFotoWrap'].forEach(function (x) { el(x).style.display = 'none'; });
   pasoNueva(3);
 }
 
-/* ---- Paso 3: tipo, tentativas, observaciones, fotos ---- */
+/* ---- Paso 3: motivo, llamadas, fotos, observaciones ---- */
 function elegirTipoNv(k) {
   if (!nv) return;
-  if (nv.tipo === 'CLIENTE_AUSENTE' && k !== 'CLIENTE_AUSENTE' && nv.intentos.length && !confirm('Se perderán las tentativas registradas. ¿Cambiar de tipo?')) return;
-  if (nv.tipo !== k) { nv.fotos = []; nv.intentos = []; }
-  nv.tipo = k; clearInterval(nvTimer);
-  Object.keys(TIPOS).forEach(function (x) { el('nt_' + x).classList.toggle('on', x === k); });
+  if (nv.tipo === 'CLIENTE_AUSENTE' && k !== 'CLIENTE_AUSENTE' && nv.intentos.length && !confirm('Se perderán las llamadas registradas. ¿Cambiar de motivo?')) return;
+  if (nv.tipo !== k) nv.intentos = [];
+  nv.tipo = k;
+  Object.keys(TIPOS).forEach(function (x) {
+    var b = el('nt_' + x); b.classList.toggle('on', x === k);
+    b.innerHTML = '<span>' + TIPOS[x].etiqueta + '</span>' + (x === k ? IC_OK : '');
+  });
   var d = TIPOS[k];
   el('nvObsWrap').style.display = 'block';
-  el('nvObs').placeholder = d.obs ? 'Observaciones (obligatorio)' + (k === 'COMPRA_RECHAZADA' ? ' — motivo del rechazo' : '') : 'Observaciones (opcional)';
-  el('nvFotoWrap').style.display = d.fotosMax ? 'block' : 'none';
-  el('btnNvFoto').textContent = k === 'CLIENTE_AUSENTE' ? '📷 Foto del portal (opcional)' : '📷 Añadir foto (máx. ' + d.fotosMax + ')';
-  pintarMiniNv();
-  var a = el('nvAusente');
-  if (k === 'CLIENTE_AUSENTE') { a.style.display = 'block'; pintarAusenteNv(); } else a.style.display = 'none';
+  el('nvObsLab').textContent = d.obs ? 'Observaciones (obligatorio)' + (k === 'COMPRA_RECHAZADA' ? ' — motivo del rechazo' : '') : 'Observaciones (opcional)';
+  el('nvFotoWrap').style.display = 'flex';
+  el('nvAusente').style.display = k === 'CLIENTE_AUSENTE' ? 'flex' : 'none';
+  if (k === 'CLIENTE_AUSENTE') pintarAusenteNv();
 }
-function pintarMiniNv() { el('nvMini').innerHTML = nv.fotos.map(function (x) { return '<img src="' + x + '" alt="">'; }).join(''); }
 function pintarAusenteNv() {
   var n = nv.intentos.length;
-  var h = '<button class="intento" onclick="nuevoIntentoNv()" ' + (n >= 3 ? 'disabled' : '') + '>📞 Registrar tentativa (' + n + '/3)</button>';
-  if (n) h += '<div class="cuenta" id="nvCuenta"></div>';
-  el('nvAusente').innerHTML = h;
-  tickNv();
-  clearInterval(nvTimer); if (n) nvTimer = setInterval(tickNv, 1000);
+  el('nvLlamadas').innerHTML = [0, 1, 2].map(function (i) {
+    var t = nv.intentos[i];
+    return '<div class="' + (t ? 'hecha' : '') + '"><small>' + (i + 1) + 'ª</small><b>' + (t ? new Date(t).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '—') + '</b></div>';
+  }).join('');
+  el('btnLlamada').style.display = n >= 3 ? 'none' : 'block';
+  el('btnLlamada').textContent = 'Registrar llamada (' + n + '/3)';
+  el('nvLlamOk').style.display = n >= 3 ? 'block' : 'none';
 }
 function nuevoIntentoNv() { if (nv && nv.intentos.length < 3) { nv.intentos.push(Date.now()); pintarAusenteNv(); } }
-function faltaEsperaNv() { return nv && nv.intentos.length ? Math.max(0, nv.intentos[0] + 10 * 60 * 1000 - Date.now()) : 1; }
-function tickNv() {
-  var c = el('nvCuenta'); if (!c || !nv) return;
-  var f = faltaEsperaNv(), n = nv.intentos.length;
-  var t = nv.intentos.map(function (x) { return new Date(x).toLocaleTimeString('es-ES'); }).join(' · ');
-  if (n < 3) c.textContent = 'Tentativas: ' + t;
-  else if (f > 0) c.textContent = 'Tentativas: ' + t + ' — espera ' + Math.floor(f / 60000) + ':' + String(Math.floor(f % 60000 / 1000)).padStart(2, '0') + ' para poder registrar.';
-  else c.textContent = 'Tentativas: ' + t + ' — ✅ espera de 10 min cumplida.';
-}
-el('nvFotoInc').addEventListener('change', async function (ev) {
-  var f = ev.target.files[0]; ev.target.value = '';
-  if (!f || !nv || !nv.tipo) return;
-  if (nv.fotos.length >= TIPOS[nv.tipo].fotosMax) { alert('Máximo de fotos alcanzado.'); return; }
-  try { nv.fotos.push(await reducir(f, 1400, 0.75)); pintarMiniNv(); } catch (e) { alert('No se pudo usar esa foto.'); }
-});
 
 async function registrarNueva(forzar) {
   if (!nv || nvOcupado) return;
-  if (!nv.tipo) { alert('Elige el tipo de incidencia.'); return; }
+  if (!nv.tipo) { alert('Elige el motivo.'); return; }
   var d = TIPOS[nv.tipo], obs = el('nvObs').value.trim();
   if (d.obs && !obs) { alert('Escribe las observaciones.'); el('nvObs').focus(); return; }
-  if (nv.tipo === 'CLIENTE_AUSENTE') {
-    if (nv.intentos.length < 3) { alert('Hacen falta 3 tentativas de contacto.'); return; }
-    if (faltaEsperaNv() > 0) { alert('Aún no han pasado 10 minutos desde la primera tentativa.'); return; }
+  if (nv.tipo === 'CLIENTE_AUSENTE' && nv.intentos.length < 3) { alert('Hacen falta 3 llamadas al cliente.'); return; }
+  nvOcupado = true;
+  // Si la foto del ticket aún se está subiendo/leyendo (lectura lenta), se espera aquí.
+  if (!nv.fileId && nv.lectura) {
+    spin(true, 'Terminando de subir la foto del ticket…');
+    var rl = await nv.lectura;
+    if (rl && rl.ok) nv.fileId = rl.fileId;
   }
-  nvOcupado = true; spin(true, 'Registrando la incidencia…');
-  var r = await api('registrarIncidenciaDirecta', { fileId: nv.fileId, datos: nv.datos, tipo: nv.tipo, observaciones: obs, intentos: nv.intentos, fotos: nv.fotos, forzar: !!forzar });
+  if (!nv.fileId) { nvOcupado = false; spin(false); alert('La foto del ticket no se ha podido subir. Vuelve al paso 1 y sácala otra vez.'); return; }
+  var fotos = nvCol.fotos();
+  spin(true, 'Registrando la incidencia' + (fotos.length ? ' y subiendo ' + fotos.length + ' foto(s)…' : '…'));
+  var r = await api('registrarIncidenciaDirecta', { fileId: nv.fileId, datos: nv.datos, tipo: nv.tipo, observaciones: obs, intentos: nv.intentos, fotos: fotos, forzar: !!forzar });
   nvOcupado = false; spin(false);
   if (!nv) return;
   if (!r.ok && r.requiereConfirmacion) { if (confirm(r.error)) return registrarNueva(true); return; }
@@ -441,8 +827,8 @@ async function registrarNueva(forzar) {
   filtro('ABIERTA'); cargar();
 }
 
-if (EMBOLSADO_URL.indexOf('PEGAR_AQUI') === 0) msg('Falta configurar EMBOLSADO_URL en incidencias.html', 'err');
-else { cargar(); setInterval(cargar, 30000); }
+cargar();
+setInterval(function () { if (el('panel').style.display !== 'flex') cargar(); }, 30000);
 </script>
 </body>
 </html>

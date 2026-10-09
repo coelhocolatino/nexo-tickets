@@ -8,8 +8,10 @@
        · Capturas: se cargan de 2 en 2 con reintentos y, si fallan, botón Reintentar.
        · Comprobación de versión al entrar (nexo-version.js + version.json).
      v3.10.2 (2026-10-09): avisos push en el móvil al asignar un pedido (botón
-       "Activar avisos"; la suscripción se guarda en NEXO DIA → hoja _DIA_AVISOS). -->
-<html lang="es" data-pagina="dia" data-version="v3.10.2">
+       "Activar avisos"; la suscripción se guarda en NEXO DIA → hoja _DIA_AVISOS).
+     v3.10.3 (2026-10-09): incidencias con hasta 10 fotos y sin la espera de 10 min tras las 3 llamadas.
+-->
+<html lang="es" data-pagina="dia" data-version="v3.10.3">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
@@ -206,7 +208,7 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
   <div id="msg"></div>
   <div id="lista"><div class="vacio">Cargando…</div></div>
   <button class="nx-btn texto btn-todos" id="btnTodos" onclick="verTodos()">Ver histórico (45 días)</button>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos %DIA">Nexo · Pedidos %DIA v3.10.2</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos %DIA">Nexo · Pedidos %DIA v3.10.3</div>
 </main>
 
 <!-- Imagen ampliada -->
@@ -847,11 +849,11 @@ async function buscarAhora(silencioso) {
 
 /* ============ INCIDENCIAS (idéntico a Nexo-tickets) ============ */
 var TIPOS = {
-  CLIENTE_AUSENTE:      { etiqueta: 'Cliente ausente',            fotosMax: 2, obs: false },
-  DIRECCION_INCORRECTA: { etiqueta: 'Dirección incorrecta',       fotosMax: 0, obs: true },
-  PRODUCTO_FALTANTE:    { etiqueta: 'Producto faltante o dañado', fotosMax: 3, obs: true },
-  COMPRA_RECHAZADA:     { etiqueta: 'Compra rechazada',           fotosMax: 0, obs: true },
-  FRIO_OLVIDADO:        { etiqueta: 'Frío olvidado',              fotosMax: 0, obs: true }
+  CLIENTE_AUSENTE:      { etiqueta: 'Cliente ausente',            fotosMax: 10, obs: false },
+  DIRECCION_INCORRECTA: { etiqueta: 'Dirección incorrecta',       fotosMax: 10, obs: true },
+  PRODUCTO_FALTANTE:    { etiqueta: 'Producto faltante o dañado', fotosMax: 10, obs: true },
+  COMPRA_RECHAZADA:     { etiqueta: 'Compra rechazada',           fotosMax: 10, obs: true },
+  FRIO_OLVIDADO:        { etiqueta: 'Frío olvidado',              fotosMax: 10, obs: true }
 };
 var incId = null, incTipo = null, incFotos = [], incIntentos = [], incTimer = null;
 function claveIntentos(id) { return 'nexo_dia_intentos_' + id; }
@@ -899,14 +901,14 @@ function nuevoIntento() {
     pintarAusente();
   }
 }
-function faltaEspera() { return incIntentos.length ? Math.max(0, incIntentos[0] + 10 * 60 * 1000 - Date.now()) : 1; }
+// Ronda 24 (2026-10-09): con 3 llamadas ya se puede registrar, sin esperar 10 minutos.
+function faltaEspera() { return 0; }
 function tick() {
   var c = document.getElementById('cuenta'); if (!c) return;
   var f = faltaEspera(), n = incIntentos.length;
   var t = incIntentos.map(function (x) { return new Date(x).toLocaleTimeString('es-ES'); }).join(' · ');
   if (n < 3) c.textContent = 'Tentativas: ' + t;
-  else if (f > 0) c.textContent = 'Tentativas: ' + t + ' — espera ' + Math.floor(f / 60000) + ':' + String(Math.floor(f % 60000 / 1000)).padStart(2, '0') + ' para poder registrar.';
-  else c.textContent = 'Tentativas: ' + t + ' — espera de 10 min cumplida.';
+  else c.textContent = 'Tentativas: ' + t + ' — 3 llamadas hechas: ya puedes registrar la incidencia.';
 }
 NexoFoto.crear(document.getElementById('incFotoSel'), { clase: 'mini', alElegir: async function (f) {
   if (!f || !incTipo) return;
@@ -921,7 +923,6 @@ async function enviarIncidencia() {
   if (d.obs && !obs) { alert('Escribe las observaciones.'); return; }
   if (incTipo === 'CLIENTE_AUSENTE') {
     if (incIntentos.length < 3) { alert('Hacen falta 3 tentativas de contacto.'); return; }
-    if (faltaEspera() > 0) { alert('Aún no han pasado 10 minutos desde la primera tentativa.'); return; }
   }
   spin(true, 'Registrando incidencia…');
   var r = await api('diaRegistrarIncidencia', { id: incId, tipo: incTipo, observaciones: obs, intentos: incTipo === 'CLIENTE_AUSENTE' ? incIntentos : [], fotos: incFotos }, 2);
