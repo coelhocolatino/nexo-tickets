@@ -47,8 +47,11 @@
      (nexo-tema.css). Cabecera blanca con el logo oficial, usuario y Salir;
      los botones de módulos pasan a una cuadrícula de iconos encima del
      formulario (ADM ve además Embolsado, Actualizar y Config). La lógica
-     del formulario y de la subida de tickets no cambia. -->
-<html lang="es" data-pagina="index" data-version="v3.10.1">
+     del formulario y de la subida de tickets no cambia. 
+     v3.10.2 (2026-10-09): ventana "Qué novedades hay" (nexo-novedades.js), una vez por usuario;
+     se vuelve a abrir con el enlace de abajo.
+-->
+<html lang="es" data-pagina="index" data-version="v3.10.2">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
@@ -64,6 +67,7 @@
 <title>Nexo · SAD Tickets</title>
 <link rel="stylesheet" href="nexo-tema.css?v=24">
 <script src="nexo-version.js?v=1"></script>
+<script src="nexo-novedades.js?v=1"></script>
 <script src="nexo-foto.js?v=2"></script>
 <style>
 /* Ronda 24 (2026-10-08): diseño nuevo. Los ids y clases que usa el script
@@ -296,7 +300,8 @@ input[type="date"].control { -webkit-appearance:none; appearance:none; text-alig
     <div id="msg" role="alert" aria-live="polite"></div>
   </form>
 
-  <div class="nx-version app-version" data-nexo-version="Nexo Tickets">Nexo Tickets v3.10.1</div>
+  <button type="button" class="nx-btn texto" data-nexo-novedades style="align-self:center">Qué novedades hay</button>
+  <div class="nx-version app-version" data-nexo-version="Nexo Tickets">Nexo Tickets v3.10.2</div>
 </main>
 
 <script>

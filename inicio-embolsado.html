@@ -6,8 +6,11 @@
 
      v3.10.1 (2026-10-09, ronda 24): diseño nuevo (nexo-tema.css) y
      comprobación de versión al entrar (nexo-version.js + version.json).
-     La lógica no cambia: mismos destinos, mismo contador de incidencias. -->
-<html lang="es" data-pagina="inicio-embolsado" data-version="v3.10.1">
+     La lógica no cambia: mismos destinos, mismo contador de incidencias. 
+     v3.10.2 (2026-10-09): ventana "Qué novedades hay" (nexo-novedades.js), una vez por usuario;
+     se vuelve a abrir con el enlace de abajo.
+-->
+<html lang="es" data-pagina="inicio-embolsado" data-version="v3.10.2">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
@@ -22,6 +25,7 @@
 <title>Nexo · Embolsado</title>
 <link rel="stylesheet" href="nexo-tema.css?v=24">
 <script src="nexo-version.js?v=1"></script>
+<script src="nexo-novedades.js?v=1"></script>
 <style>
 body.nx { display:flex; flex-direction:column; }
 .panel-logo { background:var(--nx-cabecera); box-shadow:0 1px 0 var(--nx-linea);
@@ -96,7 +100,8 @@ body.nx { display:flex; flex-direction:column; }
   </a>
 </nav>
 
-<div class="nx-version" data-nexo-version="Nexo · Embolsado">Nexo · Embolsado v3.10.1</div>
+<button type="button" class="nx-btn texto" data-nexo-novedades style="align-self:center;margin-top:auto">Qué novedades hay</button>
+<div class="nx-version" data-nexo-version="Nexo · Embolsado" style="margin-top:0">Nexo · Embolsado v3.10.2</div>
 
 <script>
 let sesion = null;
