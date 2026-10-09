@@ -6,8 +6,10 @@
        · ADM: filtro por repartidor en Asignados y Cerrados; "Deshacer entrega"
          en los entregados de hoy (vuelve a ASIGNADO y borra la foto archivada).
        · Capturas: se cargan de 2 en 2 con reintentos y, si fallan, botón Reintentar.
-       · Comprobación de versión al entrar (nexo-version.js + version.json). -->
-<html lang="es" data-pagina="dia" data-version="v3.10.1">
+       · Comprobación de versión al entrar (nexo-version.js + version.json).
+     v3.10.2 (2026-10-09): avisos push en el móvil al asignar un pedido (botón
+       "Activar avisos"; la suscripción se guarda en NEXO DIA → hoja _DIA_AVISOS). -->
+<html lang="es" data-pagina="dia" data-version="v3.10.2">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
@@ -35,6 +37,10 @@ body.nx { padding-bottom:40px; }
 .btn-buscar:disabled { opacity:.55; cursor:default; }
 .barra-busq { display:none; align-items:center; gap:8px; flex-wrap:wrap; }
 .barra-busq .ult { flex:1; min-width:150px; font-size:13px; font-weight:700; color:var(--nx-suave); }
+.aviso-push { display:grid; grid-template-columns:22px minmax(0,1fr); gap:10px 12px; align-items:center; padding:12px 14px; border-radius:14px;
+  background:var(--nx-azul-fondo); color:var(--nx-azul); font-size:14px; font-weight:700; line-height:1.35; }
+.aviso-push button { grid-column:1 / -1; min-height:48px; border:0; border-radius:12px; background:var(--nx-tinta); color:var(--nx-tinta-clara); font:800 15px var(--nx-texto); cursor:pointer; }
+.aviso-push.info button { display:none; }
 .btn-aviso { min-height:40px; padding:0 12px; border:0; border-radius:10px; background:var(--nx-chip); color:var(--nx-tinta); font:800 14px var(--nx-texto); cursor:pointer; }
 #tabs { display:none; }
 .filtro-rep { display:none; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:end; }
@@ -179,7 +185,11 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
   </div>
   <div class="barra-busq" id="barraBusq">
     <span class="ult" id="ultLectura"></span>
-    <button class="btn-aviso" id="btnAvisos" style="display:none" onclick="activarAvisos()">Activar avisos</button>
+  </div>
+  <div class="aviso-push" id="avisoPush" style="display:none">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+    <span id="avisoPushTxt"></span>
+    <button type="button" id="btnAvisos" onclick="activarAvisos()">Activar avisos</button>
   </div>
   <div class="busq-bg" id="busqBg"><i></i><span>Buscando pedidos nuevos en %DIA en segundo plano… puedes seguir trabajando.</span></div>
 
@@ -196,7 +206,7 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
   <div id="msg"></div>
   <div id="lista"><div class="vacio">Cargando…</div></div>
   <button class="nx-btn texto btn-todos" id="btnTodos" onclick="verTodos()">Ver histórico (45 días)</button>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos %DIA">Nexo · Pedidos %DIA v3.10.1</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos %DIA">Nexo · Pedidos %DIA v3.10.2</div>
 </main>
 
 <!-- Imagen ampliada -->
@@ -328,7 +338,7 @@ async function cargar(silencioso) {
   document.getElementById('btnTodos').style.display = gestor && r.vista !== 'todos' ? 'flex' : 'none';
   document.getElementById('ultLectura').textContent = r.ultimaLectura ? 'Última lectura: ' + horaLectura(r.ultimaLectura) : 'Aún no hay lecturas del portal.';
   document.getElementById('btnBuscar').disabled = !!r.buscando;
-  if ('Notification' in window && Notification.permission === 'default') document.getElementById('btnAvisos').style.display = '';
+  revisarAvisos();
   if (gestor) {
     var c = contar();
     document.getElementById('tPend').textContent = 'Pendientes · ' + c.pend;
@@ -407,6 +417,9 @@ function avisarNovedades(r) {
   if (primera || !nuevos.length) return;
   var t = (r.rol && r.rol.ver) ? nuevos.length + ' pedido(s) %DIA nuevo(s) sin asignar' : 'Tienes ' + nuevos.length + ' pedido(s) %DIA nuevo(s) asignado(s)';
   msg(t, 'info', 10000);
+  // Si este móvil ya recibe avisos push, el aviso de "asignado" ya le llega por ahí: solo vibra.
+  var conPush = false; try { conPush = localStorage.getItem('nexo_push_activo_' + USUARIO) === '1'; } catch (e) {}
+  if (!(r.rol && r.rol.ver) && conPush) { try { if (navigator.vibrate) navigator.vibrate([300, 120, 300]); } catch (e) {} return; }
   notificar(t);
 }
 function notificar(t) {
@@ -419,12 +432,74 @@ function notificar(t) {
     }
   } catch (e) {}
 }
-function activarAvisos() {
-  if (!('Notification' in window)) return;
-  Notification.requestPermission().then(function (p) {
-    document.getElementById('btnAvisos').style.display = 'none';
-    if (p === 'granted') notificar('Avisos activados');
-  });
+/* ---- Avisos push (ronda 24): llegan al móvil aunque la app esté cerrada ----
+   1) "Activar avisos" pide permiso y suscribe el móvil con la clave pública del
+      proxy (sad-proxy /push/clave).
+   2) La suscripción se guarda en NEXO DIA (diaGuardarAviso → hoja _DIA_AVISOS).
+   3) Al asignar un pedido, NEXO DIA manda el aviso por sad-proxy /push.
+   Con el permiso ya dado, se vuelve a guardar una vez al día (por si cambió). */
+var _avisosRevisados = false;
+function pushSoportado() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+function esIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+function enPantallaInicio() { return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; }
+function claveBytes(b64) {
+  var s = String(b64).replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '=';
+  var bin = atob(s), a = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return a;
+}
+function mostrarAvisoPush(tipo) {
+  var box = document.getElementById('avisoPush');
+  if (!tipo) { box.style.display = 'none'; return; }
+  var txt = {
+    activar: 'Activa los avisos para enterarte al momento, aunque tengas la app cerrada, cuando te asignen un pedido %DIA.',
+    ios: 'En iPhone, para recibir avisos, instala la app: Compartir → "Añadir a pantalla de inicio", y ábrela desde ese icono.',
+    bloqueado: 'Los avisos están bloqueados en este móvil. Permite las notificaciones de Nexo en los ajustes del navegador o del teléfono.'
+  }[tipo];
+  document.getElementById('avisoPushTxt').textContent = txt;
+  box.className = 'aviso-push' + (tipo === 'activar' ? '' : ' info');
+  box.style.display = 'grid';
+}
+async function suscribirPush() {
+  var reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) await navigator.serviceWorker.register('service-worker.js?v=8');
+  reg = await navigator.serviceWorker.ready;
+  var sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    var c = await fetch(PROXY + 'push/clave').then(function (r) { return r.json(); });
+    if (!c || !c.clave) throw new Error('los avisos aún no están configurados en el servidor');
+    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: claveBytes(c.clave) });
+  }
+  var r = await api('diaGuardarAviso', { suscripcion: sub.toJSON(), dispositivo: navigator.userAgent }, 2);
+  if (!r.ok) throw new Error(r.error);
+  try { localStorage.setItem('nexo_push_activo_' + USUARIO, '1'); localStorage.setItem('nexo_push_dia_' + USUARIO, hoyISO()); } catch (e) {}
+  return sub;
+}
+async function revisarAvisos() {
+  if (_avisosRevisados) return; _avisosRevisados = true;
+  if (!pushSoportado()) { if (esIOS() && !enPantallaInicio()) mostrarAvisoPush('ios'); return; }
+  if (Notification.permission === 'denied') { mostrarAvisoPush('bloqueado'); return; }
+  if (Notification.permission === 'granted') {
+    var hecho = ''; try { hecho = localStorage.getItem('nexo_push_dia_' + USUARIO) || ''; } catch (e) {}
+    if (hecho === hoyISO()) return;
+    try { await suscribirPush(); } catch (e) { console.warn('avisos:', e); mostrarAvisoPush('activar'); }
+    return;
+  }
+  mostrarAvisoPush('activar');
+}
+async function activarAvisos() {
+  if (!pushSoportado()) { mostrarAvisoPush(esIOS() ? 'ios' : null); return; }
+  try {
+    var p = await Notification.requestPermission();
+    if (p !== 'granted') { mostrarAvisoPush(p === 'denied' ? 'bloqueado' : 'activar'); return; }
+    spin(true, 'Activando avisos…');
+    await suscribirPush();
+    spin(false);
+    mostrarAvisoPush(null);
+    msg('Avisos activados. Te llegará un aviso al móvil cuando te asignen un pedido %DIA.', 'ok', 9000);
+  } catch (e) {
+    spin(false);
+    try { localStorage.removeItem('nexo_push_activo_' + USUARIO); } catch (er) {}
+    msg('No se pudieron activar los avisos: ' + (e.message || e), 'err', 10000);
+  }
 }
 
 /* ============ PINTAR ============ */

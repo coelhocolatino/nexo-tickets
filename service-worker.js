@@ -1,7 +1,7 @@
 // ==============================
 // Nexo · SAD Tickets - Service Worker v5
 // ==============================
-const CACHE_NAME = "nexo-tickets-v30";   // ronda 24: diseño nuevo + version.json + dia.html
+const CACHE_NAME = "nexo-tickets-v31";   // ronda 24: diseño nuevo + version.json + dia.html + avisos push
 
 const ASSETS = [
   "./",
@@ -117,8 +117,33 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
-// Avisos %DIA: al tocar la notificación se abre la página de pedidos %DIA
+// Ronda 24 (2026-10-09): avisos push. Llegan aunque la app esté cerrada.
+// El aviso trae { titulo, cuerpo, url, tag } (lo envía NEXO DIA a través de sad-proxy /push).
+self.addEventListener("push", (event) => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch (e) { d = { cuerpo: event.data ? event.data.text() : "" }; }
+  event.waitUntil(self.registration.showNotification(d.titulo || "Nexo", {
+    body: d.cuerpo || "",
+    icon: "nexo-icon-192.png",
+    badge: "nexo-icon-192.png",
+    tag: d.tag || "nexo",
+    renotify: true,
+    vibrate: [300, 120, 300, 120, 300],
+    data: { url: d.url || "./dia.html" }
+  }));
+});
+
+// Al tocar el aviso: abre (o enfoca) la página del pedido.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  event.waitUntil(self.clients.openWindow("./dia.html"));
+  const destino = new URL((event.notification.data && event.notification.data.url) || "./dia.html", self.registration.scope).href;
+  event.waitUntil((async () => {
+    const lista = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const c of lista) {
+      if (c.url.indexOf(self.registration.scope) === 0 && "navigate" in c) {
+        try { await c.focus(); return await c.navigate(destino); } catch (e) {}
+      }
+    }
+    return self.clients.openWindow(destino);
+  })());
 });
