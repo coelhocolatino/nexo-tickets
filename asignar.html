@@ -3,8 +3,10 @@
      v3.10.1 (2026-10-09, ronda 24): diseño nuevo (nexo-tema.css), cabecera
      con logo y usuario, tarjetas como las de Embolsado (nº de ticket grande,
      caja debajo), botones Incidencia / Entregar, y comprobación de versión
-     al entrar (nexo-version.js + version.json). La lógica no cambia. -->
-<html lang="es" data-pagina="asignar" data-version="v3.10.1">
+     al entrar (nexo-version.js + version.json). La lógica no cambia.
+     v3.10.2 (2026-10-09): "Entregar" de un pedido %DIA abre directamente la
+     hoja de entrega en dia.html (?ent=1). -->
+<html lang="es" data-pagina="asignar" data-version="v3.10.2">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
@@ -176,7 +178,7 @@ details.entregados[open] > summary .flecha { transform:rotate(180deg); }
   <div class="info" id="info"></div>
   <div id="msg"></div>
   <div id="lista"></div>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.1</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.2</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
@@ -273,7 +275,7 @@ function diaCardHTML(o) {
     if (ES_ADMIN) h += '<button class="b-deshacer" onclick="deshacer(\'dia\',\'' + esc(o.id) + '\',\'' + esc(o.repartidor || o.asignadoA || '') + '\')">Deshacer entrega</button>';
   }
   else h += '<div class="acciones" style="grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)"><a class="b-inc" href="dia.html?id=' + encodeURIComponent(o.id) + '&inc=1">Incidencia</a>' +
-       '<a class="b-ent" href="dia.html?id=' + encodeURIComponent(o.id) + '">' + IC_OK + 'Entregar</a></div>';
+       '<a class="b-ent" href="dia.html?id=' + encodeURIComponent(o.id) + '&ent=1">' + IC_OK + 'Entregar</a></div>';
   return h + '</div>';
 }
 

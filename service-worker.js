@@ -1,7 +1,7 @@
 // ==============================
 // Nexo · SAD Tickets - Service Worker v5
 // ==============================
-const CACHE_NAME = "nexo-tickets-v29";   // ronda 24: diseño nuevo + version.json
+const CACHE_NAME = "nexo-tickets-v30";   // ronda 24: diseño nuevo + version.json + dia.html
 
 const ASSETS = [
   "./",

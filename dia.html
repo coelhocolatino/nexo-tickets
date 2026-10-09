@@ -1,10 +1,22 @@
 <!DOCTYPE html>
-<html lang="es">
+<!-- Nexo Tickets — dia.html (Pedidos %DIA)
+     v3.10.1 (2026-10-09, ronda 24): diseño nuevo (nexo-tema.css) y cabecera con logo.
+       · Entrega: selector deslizante de foto (derecha = sacar, izquierda = subir).
+       · Pedido entregado: botón gris "Entregado · HH:MM" (antes verde).
+       · ADM: filtro por repartidor en Asignados y Cerrados; "Deshacer entrega"
+         en los entregados de hoy (vuelve a ASIGNADO y borra la foto archivada).
+       · Capturas: se cargan de 2 en 2 con reintentos y, si fallan, botón Reintentar.
+       · Comprobación de versión al entrar (nexo-version.js + version.json). -->
+<html lang="es" data-pagina="dia" data-version="v3.10.1">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#FEFEFE" />
 <title>Nexo · Pedidos %DIA</title>
 <link rel="icon" href="nexo-icon-192.png">
+<link rel="stylesheet" href="nexo-tema.css?v=24">
+<script src="nexo-version.js?v=1"></script>
+<script src="nexo-foto.js?v=3"></script>
 <script>
 /* Guard de sesión (igual que asignar.html) */
 (function () {
@@ -15,214 +27,244 @@
 })();
 </script>
 <style>
-:root { --bg1:#003366; --bg2:#0077cc; --ok:#16a34a; --bad:#dc2626; --rosa:#fce7f3; --rosa2:#f9a8d4; --rosa3:#be185d; --dia:#d52b1e; }
-* { box-sizing:border-box; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-body { margin:0; min-height:100vh; background:linear-gradient(180deg,var(--bg1),var(--bg2)); color:#fff; padding:14px 12px 40px; }
-.wrap { max-width:520px; margin:0 auto; }
-.top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-.top a.volver { color:#fff; text-decoration:none; font-size:22px; padding:4px 8px; }
-.top h1 { font-size:18px; margin:0; flex:1; display:flex; align-items:center; gap:8px; }
-.top h1 img { height:22px; background:#fff; border-radius:6px; padding:2px 5px; }
-.quien { font-size:12px; opacity:.85; }
-.barra-busq { display:none; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
-.barra-busq button { padding:10px 14px; border:0; border-radius:12px; background:#fff; color:#003366; font-weight:800; font-size:14px; }
-.barra-busq button:disabled { opacity:.55; }
-.barra-busq .ult { font-size:12px; opacity:.9; flex:1; min-width:140px; }
-.btn-aviso { background:rgba(255,255,255,.18) !important; color:#fff !important; }
-.tabs { display:none; gap:6px; margin-bottom:10px; }
-.tab { flex:1; padding:9px 4px; border:0; border-radius:12px; background:rgba(255,255,255,.15); color:#fff; font-weight:700; font-size:13px; }
-.tab.on { background:#fff; color:#003366; }
-.info { font-size:12px; opacity:.9; margin:0 2px 10px; }
-#msg { font-size:13px; padding:8px 10px; border-radius:10px; margin-bottom:10px; display:none; }
-#msg.ok { background:#dcfce7; color:#166534; display:block; }
-#msg.err { background:#fee2e2; color:#991b1b; display:block; }
-#msg.info { background:#e0f2fe; color:#075985; display:block; }
-.vacio { text-align:center; opacity:.85; padding:30px 10px; }
+body.nx { padding-bottom:40px; }
+.top-tit { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.top-tit .nx-titulo { margin:0; }
+.btn-buscar { flex:0 0 auto; min-height:52px; padding:0 14px; border:0; border-radius:12px; background:var(--nx-azul-fondo); color:var(--nx-azul);
+  font:800 15px/1.1 var(--nx-texto); display:flex; align-items:center; gap:8px; cursor:pointer; text-align:left; }
+.btn-buscar:disabled { opacity:.55; cursor:default; }
+.barra-busq { display:none; align-items:center; gap:8px; flex-wrap:wrap; }
+.barra-busq .ult { flex:1; min-width:150px; font-size:13px; font-weight:700; color:var(--nx-suave); }
+.btn-aviso { min-height:40px; padding:0 12px; border:0; border-radius:10px; background:var(--nx-chip); color:var(--nx-tinta); font:800 14px var(--nx-texto); cursor:pointer; }
+#tabs { display:none; }
+.filtro-rep { display:none; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:end; }
+.filtro-rep .cuenta { min-height:52px; padding:0 16px; border-radius:12px; background:var(--nx-tinta); color:var(--nx-tinta-clara);
+  display:flex; align-items:center; font-weight:800; font-size:15px; white-space:nowrap; }
+select.nx-input { -webkit-appearance:none; appearance:none; padding-right:36px; font-weight:800;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%230B2447' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 10px center; }
+.info { font-size:13px; font-weight:700; color:var(--nx-suave); }
+#msg { display:none; padding:10px 12px; border-radius:12px; font-size:14px; font-weight:700; line-height:1.4; }
+#msg.ok { display:block; background:var(--nx-verde-fondo); color:var(--nx-verde-tinta); }
+#msg.err { display:block; background:var(--nx-rojo-fondo); color:#7A1A12; }
+#msg.info { display:block; background:var(--nx-azul-fondo); color:var(--nx-azul); }
+.vacio { text-align:center; color:var(--nx-suave); font-weight:700; padding:32px 12px; background:var(--nx-superficie); border-radius:var(--nx-r-tarjeta); }
+#lista { display:flex; flex-direction:column; gap:12px; }
+.busq-bg { display:none; align-items:center; gap:8px; font-size:13px; font-weight:700; color:var(--nx-suave); }
+.busq-bg.on { display:flex; }
+.busq-bg i { width:14px; height:14px; flex:0 0 auto; border:2px solid var(--nx-azul-fondo); border-top-color:var(--nx-tinta); border-radius:50%; animation:gira 1s linear infinite; }
+@keyframes gira { to { transform:rotate(360deg); } }
 
-/* ===== CARD %DIA (rosa) ===== */
-.card { background:var(--rosa); color:#0f172a; border-radius:16px; padding:12px; margin-bottom:12px; position:relative;
-  box-shadow:0 6px 18px rgba(0,0,0,.25); border:2px solid var(--rosa2); }
-.card.alerta { border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.55), 0 6px 18px rgba(0,0,0,.25); }
-.card.tarde { border-color:var(--bad); box-shadow:0 0 0 3px rgba(220,38,38,.55), 0 6px 18px rgba(0,0,0,.25); }
+/* ===== Tarjeta %DIA ===== */
+.card { position:relative; background:var(--nx-superficie); color:var(--nx-tinta); border-radius:var(--nx-r-tarjeta); padding:16px;
+  display:flex; flex-direction:column; gap:12px; }
+.card.alerta { box-shadow:0 0 0 3px var(--nx-lampara); }
+.card.tarde { box-shadow:0 0 0 3px var(--nx-rojo); }
 .card.foco { animation:foco 1.2s ease 2; }
 @keyframes foco { 50% { transform:scale(1.02); } }
-.card.entregado { background:#f0fdf4; border-color:#86efac; }
-.card.anulado { opacity:.6; background:#f1f5f9; border-color:#cbd5e1; }
+.card.anulado { opacity:.6; }
+.card.incidencia { box-shadow:inset 0 0 0 2px var(--nx-rojo-fondo); }
 .cab { display:flex; align-items:flex-start; gap:8px; }
-.cab .cli { flex:1; font-weight:800; font-size:16px; }
-.est { border-radius:8px; padding:3px 8px; font-size:11px; font-weight:800; white-space:nowrap; }
-.est.PENDIENTE { background:#f0ad4e; color:#fff; } .est.ASIGNADO { background:#2563eb; color:#fff; }
-.est.ENTREGADO { background:var(--ok); color:#fff; } .est.ANULADO { background:#64748b; color:#fff; }
-.est.INCIDENCIA { background:var(--bad); color:#fff; }
-.card.incidencia { background:#fef2f2; border-color:#fca5a5; }
-.inc-info { background:#fee2e2; color:#991b1b; border-radius:8px; padding:6px 9px; font-size:13px; font-weight:700; margin-top:8px; }
-.duo-btn { display:flex; gap:8px; margin-top:10px; }
-.duo-btn .btn { flex:1; padding:13px 8px; font-size:14px; }
-.btn.rojo { background:var(--bad); }
-.tipo { display:block; width:100%; text-align:left; padding:12px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; margin-bottom:8px; font-weight:700; font-size:14px; color:#0f172a; }
-.tipo.on { border-color:#0077cc; background:#e0f2fe; }
-.miniaturas { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
-.miniaturas img { width:64px; height:64px; object-fit:cover; border-radius:8px; }
-.ausente button.intento { width:100%; padding:12px; border:0; border-radius:10px; background:#f59e0b; color:#fff; font-weight:800; margin-bottom:8px; }
-.ausente .cuenta { font-size:13px; margin-bottom:8px; }
-.btn-foto { width:100%; padding:11px; border:1px dashed #64748b; border-radius:10px; background:#f8fafc; font-weight:700; margin-top:8px; color:#0f172a; }
-.busq-bg { font-size:12px; display:none; align-items:center; gap:6px; }
-.busq-bg.on { display:inline-flex; }
-.busq-bg i { width:12px; height:12px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:gira 1s linear infinite; }
-@keyframes gira { to { transform:rotate(360deg); } }
-.aviso { margin-top:8px; border-radius:10px; padding:6px 10px; font-size:13px; font-weight:800; }
-.aviso.alerta { background:#fef3c7; color:#92400e; animation:lat 1s infinite; }
-.aviso.tarde { background:#fee2e2; color:#991b1b; animation:lat 1s infinite; }
+.cab .cli { flex:1; min-width:0; font-size:20px; font-weight:800; line-height:1.15; text-transform:uppercase; overflow-wrap:anywhere; }
+.cab .nx-estado { margin-top:4px; white-space:nowrap; }
+.grid2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px 12px; }
+.fila { font-size:16px; font-weight:800; overflow-wrap:anywhere; }
+.fila b { display:block; color:var(--nx-suave); font-weight:700; font-size:12px; margin-bottom:2px; }
+.fila .mini { font-weight:600; }
+.fila a.dir { display:inline-flex; align-items:flex-start; gap:6px; color:var(--nx-azul); font-weight:800; text-decoration:underline; text-underline-offset:3px; }
+.fila a.dir svg { flex:0 0 auto; margin-top:2px; }
+.tels { display:flex; flex-direction:column; gap:4px; }
+.tel { display:flex; align-items:center; gap:8px; }
+.tel a { display:inline-flex; align-items:center; gap:6px; min-height:36px; color:var(--nx-azul); font-weight:800; font-size:16px; text-decoration:underline; text-underline-offset:3px; }
+.copiar { min-height:32px; padding:0 10px; border:0; border-radius:8px; background:var(--nx-chip); color:var(--nx-tinta); font:800 12px var(--nx-texto); cursor:pointer; }
+.chips { display:flex; gap:6px; flex-wrap:wrap; }
+.chip { background:var(--nx-chip); border-radius:6px; padding:4px 8px; font-size:12px; font-weight:800; }
+.mini { font-size:12px; font-weight:600; color:var(--nx-suave); }
+.obs { background:var(--nx-ambar-fondo); color:var(--nx-ambar-tinta); border-radius:12px; padding:10px 12px; font-size:14px; font-weight:600; }
+.aviso { border-radius:12px; padding:10px 12px; font-size:13px; font-weight:800; }
+.aviso.alerta { background:var(--nx-ambar-fondo); color:var(--nx-ambar-tinta); animation:lat 1s infinite; }
+.aviso.tarde { background:var(--nx-rojo-fondo); color:#7A1A12; animation:lat 1s infinite; }
 @keyframes lat { 50% { opacity:.55; } }
-.duo { display:flex; gap:12px; }
-.duo > div { flex:1; }
-.fila { font-size:14px; margin-top:7px; word-break:break-word; }
-.fila b { color:var(--rosa3); font-weight:700; font-size:11px; display:block; text-transform:uppercase; letter-spacing:.3px; }
-.fila a { color:#0369a1; font-weight:700; text-decoration:none; }
-.tel { display:inline-flex; align-items:center; gap:6px; margin-right:10px; }
-.tel a { font-size:16px; }
-.copiar { border:0; background:rgba(15,23,42,.08); border-radius:8px; padding:3px 7px; font-size:13px; }
-.chips { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
-.chip { background:#fff; border-radius:8px; padding:4px 9px; font-size:12px; font-weight:700; }
-.obs { background:#fff7ed; border-left:4px solid #fb923c; padding:6px 8px; border-radius:6px; font-size:13px; margin-top:8px; }
-.tienda-sel { background:#fff1f2; border:2px dashed var(--bad); border-radius:10px; padding:8px; margin-top:8px; }
-.tienda-sel select, .asig select { width:100%; padding:9px; border-radius:8px; border:1px solid #cbd5e1; font-size:14px; margin-top:4px; }
-.cap { margin-top:10px; border-radius:10px; overflow:hidden; background:#fff; border:1px solid var(--rosa2); min-height:60px;
-  display:flex; align-items:center; justify-content:center; font-size:12px; color:#64748b; cursor:zoom-in; position:relative; }
-.cap img { width:100%; display:block; max-height:260px; object-fit:cover; object-position:top; }
-.cap .etq { position:absolute; left:6px; top:6px; background:rgba(15,23,42,.7); color:#fff; border-radius:6px; padding:2px 6px; font-size:10px; font-weight:700; }
-.asig { margin-top:10px; display:flex; gap:8px; align-items:flex-end; }
-.asig > div { flex:1; }
-.btn { border:0; border-radius:10px; padding:11px 12px; font-weight:800; font-size:14px; color:#fff; background:var(--rosa3); }
-.btn.azul { background:#2563eb; } .btn.verde { background:var(--ok); } .btn.gris { background:#64748b; }
-.btn:disabled { opacity:.5; }
-.acciones { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-.acciones .btn { flex:1; }
-.btn-entregar { width:100%; margin-top:10px; padding:14px; font-size:15px; }
-.mini { font-size:11px; color:#64748b; margin-top:8px; }
-details.hist { margin-top:8px; font-size:11px; color:#475569; }
+.inc-info { background:var(--nx-rojo-fondo); color:#7A1A12; border-radius:12px; padding:10px 12px; font-size:14px; font-weight:800; }
+.tienda-sel { display:flex; flex-direction:column; gap:8px; border:2px dashed var(--nx-rojo); border-radius:12px; padding:10px; }
+.tienda-sel b { color:#7A1A12; font-size:13px; }
+/* Captura / foto */
+.cap { position:relative; min-height:132px; border-radius:14px; overflow:hidden; cursor:zoom-in;
+  background:repeating-linear-gradient(135deg, #D5DDE8 0 10px, #E1E7EF 10px 20px);
+  display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; color:var(--nx-suave); }
+.cap img { width:100%; display:block; max-height:280px; object-fit:cover; object-position:top; }
+.cap .etq { position:absolute; left:8px; top:8px; background:rgba(11,36,71,.75); color:#fff; border-radius:6px; padding:3px 8px; font-size:11px; font-weight:800; }
+.cap.vacia { cursor:default; min-height:56px; }
+.cap.fallo { cursor:default; min-height:0; background:transparent; border:2px dashed var(--nx-linea); padding:10px 12px; justify-content:space-between; gap:10px; }
+.cap.fallo span { display:flex; align-items:center; gap:8px; font-size:14px; text-align:left; }
+.cap.fallo button { min-height:44px; padding:0 12px; border:0; border-radius:10px; background:var(--nx-azul-fondo); color:var(--nx-azul); font:800 14px var(--nx-texto); cursor:pointer; flex:0 0 auto; }
+.perf { position:relative; height:0; margin:4px -16px; border-top:2px dashed var(--nx-linea); }
+.perf::before, .perf::after { content:''; position:absolute; top:-11px; width:20px; height:20px; border-radius:50%; background:var(--nx-fondo); }
+.perf::before { left:-10px; } .perf::after { right:-10px; }
+.asig { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:end; }
+.asig button, .b-sec { min-height:48px; padding:0 14px; border:0; border-radius:12px; background:var(--nx-azul-fondo); color:var(--nx-azul); font:800 15px var(--nx-texto); cursor:pointer; }
+.acciones { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.25fr); gap:8px; }
+.acciones.con-edit { grid-template-columns:52px minmax(0,1fr) minmax(0,1.25fr); }
+.acciones button, .b-hecho, .b-deshacer, .b-editar { min-height:52px; border:0; border-radius:12px; font:800 15px var(--nx-texto);
+  display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; }
+.b-edit { background:var(--nx-azul-fondo); color:var(--nx-azul); }
+.b-inc { background:transparent !important; box-shadow:inset 0 0 0 1.5px var(--nx-rojo); color:var(--nx-rojo); }
+.b-ent { background:var(--nx-verde); color:#fff; }
+.b-hecho { width:100%; background:var(--nx-chip); color:var(--nx-suave); cursor:default; }
+.b-deshacer { width:100%; min-height:48px; background:transparent; box-shadow:inset 0 0 0 1.5px var(--nx-linea); color:var(--nx-tinta); }
+.b-editar { width:100%; background:var(--nx-azul-fondo); color:var(--nx-azul); }
+details.hist { font-size:12px; color:var(--nx-suave); }
+details.hist summary { font-weight:800; cursor:pointer; }
 details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
+.btn-todos { display:none; margin:0 auto; }
 
-/* ===== MODALES ===== */
-.modal { position:fixed; inset:0; background:rgba(0,0,0,.8); display:none; align-items:flex-start; justify-content:center; overflow:auto; padding:16px 10px; z-index:50; }
+/* ===== Hojas (modales) ===== */
+.modal { position:fixed; inset:0; z-index:200; background:rgba(11,36,71,.62); display:none; align-items:flex-end; justify-content:center; }
 .modal.on { display:flex; }
-.box { background:#fff; color:#0f172a; border-radius:16px; padding:14px; width:100%; max-width:480px; }
-.box h2 { margin:0 0 10px; font-size:17px; }
-.box label { display:block; font-size:12px; font-weight:700; color:#475569; margin-top:8px; }
-.box input, .box select, .box textarea { width:100%; padding:9px; border-radius:8px; border:1px solid #cbd5e1; font-size:14px; }
-.box .duo input { width:100%; }
-.box .pie { display:flex; gap:8px; margin-top:14px; }
-.box .pie .btn { flex:1; }
-#zoomCont { width:100%; overflow:auto; max-height:78vh; border-radius:10px; background:#0f172a; }
+.modal .box { width:100%; max-width:560px; max-height:92vh; overflow:auto; background:var(--nx-superficie); color:var(--nx-tinta);
+  border-radius:24px 24px 0 0; padding:12px 20px calc(24px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:12px; }
+.modal .box::before { content:''; align-self:center; width:40px; height:5px; border-radius:99px; background:var(--nx-linea); flex:0 0 auto; }
+.modal h2 { margin:0; font-family:var(--nx-display); font-weight:800; font-size:32px; line-height:1.05; }
+.box label { display:block; font-size:12px; font-weight:700; color:var(--nx-suave); margin:0 0 4px; }
+.box input, .box select, .box textarea { width:100%; min-height:48px; border:1.5px solid var(--nx-linea); border-radius:12px; padding:0 12px;
+  background:var(--nx-campo); color:var(--nx-tinta); font:700 16px var(--nx-texto); }
+.box textarea { min-height:72px; padding:10px 12px; font-weight:600; line-height:1.35; resize:vertical; }
+.box select:disabled { opacity:.55; }
+.box .g2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
+.box .g3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.box .row { display:flex; gap:8px; }
+.box .row button { flex:1; min-height:56px; border:0; border-radius:14px; font:800 16px var(--nx-texto); cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:8px; }
+.box .row button:disabled { background:var(--nx-chip); color:var(--nx-suave); cursor:default; }
+.b-gris { background:var(--nx-azul-fondo); color:var(--nx-azul); }
+.b-azul { background:var(--nx-tinta); color:var(--nx-tinta-clara); }
+.b-rojo { background:var(--nx-rojo); color:#fff; }
+.b-verde { background:var(--nx-verde); color:#fff; }
+.ent-info { background:var(--nx-campo); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:4px; }
+.ent-info b { font-size:18px; font-weight:800; text-transform:uppercase; }
+.ent-info span { font-size:13px; font-weight:700; color:var(--nx-suave); }
+.nota { margin:0; font-size:15px; font-weight:600; }
+.ent-sel { display:flex; justify-content:center; }
+.ent-prev { min-height:200px; border-radius:14px; overflow:hidden; background:repeating-linear-gradient(135deg, #D5DDE8 0 10px, #E1E7EF 10px 20px);
+  display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; color:var(--nx-suave); }
+.ent-prev img { width:100%; display:block; }
+#zoomCont { width:100%; overflow:auto; max-height:70vh; border-radius:12px; background:var(--nx-tinta); }
 #zoomCont img { width:100%; display:block; transition:width .15s; }
-.zoombar { display:flex; gap:8px; margin-top:8px; }
-.zoombar .btn { flex:1; }
-#fotoPrev { width:100%; border-radius:10px; display:none; margin-top:8px; }
-#spin { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:60; font-weight:700; text-align:center; padding:20px; }
+.tipo { display:block; width:100%; min-height:48px; text-align:left; padding:0 14px; border:1.5px solid var(--nx-linea); border-radius:12px;
+  background:var(--nx-campo); color:var(--nx-tinta); margin:0; font:700 16px var(--nx-texto); cursor:pointer; }
+.tipo.on { border:2px solid var(--nx-tinta); background:var(--nx-superficie); font-weight:800; }
+#incTipos { display:flex; flex-direction:column; gap:8px; }
+.inc-foto { display:flex; align-items:center; gap:12px; }
+.inc-foto span { font-size:14px; font-weight:700; color:var(--nx-suave); }
+.miniaturas { display:flex; gap:8px; flex-wrap:wrap; }
+.miniaturas img { width:72px; height:72px; object-fit:cover; border-radius:10px; }
+.ausente button.intento { width:100%; min-height:52px; border:0; border-radius:12px; background:var(--nx-ambar-fondo); color:var(--nx-ambar-tinta);
+  font:800 16px var(--nx-texto); margin-bottom:8px; cursor:pointer; }
+.ausente button.intento:disabled { background:var(--nx-verde-fondo); color:var(--nx-verde-tinta); }
+.ausente .cuenta { font-size:14px; font-weight:700; }
+#spin { position:fixed; inset:0; z-index:300; background:rgba(11,36,71,.62); display:none; align-items:center; justify-content:center;
+  color:#fff; font-weight:800; font-size:16px; text-align:center; padding:20px; }
 #spin.on { display:flex; }
 </style>
 </head>
-<body>
-<div class="wrap">
-  <div class="top">
-    <a class="volver" href="index.html" title="Volver">⬅️</a>
-    <h1><img src="boton_dia.png" alt="" style="height:30px;padding:0;border-radius:50%">Pedidos %DIA</h1>
-    <span class="quien" id="quien"></span>
+<body class="nx">
+<header class="nx-cab">
+  <a class="nx-cab-logo" href="index.html" aria-label="Ir al inicio"><img src="nexo-logo-oficial.png" alt="Nexo"><span class="nx-cab-seccion">%DIA</span></a>
+  <div class="nx-cab-usuario"><span id="quien"></span></div>
+</header>
+<main class="nx-pag">
+  <div class="top-tit">
+    <h1 class="nx-titulo">Pedidos %DIA</h1>
+    <button class="btn-buscar" id="btnBuscar" style="display:none" onclick="buscarAhora()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5"/></svg>Buscar<br>ahora</button>
   </div>
-
   <div class="barra-busq" id="barraBusq">
-    <button id="btnBuscar" onclick="buscarAhora()">🔄 Buscar ahora</button>
     <span class="ult" id="ultLectura"></span>
-    <button class="btn-aviso" id="btnAvisos" style="display:none" onclick="activarAvisos()">🔔 Activar avisos</button>
+    <button class="btn-aviso" id="btnAvisos" style="display:none" onclick="activarAvisos()">Activar avisos</button>
   </div>
+  <div class="busq-bg" id="busqBg"><i></i><span>Buscando pedidos nuevos en %DIA en segundo plano… puedes seguir trabajando.</span></div>
 
-  <div class="tabs" id="tabs">
-    <button class="tab on" id="tPend" onclick="cambiarTab('pend')">Pendientes</button>
-    <button class="tab" id="tAsig" onclick="cambiarTab('asig')">Asignados</button>
-    <button class="tab" id="tEnt" onclick="cambiarTab('ent')">Cerrados</button>
+  <div class="nx-pestanas" id="tabs" role="tablist">
+    <button class="on" id="tPend" role="tab" onclick="cambiarTab('pend')">Pendientes</button>
+    <button id="tAsig" role="tab" onclick="cambiarTab('asig')">Asignados</button>
+    <button id="tEnt" role="tab" onclick="cambiarTab('ent')">Cerrados</button>
+  </div>
+  <div class="filtro-rep" id="filtroRep">
+    <div class="nx-campo"><label for="selRep">Repartidor</label><select class="nx-input" id="selRep" onchange="FILTRO_REP=this.value;pintar()"></select></div>
+    <span class="cuenta" id="cuentaRep">0 pedidos</span>
   </div>
   <div class="info" id="info"></div>
-  <div class="busq-bg" id="busqBg"><i></i><span>Buscando pedidos nuevos en %DIA en segundo plano… puedes seguir trabajando.</span></div>
   <div id="msg"></div>
   <div id="lista"><div class="vacio">Cargando…</div></div>
-  <div style="text-align:center;margin-top:8px"><button class="btn gris" id="btnTodos" style="display:none" onclick="verTodos()">Ver histórico (45 días)</button></div>
-</div>
+  <button class="nx-btn texto btn-todos" id="btnTodos" onclick="verTodos()">Ver histórico (45 días)</button>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos %DIA">Nexo · Pedidos %DIA v3.10.1</div>
+</main>
 
 <!-- Imagen ampliada -->
-<div class="modal" id="mZoom" onclick="if(event.target===this)cerrar('mZoom')">
-  <div class="box">
-    <h2 id="zoomTit">Imagen</h2>
-    <div id="zoomCont"></div>
-    <div class="zoombar">
-      <button class="btn gris" onclick="zoom(-1)">➖</button>
-      <button class="btn gris" onclick="zoom(1)">➕</button>
-      <button class="btn" onclick="cerrar('mZoom')">Cerrar</button>
-    </div>
+<div class="modal" id="mZoom" onclick="if(event.target===this)cerrar('mZoom')"><div class="box">
+  <h2 id="zoomTit">Imagen</h2>
+  <div id="zoomCont"></div>
+  <div class="row">
+    <button class="b-gris" onclick="zoom(-1)" aria-label="Reducir">−</button>
+    <button class="b-gris" onclick="zoom(1)" aria-label="Ampliar">+</button>
+    <button class="b-azul" onclick="cerrar('mZoom')">Cerrar</button>
   </div>
-</div>
+</div></div>
 
 <!-- Entrega con foto -->
-<div class="modal" id="mEnt">
-  <div class="box">
-    <h2 id="entTit">Entregar pedido</h2>
-    <div class="mini">La foto del ticket es <b>obligatoria</b>. Se archiva en NEXO con las reglas de siempre (1 pedido) y sustituye a la captura en la tarjeta.</div>
-    <input type="file" id="fotoFile" accept="image/*" capture="environment" style="display:none">
-    <button class="btn azul btn-entregar" onclick="document.getElementById('fotoFile').click()">📷 Sacar foto del ticket</button>
-    <img id="fotoPrev" alt="">
-    <div class="pie">
-      <button class="btn gris" onclick="cerrar('mEnt')">Cancelar</button>
-      <button class="btn verde" id="btnConfEnt" disabled onclick="confirmarEntrega()">✅ ENTREGADO</button>
-    </div>
+<div class="modal" id="mEnt"><div class="box">
+  <h2>Entregar pedido</h2>
+  <div class="ent-info"><b id="entCli"></b><span id="entSub"></span></div>
+  <p class="nota">La foto del ticket es obligatoria. Desliza a la <b>derecha</b> para sacarla o a la <b>izquierda</b> para subirla.</p>
+  <div class="ent-sel"><div id="entFotoSel"></div></div>
+  <div class="ent-prev" id="entPrev">Foto del ticket</div>
+  <div class="row">
+    <button class="b-gris" onclick="cerrar('mEnt')">Cancelar</button>
+    <button class="b-verde" id="btnConfEnt" disabled onclick="confirmarEntrega()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Entregar</button>
   </div>
-</div>
+</div></div>
 
 <!-- Edición ADM -->
-<div class="modal" id="mEdit">
-  <div class="box">
-    <h2>✏️ Editar pedido <span id="edAlb"></span></h2>
-    <label>Tienda</label><select id="edTienda"></select>
-    <div class="duo">
-      <div><label>Fecha de entrega</label><input type="date" id="edFecha"></div>
-      <div><label>Tramo horario</label><select id="edTramo"><option>12-14H</option><option>17-19H</option></select></div>
-    </div>
-    <label>Cliente</label><input id="edCliente">
-    <label>Dirección</label><textarea id="edDir" rows="2"></textarea>
-    <label>Teléfonos (separados por espacio)</label><input id="edTel" inputmode="tel">
-    <div class="duo">
-      <div><label>Seco</label><input id="edSeco" inputmode="numeric"></div>
-      <div><label>Fresco</label><input id="edFresco" inputmode="numeric"></div>
-      <div><label>Congelado</label><input id="edCong" inputmode="numeric"></div>
-    </div>
-    <label>Observaciones</label><textarea id="edObs" rows="2"></textarea>
-    <div class="duo">
-      <div><label>Repartidor</label><select id="edRep"></select></div>
-      <div><label>Estado</label><select id="edEst"><option>PENDIENTE</option><option>ASIGNADO</option><option>ANULADO</option></select></div>
-    </div>
-    <div class="pie">
-      <button class="btn gris" onclick="cerrar('mEdit')">Cancelar</button>
-      <button class="btn" onclick="guardarEdicion()">💾 Guardar</button>
-    </div>
+<div class="modal" id="mEdit"><div class="box">
+  <h2>Editar pedido <span id="edAlb"></span></h2>
+  <div><label for="edTienda">Tienda</label><select id="edTienda"></select></div>
+  <div class="g2">
+    <div><label for="edFecha">Fecha de entrega</label><input type="date" id="edFecha"></div>
+    <div><label for="edTramo">Tramo horario</label><select id="edTramo"><option>12-14H</option><option>17-19H</option></select></div>
   </div>
-</div>
+  <div><label for="edCliente">Cliente</label><input id="edCliente"></div>
+  <div><label for="edDir">Dirección</label><textarea id="edDir" rows="2"></textarea></div>
+  <div><label for="edTel">Teléfonos (separados por espacio)</label><input id="edTel" inputmode="tel"></div>
+  <div class="g3">
+    <div><label for="edSeco">Seco</label><input id="edSeco" inputmode="numeric"></div>
+    <div><label for="edFresco">Fresco</label><input id="edFresco" inputmode="numeric"></div>
+    <div><label for="edCong">Congelado</label><input id="edCong" inputmode="numeric"></div>
+  </div>
+  <div><label for="edObs">Observaciones</label><textarea id="edObs" rows="2"></textarea></div>
+  <div class="g2">
+    <div><label for="edRep">Repartidor</label><select id="edRep"></select></div>
+    <div><label for="edEst">Estado</label><select id="edEst"><option>PENDIENTE</option><option>ASIGNADO</option><option>ANULADO</option></select></div>
+  </div>
+  <div class="row">
+    <button class="b-gris" onclick="cerrar('mEdit')">Cancelar</button>
+    <button class="b-azul" onclick="guardarEdicion()">Guardar</button>
+  </div>
+</div></div>
 
 <!-- Incidencia (misma lógica que Pedidos asignados de Nexo-tickets) -->
-<div class="modal" id="mInc">
-  <div class="box">
-    <h2 id="incTitulo">Incidencia</h2>
-    <div id="incTipos"></div>
-    <div id="incAusente" class="ausente" style="display:none"></div>
-    <div id="incObsWrap" style="display:none"><textarea id="incObs" rows="3" placeholder="Observaciones"></textarea></div>
-    <div id="incFotoWrap" style="display:none">
-      <button class="btn-foto" id="btnIncFoto" onclick="document.getElementById('incFile').click()">📷 Añadir foto</button>
-      <div class="miniaturas" id="incMini"></div>
-    </div>
-    <input type="file" id="incFile" accept="image/*" capture="environment" style="display:none" />
-    <div class="pie">
-      <button class="btn gris" onclick="cerrarInc()">Cancelar</button>
-      <button class="btn rojo" onclick="enviarIncidencia()">Registrar</button>
-    </div>
+<div class="modal" id="mInc"><div class="box">
+  <h2 id="incTitulo">Incidencia</h2>
+  <div id="incTipos"></div>
+  <div id="incAusente" class="ausente" style="display:none"></div>
+  <div id="incObsWrap" style="display:none"><textarea id="incObs" rows="3" placeholder="Observaciones"></textarea></div>
+  <div id="incFotoWrap" style="display:none">
+    <div class="inc-foto"><div id="incFotoSel"></div><span id="incFotoTxt">Añadir foto</span></div>
+    <div class="miniaturas" id="incMini"></div>
   </div>
-</div>
+  <div class="row">
+    <button class="b-gris" onclick="cerrarInc()">Cancelar</button>
+    <button class="b-rojo" onclick="enviarIncidencia()">Registrar</button>
+  </div>
+</div></div>
 
 <div id="spin">Procesando…</div>
 
@@ -235,7 +277,7 @@ var PROXY = 'https://sad-proxy.colatino-ventas-enlinea.workers.dev/';
 var SESION = {};
 try { SESION = JSON.parse(sessionStorage.getItem('sad_user') || '{}'); } catch (e) {}
 var USUARIO = String(SESION.usuario || '').toLowerCase();
-document.getElementById('quien').textContent = '👤 ' + (SESION.nombre || USUARIO);
+document.getElementById('quien').textContent = (SESION.nombre || USUARIO);
 
 function api(accion, datos, intentos) {
   intentos = intentos || 1;
@@ -264,13 +306,15 @@ var DATOS = { pedidos: [], rol: {}, tiendas: [], repartidores: [] };
 var TAB = 'pend', VISTA = null, CAPS = {}, FOCO = (location.search.match(/[?&]id=([^&]+)/) || [])[1];
 FOCO = FOCO ? decodeURIComponent(FOCO) : null;
 var ABRIR_INC = /[?&]inc=1/.test(location.search);
+var ABRIR_ENT = /[?&]ent=1/.test(location.search);   // desde Pedidos asignados → "Entregar"
+var FILTRO_REP = '';   // ADM: filtro por repartidor (Asignados y Cerrados)
 var CLAVE_VISTOS = 'nexo_dia_vistos_' + USUARIO;
 
 var _firma = '';
 // Nunca bloquea la pantalla: la lista se actualiza sola cuando llegan datos nuevos.
 async function cargar(silencioso) {
   var r = await api('diaListar', VISTA ? { vista: VISTA } : {}, 2);
-  if (!r.ok) { if (!silencioso) msg(r.error, 'err'); programar(60000); return; }
+  if (!r.ok) { if (!silencioso) msg(r.error, 'err'); if (!DATOS.pedidos.length) document.getElementById('lista').innerHTML = '<div class="vacio">No se pudo cargar. Se reintenta en 1 minuto.</div>'; programar(60000); return; }
   avisarNovedades(r);
   guardarContador(r);
   var firma = JSON.stringify([r.pedidos, r.vista, r.rol]);
@@ -279,20 +323,27 @@ async function cargar(silencioso) {
   document.getElementById('busqBg').classList.toggle('on', !!r.buscando);
   var gestor = r.rol && r.rol.ver;
   document.getElementById('barraBusq').style.display = gestor ? 'flex' : 'none';
-  document.getElementById('tabs').style.display = gestor ? 'flex' : 'none';
-  document.getElementById('btnTodos').style.display = gestor && r.vista !== 'todos' ? 'inline-block' : 'none';
-  document.getElementById('ultLectura').textContent = r.ultimaLectura ? 'Última lectura del portal: ' + r.ultimaLectura.slice(0, 16) : 'Aún no hay lecturas del portal.';
+  document.getElementById('btnBuscar').style.display = gestor ? 'flex' : 'none';
+  document.getElementById('tabs').style.display = gestor ? 'grid' : 'none';
+  document.getElementById('btnTodos').style.display = gestor && r.vista !== 'todos' ? 'flex' : 'none';
+  document.getElementById('ultLectura').textContent = r.ultimaLectura ? 'Última lectura: ' + horaLectura(r.ultimaLectura) : 'Aún no hay lecturas del portal.';
   document.getElementById('btnBuscar').disabled = !!r.buscando;
   if ('Notification' in window && Notification.permission === 'default') document.getElementById('btnAvisos').style.display = '';
   if (gestor) {
     var c = contar();
-    document.getElementById('tPend').textContent = 'Pendientes (' + c.pend + ')';
-    document.getElementById('tAsig').textContent = 'Asignados (' + c.asig + ')';
-    document.getElementById('tEnt').textContent = 'Cerrados (' + c.ent + ')';
+    document.getElementById('tPend').textContent = 'Pendientes · ' + c.pend;
+    document.getElementById('tAsig').textContent = 'Asignados · ' + c.asig;
+    document.getElementById('tEnt').textContent = 'Cerrados · ' + c.ent;
+    opcionesFiltro();
     if (FOCO) { var f = r.pedidos.filter(function (o) { return o.id === FOCO; })[0]; if (f) TAB = f.estadoNexo === 'PENDIENTE' ? 'pend' : f.estadoNexo === 'ASIGNADO' ? 'asig' : 'ent'; marcarTab(); }
   }
   if (cambio || FOCO) pintar();
   if (ABRIR_INC && FOCO) { var fi = FOCO; ABRIR_INC = false; setTimeout(function () { abrirIncidencia(fi); }, 300); }
+  else if (ABRIR_ENT && FOCO) {
+    var fe = FOCO; ABRIR_ENT = false;
+    var pe = r.pedidos.filter(function (o) { return o.id === fe; })[0];
+    if (pe && pe.estadoNexo === 'ASIGNADO') setTimeout(function () { abrirEntrega(fe); }, 300);
+  }
   programar(r.buscando ? 15000 : 60000);
 }
 /* Contador del botón %DIA de index.html: se deja guardado aquí el número
@@ -316,7 +367,26 @@ var _timer = null;
 function programar(ms) { clearTimeout(_timer); _timer = setTimeout(function () { if (!document.querySelector('.modal.on')) cargar(true); else programar(ms); }, ms); }
 
 function marcarTab() {
-  ['pend', 'asig', 'ent'].forEach(function (t) { document.getElementById({ pend: 'tPend', asig: 'tAsig', ent: 'tEnt' }[t]).classList.toggle('on', t === TAB); });
+  ['pend', 'asig', 'ent'].forEach(function (t) {
+    var b = document.getElementById({ pend: 'tPend', asig: 'tAsig', ent: 'tEnt' }[t]);
+    b.classList.toggle('on', t === TAB); b.setAttribute('aria-selected', t === TAB ? 'true' : 'false');
+  });
+}
+function horaLectura(s) { s = String(s || ''); var m = /(\d{1,2}:\d{2})/.exec(s); var hoy = fechaES(hoyISO()); return m ? (s.indexOf(hoy) === 0 ? m[1] : s.slice(0, 16)) : s.slice(0, 16); }
+
+/* ---- ADM: filtro por repartidor (pestañas Asignados y Cerrados) ---- */
+function repDe(o) { return o.asignadoA || o.entregaUsuario || ''; }
+function opcionesFiltro() {
+  var s = document.getElementById('selRep'); if (!s) return;
+  var reps = (DATOS.repartidores || []).slice();
+  // repartidores que aparecen en pedidos aunque ya no estén en la lista
+  DATOS.pedidos.forEach(function (o) {
+    var u = repDe(o); if (u && !reps.some(function (r) { return r.usuario === u; })) reps.push({ usuario: u, nombre: o.repartidor || u });
+  });
+  if (FILTRO_REP && !reps.some(function (r) { return r.usuario === FILTRO_REP; })) FILTRO_REP = '';
+  s.innerHTML = '<option value="">Todos los repartidores</option>' + reps.map(function (r) {
+    return '<option value="' + esc(r.usuario) + '"' + (r.usuario === FILTRO_REP ? ' selected' : '') + '>' + esc(r.nombre) + '</option>';
+  }).join('');
 }
 function cambiarTab(t) { TAB = t; marcarTab(); pintar(); }
 function verTodos() { VISTA = 'todos'; cargar(); }
@@ -336,7 +406,7 @@ function avisarNovedades(r) {
   try { localStorage.setItem(CLAVE_VISTOS, JSON.stringify(vistos)); } catch (e) {}
   if (primera || !nuevos.length) return;
   var t = (r.rol && r.rol.ver) ? nuevos.length + ' pedido(s) %DIA nuevo(s) sin asignar' : 'Tienes ' + nuevos.length + ' pedido(s) %DIA nuevo(s) asignado(s)';
-  msg('🔔 ' + t, 'info', 10000);
+  msg(t, 'info', 10000);
   notificar(t);
 }
 function notificar(t) {
@@ -379,9 +449,16 @@ function pintar() {
     if (TAB === 'asig') return o.estadoNexo === 'ASIGNADO';
     return o.estadoNexo === 'ENTREGADO' || o.estadoNexo === 'ANULADO' || o.estadoNexo === 'INCIDENCIA';
   });
+  // Filtro por repartidor (ADM), solo en Asignados y Cerrados
+  var conFiltro = gestor && TAB !== 'pend';
+  document.getElementById('filtroRep').style.display = conFiltro ? 'grid' : 'none';
+  if (conFiltro && FILTRO_REP) lista = lista.filter(function (o) { return repDe(o) === FILTRO_REP; });
+  if (conFiltro) document.getElementById('cuentaRep').textContent = lista.length + (lista.length === 1 ? ' pedido' : ' pedidos');
+  // Repartidor: primero lo que falta por entregar, al final lo entregado hoy
+  if (!gestor) lista = lista.slice().sort(function (a, b) { return (a.estadoNexo === 'ENTREGADO') - (b.estadoNexo === 'ENTREGADO'); });
   info.textContent = gestor
-    ? (TAB === 'pend' ? 'Pedidos detectados en %DIA (Vigo y Redondela) pendientes de asignar.' : TAB === 'asig' ? 'Asignados, hasta que el repartidor los entregue.' : 'Entregados, con incidencia (se resuelven en Incidencias ⚠️) o anulados.')
-    : 'Tus pedidos %DIA pendientes de entrega. Para entregar hace falta la foto del ticket.';
+    ? (TAB === 'pend' ? 'Pedidos detectados en %DIA (Vigo y Redondela) pendientes de asignar.' : TAB === 'asig' ? 'Asignados, hasta que el repartidor los entregue.' : 'Entregados hoy, con incidencia (se resuelven en Incidencias) o anulados.')
+    : 'Tus pedidos %DIA. Para entregar hace falta la foto del ticket.';
   // Conservar lo que el usuario estaba eligiendo en los desplegables al refrescar
   var guardados = {};
   l.querySelectorAll('select[id^="rep_"], select[id^="ti_"]').forEach(function (s) { guardados[s.id] = s.value; });
@@ -406,67 +483,129 @@ function opcionesRep(sel, vacio) {
   }).join('');
 }
 
-function cardHTML(o) {
-  var rol = DATOS.rol || {}, al = alertaTramo(o), id = esc(o.id);
-  var cls = 'card' + (al ? ' ' + al : '') + (o.estadoNexo === 'ENTREGADO' ? ' entregado' : '') + (o.estadoNexo === 'ANULADO' ? ' anulado' : '') + (o.estadoNexo === 'INCIDENCIA' ? ' incidencia' : '');
-  var h = '<div class="' + cls + '" id="c_' + id + '">';
-  h += '<div class="cab"><span class="cli">👤 ' + esc(o.cliente || '—') + '</span><span class="est ' + esc(o.estadoNexo) + '">' + esc(o.estadoNexo) + '</span></div>';
-  if (al === 'alerta') h += '<div class="aviso alerta">⚠️ Quedan menos de 30 min para el fin del tramo ' + esc(o.tramo) + '</div>';
-  if (al === 'tarde') h += '<div class="aviso tarde">⏰ Tramo ' + esc(o.tramo) + ' del ' + fechaES(o.fecha) + ' TERMINADO — pedido sin entregar</div>';
-  h += '<div class="duo"><div class="fila"><b>Tramo horario</b>' + esc(o.tramo || '—') + '</div><div class="fila"><b>Fecha de entrega</b>' + fechaES(o.fecha) + '</div></div>';
-  if (o.tienda) {
-    h += '<div class="fila"><b>Tienda</b>' + esc(o.tienda) + ' <span class="mini">(' + esc(o.centro) + ')</span></div>';
-  } else if (rol.asignar) {
-    h += '<div class="tienda-sel"><b style="color:#991b1b;font-size:12px">⚠️ No se pudo identificar la tienda (Centro: ' + esc(o.centro || '—') + '). ¿Cuál es?</b>' +
-      '<select id="ti_' + id + '">' + opcionesTiendas('') + '</select>' +
-      '<button class="btn" style="width:100%;margin-top:6px" onclick="fijarTienda(\'' + id + '\')">Guardar tienda</button></div>';
-  } else {
-    h += '<div class="fila"><b>Tienda</b><span style="color:#991b1b">Sin identificar</span> <span class="mini">(Centro: ' + esc(o.centro) + ')</span></div>';
-  }
-  h += '<div class="fila"><b>Cliente</b>' + esc(o.cliente || '—') + '</div>';
-  h += '<div class="fila"><b>Dirección</b><a href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(o.direccion || '') + '" target="_blank" rel="noopener">📍 ' + esc(o.direccion || '—') + '</a></div>';
-  if (o.telefonos && o.telefonos.length) {
-    h += '<div class="fila"><b>Teléfono</b>' + o.telefonos.map(function (t) {
-      return '<span class="tel"><a href="tel:' + esc(t) + '" onclick="llamada(\'' + id + '\',\'' + esc(t) + '\')">📞 ' + esc(t) + '</a><button class="copiar" onclick="copiar(\'' + esc(t) + '\')">📋</button></span>';
-    }).join('') + '</div>';
-  }
-  h += '<div class="duo"><div class="fila"><b>NumAlbaran</b>' + esc(o.albaran) + '</div><div class="fila"><b>Procedencia</b>' + esc(o.procedencia || '—') + '</div></div>';
-  h += '<div class="chips"><span class="chip">📦 Seco: ' + esc(o.seco || '0') + '</span><span class="chip">🧊 Fresco: ' + esc(o.fresco || '0') + '</span><span class="chip">❄️ Congelado: ' + esc(o.congelado || '0') + '</span><span class="chip">P: ' + esc(o.p || '1') + '</span></div>';
-  if (o.estadoNexo === 'INCIDENCIA') h += '<div class="inc-info">⚠️ Incidencia: ' + esc(o.incidencia || '') + '<div class="mini" style="color:#991b1b">ADM la resuelve en la página de Incidencias (Restaurar / Eliminar).</div></div>';
-  if (o.tramoPortal && o.tramoPortal.replace(/\s/g, '') !== '' && !/^(12:00-14:00|17:00-19:00)$/.test(o.tramoPortal.replace(/\s/g, ''))) h += '<div class="mini">⚠️ Tramo en el portal: "' + esc(o.tramoPortal) + '" → corregido a ' + esc(o.tramo) + '</div>';
-  if (o.observaciones) h += '<div class="obs"><b>Observaciones:</b> ' + esc(o.observaciones) + '</div>';
-  h += '<div class="fila"><b>Estado</b>' + esc(o.estadoNexo) + (o.estadoWeb ? ' <span class="mini">· portal: ' + esc(o.estadoWeb) + '</span>' : '') + '</div>';
-  if (o.repartidor) h += '<div class="fila"><b>Repartidor</b>🚐 ' + esc(o.repartidor) + (o.asignadoHora ? ' <span class="mini">· ' + esc(o.asignadoHora.slice(0, 16)) + '</span>' : '') + '</div>';
-  if (o.estadoNexo === 'ENTREGADO') h += '<div class="fila"><b>Entregado</b>✅ ' + esc(o.entregaHora || '') + ' · ' + esc(o.entregaUsuario || '') + (o.archivoNexo ? '<div class="mini">' + esc(o.archivoNexo) + '</div>' : '') + '</div>';
-
-  // Captura / foto
-  h += '<div class="cap" id="cap_' + id + '" onclick="ampliar(\'' + id + '\')">' + (o.tieneCaptura || o.tieneFoto ? 'Cargando imagen…' : 'Sin captura') + '</div>';
-
-  // Acciones
-  if (rol.asignar && (o.estadoNexo === 'PENDIENTE' || o.estadoNexo === 'ASIGNADO')) {
-    h += '<div class="asig"><div><select id="rep_' + id + '">' + opcionesRep(o.asignadoA) + '</select></div>' +
-      '<button class="btn azul" onclick="asignar(\'' + id + '\')">' + (o.estadoNexo === 'PENDIENTE' ? 'Asignar repartidor' : 'Reasignar') + '</button></div>';
-  }
-  if (o.estadoNexo === 'ASIGNADO' && (o.asignadoA === USUARIO || rol.editar)) {
-    h += '<div class="duo-btn"><button class="btn rojo" onclick="abrirIncidencia(\'' + id + '\')">⚠️ INCIDENCIA</button>' +
-      '<button class="btn verde" onclick="abrirEntrega(\'' + id + '\')">📷 ENTREGADO</button></div>';
-  }
-  if (rol.editar) h += '<div class="acciones"><button class="btn gris" onclick="abrirEdicion(\'' + id + '\')">✏️ Editar</button></div>';
-  if (o.historial && rol.ver) h += '<details class="hist"><summary>Historial / auditoría</summary><pre>' + esc(o.historial) + '</pre></details>';
-  return h + '</div>';
+/* ============ TARJETA ============ */
+function svg(d, w, sw) { return '<svg width="' + (w || 18) + '" height="' + (w || 18) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (sw || 2.2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>'; }
+var IC_OK = svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 18, 2.6);
+var IC_PIN = svg('<path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/>');
+var IC_TEL = svg('<path d="M6 4h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4 6a2 2 0 0 1 2-2z"/>');
+var IC_LAPIZ = svg('<path d="M4 20l1-4L16 5l3 3L8 19z"/>', 20);
+var IC_DESH = svg('<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>');
+var IC_IMG = svg('<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l4.5-4.5 3.5 3.5 3-3 5 5"/><circle cx="9" cy="9.5" r="1.4"/>', 20);
+function estCls(e) { return { PENDIENTE: 'pendiente', ASIGNADO: 'asignado', ENTREGADO: 'entregado', INCIDENCIA: 'incidencia' }[e] || ''; }
+function estTxt(e) { e = String(e || ''); return e.charAt(0) + e.slice(1).toLowerCase(); }
+function horaCorta(ts) { var m = /(\d{1,2}:\d{2})/.exec(String(ts || '')); return m ? ' · ' + m[1] : ''; }
+function tramoTxt(t) { return esc(String(t || '—').replace('-', '–')); }
+function entregadoHoy(o) { return o.estadoNexo === 'ENTREGADO' && String(o.entregaHora || '').indexOf(fechaES(hoyISO())) === 0; }
+function claveCap(o) { return o.id + (o.tieneFoto ? '|foto' : '|cap'); }
+function capHTML(o) {
+  var id = esc(o.id), k = claveCap(o);
+  if (!(o.tieneCaptura || o.tieneFoto)) return '<div class="cap vacia">Sin captura</div>';
+  if (CAPS[k]) return '<div class="cap" id="cap_' + id + '" onclick="ampliar(\'' + id + '\')"><span class="etq">' + (CAPS[k].tipo === 'foto' ? 'Ticket' : 'Captura %DIA') + '</span><img src="' + CAPS[k].dataUrl + '" alt=""></div>';
+  if (CAP_FALLO[k]) return capFalloHTML(o.id);
+  return '<div class="cap" id="cap_' + id + '" onclick="ampliar(\'' + id + '\')">Cargando imagen…</div>';
+}
+function capFalloHTML(id) {
+  return '<div class="cap fallo" id="cap_' + esc(id) + '"><span>' + IC_IMG + 'La imagen no ha cargado</span><button type="button" onclick="reintentarCap(\'' + esc(id) + '\')">Reintentar</button></div>';
 }
 
-/* ============ IMÁGENES ============ */
-async function cargarMiniatura(o) {
-  var el = document.getElementById('cap_' + o.id); if (!el) return;
-  var k = o.id + (o.tieneFoto ? '|foto' : '|cap');
-  if (!CAPS[k]) {
-    var r = await api('diaCaptura', { id: o.id }, 2);
-    if (!r.ok) { el.textContent = r.error; return; }
-    CAPS[k] = r;
+function cardHTML(o) {
+  var rol = DATOS.rol || {}, al = alertaTramo(o), id = esc(o.id), e = o.estadoNexo;
+  var cls = 'card' + (al ? ' ' + al : '') + (e === 'ANULADO' ? ' anulado' : '') + (e === 'INCIDENCIA' ? ' incidencia' : '') + (e === 'ENTREGADO' ? ' entregado' : '');
+  var h = '<article class="' + cls + '" id="c_' + id + '">';
+  h += '<div class="cab"><span class="cli">' + esc(o.cliente || '—') + '</span><span class="nx-estado ' + estCls(e) + '">' + esc(estTxt(e)) + '</span></div>';
+
+  // Entregado: tarjeta corta con el botón gris "Entregado · HH:MM"
+  if (e === 'ENTREGADO') {
+    h += '<div class="grid2"><div class="fila"><b>Tramo</b>' + tramoTxt(o.tramo) + '</div><div class="fila"><b>Entregó</b>' + esc(o.repartidor || o.entregaUsuario || '—') + '</div></div>';
+    if (rol.ver) h += '<div class="grid2"><div class="fila"><b>Tienda</b>' + esc(o.tienda || '—') + '</div><div class="fila"><b>Albarán</b>' + esc(o.albaran) + '</div></div>';
+    if (o.archivoNexo && rol.ver) h += '<div class="mini">' + esc(o.archivoNexo) + '</div>';
+    h += capHTML(o);
+    h += '<button class="b-hecho" disabled>' + IC_OK + 'Entregado' + horaCorta(o.entregaHora) + '</button>';
+    if (rol.editar && entregadoHoy(o)) h += '<button class="b-deshacer" onclick="deshacer(\'' + id + '\')">' + IC_DESH + 'Deshacer entrega</button>';
+    if (o.historial && rol.ver) h += '<details class="hist"><summary>Historial / auditoría</summary><pre>' + esc(o.historial) + '</pre></details>';
+    return h + '</article>';
   }
-  el = document.getElementById('cap_' + o.id); if (!el) return;
-  el.innerHTML = '<span class="etq">' + (CAPS[k].tipo === 'foto' ? '📷 TICKET' : '🖼️ CAPTURA %DIA') + '</span><img src="' + CAPS[k].dataUrl + '" alt="">';
+
+  if (al === 'alerta') h += '<div class="aviso alerta">Quedan menos de 30 min para el fin del tramo ' + tramoTxt(o.tramo) + '</div>';
+  if (al === 'tarde') h += '<div class="aviso tarde">Tramo ' + tramoTxt(o.tramo) + ' del ' + fechaES(o.fecha) + ' TERMINADO — pedido sin entregar</div>';
+  h += '<div class="grid2"><div class="fila"><b>Tramo</b>' + tramoTxt(o.tramo) + '</div><div class="fila"><b>Entrega</b>' + fechaES(o.fecha) + '</div>';
+  if (o.tienda) h += '<div class="fila"><b>Tienda</b>' + esc(o.tienda) + (rol.ver && o.centro ? ' <span class="mini">(' + esc(o.centro) + ')</span>' : '') + '</div>';
+  else h += '<div class="fila"><b>Tienda</b><span style="color:var(--nx-rojo)">' + (rol.asignar ? '¿Cuál es?' : 'Sin identificar') + '</span></div>';
+  h += '<div class="fila"><b>Albarán</b>' + esc(o.albaran) + '</div></div>';
+  if (!o.tienda && rol.asignar) {
+    h += '<div class="tienda-sel"><b>No se pudo identificar la tienda (Centro: ' + esc(o.centro || '—') + '). ¿Cuál es?</b>' +
+      '<select class="nx-input" id="ti_' + id + '">' + opcionesTiendas('') + '</select>' +
+      '<button class="b-sec" onclick="fijarTienda(\'' + id + '\')">Guardar tienda</button></div>';
+  }
+  h += '<div class="fila"><b>Dirección</b><a class="dir" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(o.direccion || '') + '" target="_blank" rel="noopener">' + IC_PIN + '<span>' + esc(o.direccion || '—') + '</span></a></div>';
+  if (o.telefonos && o.telefonos.length) {
+    h += '<div class="fila"><b>Teléfono</b><div class="tels">' + o.telefonos.map(function (t) {
+      return '<span class="tel"><a href="tel:' + esc(t) + '" onclick="llamada(\'' + id + '\',\'' + esc(t) + '\')">' + IC_TEL + esc(t) + '</a><button class="copiar" onclick="copiar(\'' + esc(t) + '\')">Copiar</button></span>';
+    }).join('') + '</div></div>';
+  }
+  h += '<div class="chips"><span class="chip">Seco ' + esc(o.seco || '0') + '</span><span class="chip">Fresco ' + esc(o.fresco || '0') + '</span><span class="chip">Congelado ' + esc(o.congelado || '0') + '</span><span class="chip">P ' + esc(o.p || '1') + '</span>' +
+    (o.procedencia ? '<span class="chip">' + esc(o.procedencia) + '</span>' : '') + '</div>';
+  if (e === 'INCIDENCIA') h += '<div class="inc-info">Incidencia: ' + esc(o.incidencia || '') + '<div class="mini" style="color:#7A1A12">ADM la resuelve en la página de Incidencias.</div></div>';
+  if (o.tramoPortal && o.tramoPortal.replace(/\s/g, '') !== '' && !/^(12:00-14:00|17:00-19:00)$/.test(o.tramoPortal.replace(/\s/g, ''))) h += '<div class="mini">Tramo en el portal: "' + esc(o.tramoPortal) + '" → corregido a ' + esc(o.tramo) + '</div>';
+  if (o.observaciones) h += '<div class="obs"><b>Observaciones:</b> ' + esc(o.observaciones) + '</div>';
+  if (rol.ver && o.estadoWeb) h += '<div class="mini">Estado en el portal: ' + esc(o.estadoWeb) + '</div>';
+  if (o.repartidor && !(rol.asignar && (e === 'PENDIENTE' || e === 'ASIGNADO'))) h += '<div class="fila"><b>Repartidor</b>' + esc(o.repartidor) + (o.asignadoHora ? ' <span class="mini">· ' + esc(o.asignadoHora.slice(0, 16)) + '</span>' : '') + '</div>';
+
+  h += capHTML(o);
+
+  // Asignar (gestor)
+  if (rol.asignar && (e === 'PENDIENTE' || e === 'ASIGNADO')) {
+    h += '<div class="perf" aria-hidden="true"></div>';
+    h += '<div class="asig"><div class="nx-campo"><label for="rep_' + id + '">' + (e === 'PENDIENTE' ? 'Repartidor' : 'Repartidor asignado') + '</label>' +
+      '<select class="nx-input" id="rep_' + id + '">' + opcionesRep(o.asignadoA) + '</select></div>' +
+      '<button onclick="asignar(\'' + id + '\')">' + (e === 'PENDIENTE' ? 'Asignar' : 'Reasignar') + '</button></div>';
+  }
+  // Acciones
+  var puedeEntregar = e === 'ASIGNADO' && (o.asignadoA === USUARIO || rol.editar);
+  if (puedeEntregar) {
+    h += '<div class="acciones' + (rol.editar ? ' con-edit' : '') + '">' +
+      (rol.editar ? '<button class="b-edit" aria-label="Editar pedido" title="Editar" onclick="abrirEdicion(\'' + id + '\')">' + IC_LAPIZ + '</button>' : '') +
+      '<button class="b-inc" onclick="abrirIncidencia(\'' + id + '\')">Incidencia</button>' +
+      '<button class="b-ent" onclick="abrirEntrega(\'' + id + '\')">' + IC_OK + 'Entregar</button></div>';
+  } else if (rol.editar) {
+    h += '<button class="b-editar" onclick="abrirEdicion(\'' + id + '\')">' + IC_LAPIZ + 'Editar</button>';
+  }
+  if (o.historial && rol.ver) h += '<details class="hist"><summary>Historial / auditoría</summary><pre>' + esc(o.historial) + '</pre></details>';
+  return h + '</article>';
+}
+
+/* ============ IMÁGENES ============
+   Ronda 24: antes se pedían TODAS las capturas a la vez y, con varias tarjetas,
+   algunas fallaban (el servidor no daba abasto) y se quedaban sin imagen.
+   Ahora van en cola, de 2 en 2, con 3 intentos; si aun así falla, la tarjeta
+   enseña "La imagen no ha cargado" con un botón Reintentar. */
+var CAP_COLA = [], CAP_ACTIVAS = 0, CAP_MAX = 2, CAP_PIDIENDO = {}, CAP_FALLO = {};
+function cargarMiniatura(o) {
+  var k = claveCap(o);
+  if (CAPS[k] || CAP_PIDIENDO[k] || CAP_FALLO[k]) return;
+  CAP_PIDIENDO[k] = 1; CAP_COLA.push(o.id); bombearCaps();
+}
+function bombearCaps() {
+  while (CAP_ACTIVAS < CAP_MAX && CAP_COLA.length) {
+    CAP_ACTIVAS++;
+    descargarCap(CAP_COLA.shift()).then(function () { CAP_ACTIVAS--; bombearCaps(); });
+  }
+}
+async function descargarCap(id) {
+  var o = DATOS.pedidos.filter(function (x) { return x.id === id; })[0]; if (!o) return;
+  var k = claveCap(o);
+  var r = await api('diaCaptura', { id: id }, 3);
+  delete CAP_PIDIENDO[k];
+  var el = document.getElementById('cap_' + id);
+  if (!r.ok) { CAP_FALLO[k] = r.error || 'error'; if (el) el.outerHTML = capFalloHTML(id); return; }
+  CAPS[k] = r;
+  if (el) el.outerHTML = capHTML(o);
+}
+function reintentarCap(id) {
+  var o = DATOS.pedidos.filter(function (x) { return x.id === id; })[0]; if (!o) return;
+  delete CAP_FALLO[claveCap(o)];
+  var el = document.getElementById('cap_' + id); if (el) el.outerHTML = capHTML(o);
+  cargarMiniatura(o);
 }
 var _zoom = 100;
 function ampliar(id) {
@@ -504,25 +643,26 @@ async function asignar(id) {
   cargar(true);
 }
 
-/* ---- Entrega ---- */
+/* ---- Entrega (selector deslizante: derecha = sacar, izquierda = subir) ---- */
 var ENT_ID = null, ENT_FOTO = null;
+NexoFoto.crear(document.getElementById('entFotoSel'), { alElegir: fotoEntrega });
 function abrirEntrega(id) {
   var o = DATOS.pedidos.filter(function (x) { return x.id === id; })[0] || {};
   ENT_ID = id; ENT_FOTO = null;
-  document.getElementById('entTit').textContent = 'Entregar · ' + (o.cliente || '') + ' · ' + (o.albaran || '');
-  document.getElementById('fotoPrev').style.display = 'none';
+  document.getElementById('entCli').textContent = o.cliente || '—';
+  document.getElementById('entSub').textContent = 'Tramo ' + String(o.tramo || '—').replace('-', '–') + ', albarán ' + (o.albaran || '—');
+  document.getElementById('entPrev').innerHTML = 'Foto del ticket';
   document.getElementById('btnConfEnt').disabled = true;
-  document.getElementById('fotoFile').value = '';
   document.getElementById('mEnt').classList.add('on');
 }
-document.getElementById('fotoFile').addEventListener('change', async function (ev) {
-  var f = ev.target.files && ev.target.files[0]; if (!f) return;
+async function fotoEntrega(f) {
+  if (!f) return;
   spin(true, 'Preparando foto…');
   try { ENT_FOTO = await reducir(f, 1600); } catch (e) { spin(false); msg('No se pudo leer la foto.', 'err'); return; }
   spin(false);
-  var p = document.getElementById('fotoPrev'); p.src = ENT_FOTO; p.style.display = 'block';
+  document.getElementById('entPrev').innerHTML = '<img src="' + ENT_FOTO + '" alt="Foto del ticket">';
   document.getElementById('btnConfEnt').disabled = false;
-});
+}
 function reducir(file, max) {
   return new Promise(function (res, rej) {
     var url = URL.createObjectURL(file), img = new Image();
@@ -541,12 +681,28 @@ async function confirmarEntrega() {
   spin(true, 'Subiendo ticket y cerrando el pedido…');
   var r = await api('diaEntregar', { id: ENT_ID, imagenBase64: ENT_FOTO }, 3);
   spin(false);
-  if (!r.ok) { msg('❌ ' + r.error, 'err', 12000); return; }
+  if (!r.ok) { msg(r.error, 'err', 12000); return; }
   cerrar('mEnt');
-  msg(r.yaEntregado ? '✅ Este pedido ya estaba entregado.' : '✅ Pedido ENTREGADO. Ticket archivado: ' + r.archivo, 'ok', 9000);
-  delete CAPS[ENT_ID + '|cap'];
+  msg(r.yaEntregado ? 'Este pedido ya estaba entregado.' : 'Pedido ENTREGADO. Ticket archivado: ' + r.archivo, 'ok', 9000);
+  delete CAPS[ENT_ID + '|cap']; delete CAP_FALLO[ENT_ID + '|cap']; delete CAP_FALLO[ENT_ID + '|foto'];
   cargar(true);
 }
+
+/* ---- Deshacer entrega (solo ADM, entregas de hoy) ----
+   El pedido vuelve a ASIGNADO al mismo repartidor; el servidor apunta en el
+   historial quién y cuándo, y borra la foto archivada (Drive + control). */
+async function deshacer(id) {
+  var o = DATOS.pedidos.filter(function (x) { return x.id === id; })[0]; if (!o) return;
+  if (!confirm('¿Deshacer la entrega de ' + (o.cliente || 'este pedido') + '?\n\nVuelve a ASIGNADO a ' + (o.repartidor || o.asignadoA || 'su repartidor') + ' y se borra la foto archivada.')) return;
+  spin(true, 'Deshaciendo la entrega…');
+  var r = await api('diaDeshacerEntrega', { id: id }, 2);
+  spin(false);
+  if (!r.ok) { msg(r.error, 'err', 10000); return; }
+  delete CAPS[id + '|foto']; delete CAP_FALLO[id + '|foto'];
+  msg('Entrega deshecha. El pedido vuelve a estar asignado a ' + (o.repartidor || r.repartidor) + '.', 'ok', 9000);
+  cargar(true);
+}
+
 
 /* ---- Edición (ADM) ---- */
 var ED_ID = null;
@@ -648,7 +804,7 @@ function elegirTipo(k) {
   document.getElementById('incObsWrap').style.display = 'block';
   document.getElementById('incObs').placeholder = d.obs ? 'Observaciones (obligatorio)' + (k === 'COMPRA_RECHAZADA' ? ' — motivo del rechazo' : '') : 'Observaciones (opcional)';
   document.getElementById('incFotoWrap').style.display = d.fotosMax ? 'block' : 'none';
-  document.getElementById('btnIncFoto').textContent = k === 'CLIENTE_AUSENTE' ? '📷 Foto del portal (opcional)' : '📷 Añadir foto (máx. ' + d.fotosMax + ')';
+  document.getElementById('incFotoTxt').textContent = k === 'CLIENTE_AUSENTE' ? 'Foto del portal (opcional)' : 'Añadir foto (máx. ' + d.fotosMax + ')';
   document.getElementById('incMini').innerHTML = '';
   var a = document.getElementById('incAusente');
   if (k === 'CLIENTE_AUSENTE') { a.style.display = 'block'; pintarAusente(); } else a.style.display = 'none';
@@ -675,16 +831,15 @@ function tick() {
   var t = incIntentos.map(function (x) { return new Date(x).toLocaleTimeString('es-ES'); }).join(' · ');
   if (n < 3) c.textContent = 'Tentativas: ' + t;
   else if (f > 0) c.textContent = 'Tentativas: ' + t + ' — espera ' + Math.floor(f / 60000) + ':' + String(Math.floor(f % 60000 / 1000)).padStart(2, '0') + ' para poder registrar.';
-  else c.textContent = 'Tentativas: ' + t + ' — ✅ espera de 10 min cumplida.';
+  else c.textContent = 'Tentativas: ' + t + ' — espera de 10 min cumplida.';
 }
-document.getElementById('incFile').addEventListener('change', async function (ev) {
-  var f = ev.target.files[0]; ev.target.value = '';
+NexoFoto.crear(document.getElementById('incFotoSel'), { clase: 'mini', alElegir: async function (f) {
   if (!f || !incTipo) return;
   if (incFotos.length >= TIPOS[incTipo].fotosMax) { msg('Máximo de fotos alcanzado.', 'err'); return; }
   var d = await reducir(f, 1400);
   incFotos.push(d);
   document.getElementById('incMini').innerHTML = incFotos.map(function (x) { return '<img src="' + x + '">'; }).join('');
-});
+} });
 async function enviarIncidencia() {
   if (!incTipo) { msg('Elige el tipo de incidencia.', 'err'); return; }
   var d = TIPOS[incTipo], obs = document.getElementById('incObs').value.trim();
