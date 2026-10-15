@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <!-- Nexo · Configuración (solo ADM)
+     v3.10.2 (2026-10-16, ronda 25): interruptor «Ocultar mi número al llamar» (marca #31# antes del número
+       en «Llamar al cliente» de Incidencias). Se guarda en ESTE móvil; depende de la operadora: probar en 2 móviles.
      v3.10.1 (2026-10-09, ronda 24): diseño nuevo (nexo-tema.css) y nueva sección
      "Reservas automáticas" para clientes habituales: cada semana o cada 15 días, un día
      y una franja; la reserva se crea sola 3 días antes (si la franja está completa se crea
@@ -7,7 +9,7 @@
      guardarReservaAuto, borrarReservaAuto; disparador generarReservasAuto).
      Se mantienen: Pedidos diarios emitidos (NEXO SCRIPT, PEDIDOS_TOTALES; GRANVIA en su
      columna) y Límites por franja (Módulo Embolsado, hoja LIMITES). -->
-<html lang="es" data-pagina="config" data-version="v3.10.1">
+<html lang="es" data-pagina="config" data-version="v3.10.2">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
@@ -96,6 +98,13 @@ details.hist summary { font-weight:800; cursor:pointer; }
 details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
 #spin { position:fixed; inset:0; z-index:300; background:rgba(11,36,71,.62); display:none; align-items:center; justify-content:center; color:#fff; font-weight:800; }
 #spin.on { display:flex; }
+
+.sw-fila { display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; }
+.sw-fila b { font-size:16px; font-weight:800; }
+.sw-fila input { -webkit-appearance:none; appearance:none; flex:0 0 auto; width:56px; height:32px; border-radius:16px; background:var(--nx-chip); position:relative; cursor:pointer; transition:background .15s; margin:0; }
+.sw-fila input::after { content:''; position:absolute; top:3px; left:3px; width:26px; height:26px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(11,36,71,.3); transition:left .15s; }
+.sw-fila input:checked { background:var(--nx-verde); }
+.sw-fila input:checked::after { left:27px; }
 </style>
 </head>
 <body class="nx">
@@ -123,6 +132,16 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
     <p class="nota" id="notaCol">Se guarda en PEDIDOS_TOTALES, columna de TRAVESIA.</p>
     <button class="btn-p" id="btnGuardar" type="button">Guardar</button>
     <div class="msg" id="msg"></div>
+  </section>
+
+  <!-- Ocultar mi número (Ronda 25) -->
+  <section class="sec">
+    <h2>Llamadas desde la app</h2>
+    <label class="sw-fila" for="swOculto">
+      <span><b>Ocultar mi número al llamar</b><span class="nota" style="display:block;margin-top:2px">Marca <b>#31#</b> delante del número del cliente en «Llamar al cliente». Depende de la operadora: pruébalo en 2 móviles. Vale solo para este móvil.</span></span>
+      <input type="checkbox" id="swOculto" />
+    </label>
+    <div class="msg" id="msgOculto"></div>
   </section>
 
   <!-- Límites -->
@@ -186,6 +205,14 @@ try { sesion = JSON.parse(sessionStorage.getItem('sad_user') || '{}'); } catch (
 document.getElementById('quien').textContent = sesion.nombre || sesion.usuario || '';
 
 function el(id) { return document.getElementById(id); }
+(function () {
+  var sw = document.getElementById('swOculto'); if (!sw) return;
+  try { sw.checked = localStorage.getItem('nexo_ocultar_numero') === '1'; } catch (e) {}
+  sw.addEventListener('change', function () {
+    try { localStorage.setItem('nexo_ocultar_numero', sw.checked ? '1' : '0'); } catch (e) {}
+    var m = document.getElementById('msgOculto'); m.className = 'msg ok'; m.textContent = sw.checked ? 'Activado: se marcará #31# antes del número.' : 'Desactivado: se llama con tu número normal.';
+  });
+})();
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function hoyISO() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function fechaES(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso; }

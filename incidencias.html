@@ -1,5 +1,8 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — incidencias.html
+     v3.10.3 (2026-10-16, ronda 25): foto como en el resto (Sacar/Subir); cliente ausente exige 1 foto del portal;
+       «Llamar al cliente» (1 llamada basta; con el interruptor de Configuración marca #31#); campo Tienda
+       (por defecto la del usuario). Requiere Embolsado.js de la ronda 25.
      v3.10.1 (2026-10-09, ronda 24): diseño nuevo y:
        · Lista: Pendientes / Todas; cada incidencia con Ticket, Fotos y "Añadir fotos".
        · Resolver (ADM y Embolsado): responsable (Usuario / Cliente / Tienda / No
@@ -18,7 +21,7 @@
        cuánto ha tardado y, si no lee nada, lo dice claramente.
      Requiere Embolsado.js de la ronda 24 (finalizarIncidencia, anadirFotosIncidencia,
      panelIncidencias). -->
-<html lang="es" data-pagina="incidencias" data-version="v3.10.2">
+<html lang="es" data-pagina="incidencias" data-version="v3.10.3">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
@@ -308,13 +311,14 @@ body.nx { padding-bottom:40px; }
   <div id="nvP3" style="display:none;flex-direction:column;gap:12px">
     <div class="cab-tk"><div class="nb"><b id="nvNum"></b><span id="nvCajaTxt"></span></div><div class="dt"><b id="nvCli"></b><span id="nvDirTxt"></span></div></div>
     <div id="nvPedido" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div><label for="nvTienda">Tienda</label><select id="nvTienda"></select></div>
     <div><span class="etq">Motivo</span><div id="nvTipos"></div></div>
     <div id="nvAusente" style="display:none;flex-direction:column;gap:8px">
       <div class="perf" aria-hidden="true"></div>
-      <span class="etq">Llamadas al cliente</span>
-      <div class="llamadas" id="nvLlamadas"></div>
-      <button class="b-llamada" id="btnLlamada" onclick="nuevoIntentoNv()">Registrar llamada</button>
-      <div id="nvLlamOk" class="aviso g" style="display:none">3 llamadas hechas. Ya puedes registrar la incidencia, sin esperar.</div>
+      <span class="etq">Llamada al cliente</span>
+      <button class="b-llamada" id="btnLlamada" type="button" onclick="llamarAlCliente()">Llamar al cliente</button>
+      <div id="nvLlamOk" class="aviso g" style="display:none"></div>
+      <p class="nota" id="nvLlamNota"></p>
     </div>
     <div id="nvFotoWrap" style="display:none;flex-direction:column;gap:8px">
       <div class="perf" aria-hidden="true"></div>
@@ -402,6 +406,7 @@ function cardHTML(i) {
   var donde = i['CAJA'] === '%DIA' ? '%DIA, albarán ' + esc(i['TICKET']) : 'Caja ' + esc(i['CAJA']) + ', ticket ' + esc(i['TICKET']);
   h += '<div class="meta">' + esc(fechaCortaDMY(i['FECHA'])) + ', ' + esc(hm(i['HORA'])) + ' · ' + esc(nombreDe(i['USUARIO'])) + ' · ' + donde + '</div>';
   if (i['NOMBRE'] || i['DIRECCION']) h += '<div class="cli">' + esc(i['NOMBRE'] || '—') + (i['DIRECCION'] ? '<span>' + esc(i['DIRECCION']) + '</span>' : '') + '</div>';
+  if (i['TIENDA']) h += '<div class="linea"><b>Tienda:</b> ' + esc(i['TIENDA']) + '</div>';
   if (i['TELEFONO']) h += '<div class="linea"><b>Tel.</b> <a href="tel:' + esc(i['TELEFONO']) + '" style="color:var(--nx-azul);font-weight:800">' + esc(i['TELEFONO']) + '</a></div>';
   if (i['INTENTOS']) h += '<div class="linea"><b>Llamadas:</b> ' + esc(i['INTENTOS'].split('|').map(function (x) { return hm(x); }).filter(Boolean).join(', ')) + '</div>';
   if (i['OBSERVACIONES']) h += '<div class="linea"><b>Obs:</b> ' + esc(i['OBSERVACIONES']) + '</div>';
@@ -545,7 +550,7 @@ function crearColector(cont, alCambiar) {
     '<input type="file" class="in-varias" accept="image/*,.zip,application/zip,application/x-zip-compressed" multiple hidden>' +
     (escritorio ? '<input type="file" class="in-carpeta" webkitdirectory multiple hidden>' : '') + '</div>';
   var q = function (s) { return cont.querySelector(s); };
-  NexoFoto.crear(q('.c-sel'), { clase: 'mini', alElegir: function (f) { anadir([f]); } });
+  NexoFoto.crear(q('.c-sel'), { alElegir: function (f) { anadir([f]); } });
   q('.c-varias').onclick = function () { q('.in-varias').click(); };
   q('.in-varias').onchange = function (e) { var l = [].slice.call(e.target.files || []); e.target.value = ''; anadir(l); };
   if (escritorio) {
@@ -676,12 +681,43 @@ var TIPOS = {
   FRIO_OLVIDADO:        { etiqueta: 'Frío olvidado',              obs: true }
 };
 var nv = null, nvOcupado = false, nvCol = null;
+var TIENDAS = null;
+/* Ronda 25: lista de tiendas (la misma que usa el reparto) y la del usuario por defecto. */
+function cargarTiendas() {
+  if (TIENDAS) return Promise.resolve(TIENDAS);
+  var pre = String(SESION.tiendaPre || '').trim();
+  var URL_LISTAS = 'https://script.google.com/macros/s/AKfycbzkf4K28coJa5YXNv_iN08sfhjrtKenyFJgHxWaIxMGVtuABHswvySAFEmowq5vP4rD/exec';
+  return fetch(PROXY + '?url=' + encodeURIComponent(URL_LISTAS)).then(function (r) { return r.json(); }).then(function (d) {
+    TIENDAS = (d && d.tiendas && d.tiendas.length) ? d.tiendas.slice() : (pre ? [pre] : []);
+  }).catch(function () { TIENDAS = pre ? [pre] : []; });
+}
+function pintarTiendaNv() {
+  var pre = String(SESION.tiendaPre || '').trim(), lista = (TIENDAS || []).slice();
+  if (pre && !lista.some(function (t) { return String(t).toLowerCase() === pre.toLowerCase(); })) lista.unshift(pre);
+  var sel = el('nvTienda'), actual = (nv && nv.tienda) || pre;
+  sel.innerHTML = '<option value="">— Elige la tienda —</option>' + lista.map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + '</option>'; }).join('');
+  var hit = lista.filter(function (t) { return String(t).toLowerCase() === String(actual).toLowerCase(); })[0];
+  sel.value = hit || '';
+  sel.onchange = function () { if (nv) nv.tienda = sel.value; };
+  if (nv) nv.tienda = sel.value;
+}
+/* Ronda 25: "Llamar al cliente". Con 1 llamada basta. Si en Configuración está el interruptor
+   de ocultar número, se marca #31# delante (España); depende de la operadora. */
+function llamarAlCliente() {
+  if (!nv || nv.intentos.length >= 1) { return; }
+  var tel = String((nv.datos && nv.datos.telefono) || el('nvTel').value || '').replace(/[^\d+]/g, '');
+  if (!tel) { alert('No hay teléfono del cliente. Vuelve al paso 2 y escríbelo.'); return; }
+  var oculto = false; try { oculto = localStorage.getItem('nexo_ocultar_numero') === '1'; } catch (e) {}
+  nv.intentos.push(Date.now());
+  pintarAusenteNv();
+  location.href = 'tel:' + (oculto ? '%2331%23' : '') + tel;
+}
 
 function abrirNueva() {
-  nv = { paso: 1, foto: '', fileId: '', lectura: null, datos: null, pedido: null, tipo: null, intentos: [] };
+  nv = { paso: 1, foto: '', fileId: '', lectura: null, datos: null, pedido: null, tipo: null, intentos: [], tienda: String(SESION.tiendaPre || '').trim() };
   ['nvCaja', 'nvTicket', 'nvNombre', 'nvTel', 'nvDir', 'nvObs'].forEach(function (x) { el(x).value = ''; });
   el('nvAvisos').innerHTML = ''; el('nvFoto').removeAttribute('src'); el('nvFoto').classList.remove('grande');
-  if (!nvCol) nvCol = crearColector(el('nvColector'), function (n) { el('nvFotosTit').textContent = 'Fotos de la incidencia' + (n ? ' · ' + n : ''); });
+  if (!nvCol) nvCol = crearColector(el('nvColector'), function (n) { el('nvFotosTit').textContent = (nv && nv.tipo === 'CLIENTE_AUSENTE' ? 'Foto del portal (obligatoria)' : 'Fotos de la incidencia') + (n ? ' · ' + n : ''); });
   nvCol.limpiar();
   pasoNueva(1);
   el('mNueva').classList.add('on');
@@ -701,6 +737,7 @@ function pasoNueva(n) {
     var nom = ['', 'Ticket', 'Datos', 'Incidencia'][k];
     p.innerHTML = k < n ? IC_OK + nom : k + ' · ' + nom;
   });
+  if (n === 3) { pintarTiendaNv(); cargarTiendas().then(function () { if (nv && nv.paso === 3) pintarTiendaNv(); }); }
   el('mNueva').querySelector('.box').scrollTop = 0;
 }
 function repetirFoto() { if (nv) { nv.foto = ''; nv.fileId = ''; nv.lectura = null; pasoNueva(1); } }
@@ -807,27 +844,28 @@ function elegirTipoNv(k) {
   el('nvObsWrap').style.display = 'block';
   el('nvObsLab').textContent = d.obs ? 'Observaciones (obligatorio)' + (k === 'COMPRA_RECHAZADA' ? ' — motivo del rechazo' : '') : 'Observaciones (opcional)';
   el('nvFotoWrap').style.display = 'flex';
+  el('nvFotosTit').textContent = (k === 'CLIENTE_AUSENTE' ? 'Foto del portal (obligatoria)' : 'Fotos de la incidencia') + (nvCol && nvCol.fotos().length ? ' · ' + nvCol.fotos().length : '');
   el('nvAusente').style.display = k === 'CLIENTE_AUSENTE' ? 'flex' : 'none';
   if (k === 'CLIENTE_AUSENTE') pintarAusenteNv();
 }
 function pintarAusenteNv() {
   var n = nv.intentos.length;
-  el('nvLlamadas').innerHTML = [0, 1, 2].map(function (i) {
-    var t = nv.intentos[i];
-    return '<div class="' + (t ? 'hecha' : '') + '"><small>' + (i + 1) + 'ª</small><b>' + (t ? new Date(t).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '—') + '</b></div>';
-  }).join('');
-  el('btnLlamada').style.display = n >= 3 ? 'none' : 'block';
-  el('btnLlamada').textContent = 'Registrar llamada (' + n + '/3)';
-  el('nvLlamOk').style.display = n >= 3 ? 'block' : 'none';
+  el('btnLlamada').style.display = n >= 1 ? 'none' : 'block';
+  var ok = el('nvLlamOk');
+  ok.style.display = n >= 1 ? 'block' : 'none';
+  if (n >= 1) ok.textContent = 'Llamada hecha a las ' + new Date(nv.intentos[0]).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) + '. Ya puedes registrar la incidencia.';
+  var oculto = false; try { oculto = localStorage.getItem('nexo_ocultar_numero') === '1'; } catch (e) {}
+  el('nvLlamNota').textContent = 'Con 1 llamada basta.' + (oculto ? ' Se llama con tu número oculto (#31#).' : '') + ' En cliente ausente es obligatoria al menos 1 foto del portal.';
 }
-function nuevoIntentoNv() { if (nv && nv.intentos.length < 3) { nv.intentos.push(Date.now()); pintarAusenteNv(); } }
 
 async function registrarNueva(forzar) {
   if (!nv || nvOcupado) return;
   if (!nv.tipo) { alert('Elige el motivo.'); return; }
   var d = TIPOS[nv.tipo], obs = el('nvObs').value.trim();
   if (d.obs && !obs) { alert('Escribe las observaciones.'); el('nvObs').focus(); return; }
-  if (nv.tipo === 'CLIENTE_AUSENTE' && nv.intentos.length < 3) { alert('Hacen falta 3 llamadas al cliente.'); return; }
+  if (nv.tipo === 'CLIENTE_AUSENTE' && nv.intentos.length < 1) { alert('Pulsa «Llamar al cliente» antes de registrar la incidencia.'); return; }
+  if (nv.tipo === 'CLIENTE_AUSENTE' && !nvCol.fotos().length) { alert('En cliente ausente hace falta al menos 1 foto del portal.'); return; }
+  if (!el('nvTienda').value) { alert('Elige la tienda.'); el('nvTienda').focus(); return; }
   nvOcupado = true;
   // Si la foto del ticket aún se está subiendo/leyendo (lectura lenta), se espera aquí.
   if (!nv.fileId && nv.lectura) {
@@ -838,7 +876,7 @@ async function registrarNueva(forzar) {
   if (!nv.fileId) { nvOcupado = false; spin(false); alert('La foto del ticket no se ha podido subir. Vuelve al paso 1 y sácala otra vez.'); return; }
   var fotos = nvCol.fotos();
   spin(true, 'Registrando la incidencia' + (fotos.length ? ' y subiendo ' + fotos.length + ' foto(s)…' : '…'));
-  var r = await api('registrarIncidenciaDirecta', { fileId: nv.fileId, datos: nv.datos, tipo: nv.tipo, observaciones: obs, intentos: nv.intentos, fotos: fotos, forzar: !!forzar });
+  var r = await api('registrarIncidenciaDirecta', { fileId: nv.fileId, datos: nv.datos, tipo: nv.tipo, observaciones: obs, intentos: nv.intentos, fotos: fotos, tienda: el('nvTienda').value, forzar: !!forzar });
   nvOcupado = false; spin(false);
   if (!nv) return;
   if (!r.ok && r.requiereConfirmacion) { if (confirm(r.error)) return registrarNueva(true); return; }
