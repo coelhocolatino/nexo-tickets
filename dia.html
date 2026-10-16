@@ -11,14 +11,14 @@
        "Activar avisos"; la suscripción se guarda en NEXO DIA → hoja _DIA_AVISOS).
      v3.10.3 (2026-10-09): incidencias con hasta 10 fotos y sin la espera de 10 min tras las 3 llamadas.
 -->
-<html lang="es" data-pagina="dia" data-version="v3.10.4">
+<html lang="es" data-pagina="dia" data-version="v3.10.5">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#FEFEFE" />
 <title>Nexo · Pedidos %DIA</title>
 <link rel="icon" href="nexo-icon-192.png">
-<link rel="stylesheet" href="nexo-tema.css?v=26">
+<link rel="stylesheet" href="nexo-tema.css?v=27">
 <script src="nexo-version.js?v=1"></script>
 <script src="nexo-nav.js?v=1"></script>
 <script src="nexo-foto.js?v=3"></script>
@@ -178,7 +178,7 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
 </head>
 <body class="nx">
 <header class="nx-cab">
-  <a class="nx-cab-logo" href="index.html" aria-label="Ir al inicio"><img src="nexo-logo-oficial.png" alt="Nexo"><span class="nx-cab-seccion">%DIA</span></a>
+  <a class="nx-cab-logo" href="index.html" aria-label="Ir al inicio"><img src="nexo-logo-oficial.png" alt="Nexo" width="480" height="194"><span class="nx-cab-seccion">%DIA</span></a>
   <div class="nx-cab-usuario"><span id="quien"></span></div>
 </header>
 <main class="nx-pag">
@@ -691,7 +691,7 @@ function ampliar(id) {
   var k = id + (o.tieneFoto ? '|foto' : '|cap'); if (!CAPS[k]) return;
   _zoom = 100;
   document.getElementById('zoomTit').textContent = (CAPS[k].tipo === 'foto' ? 'Ticket · ' : 'Captura %DIA · ') + o.cliente;
-  document.getElementById('zoomCont').innerHTML = '<img id="zoomImg" src="' + CAPS[k].dataUrl + '">';
+  document.getElementById('zoomCont').innerHTML = '<img id="zoomImg" src="' + CAPS[k].dataUrl + '" alt="Imagen ampliada">';
   document.getElementById('mZoom').classList.add('on');
 }
 function zoom(d) { _zoom = Math.max(100, Math.min(400, _zoom + d * 50)); var i = document.getElementById('zoomImg'); if (i) i.style.width = _zoom + '%'; }

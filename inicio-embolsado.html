@@ -10,10 +10,10 @@
      v3.10.2 (2026-10-09): ventana "Qué novedades hay" (nexo-novedades.js), una vez por usuario;
      se vuelve a abrir con el enlace de abajo.
 -->
-<html lang="es" data-pagina="inicio-embolsado" data-version="v3.10.2">
+<html lang="es" data-pagina="inicio-embolsado" data-version="v3.10.3">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#FEFEFE" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -23,7 +23,7 @@
 <link rel="icon" href="nexo-icon-192.png">
 <link rel="apple-touch-icon" href="nexo-icon-192.png">
 <title>Nexo · Embolsado</title>
-<link rel="stylesheet" href="nexo-tema.css?v=24">
+<link rel="stylesheet" href="nexo-tema.css?v=27">
 <script src="nexo-version.js?v=1"></script>
 <script src="nexo-novedades.js?v=1"></script>
 <style>
@@ -73,7 +73,7 @@ body.nx { display:flex; flex-direction:column; }
 <body class="nx">
 
 <header class="panel-logo">
-  <img src="nexo-logo-oficial.png" alt="Nexo" />
+  <img src="nexo-logo-oficial.png" alt="Nexo" width="480" height="194" />
   <div class="panel-usuario" id="userBadge">
     <span id="badgeNombre">—</span>
     <span class="nx-nivel" id="nivelTag">Embolsado</span>
@@ -81,6 +81,7 @@ body.nx { display:flex; flex-direction:column; }
   </div>
 </header>
 
+<main>
 <nav class="menu" aria-label="Menú de Embolsado">
   <a id="btnReservas" href="reservas.html">
     <span class="ico"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10h16M8 4v4M16 4v4"/></svg></span>
@@ -99,6 +100,7 @@ body.nx { display:flex; flex-direction:column; }
     <span class="txt">Informe</span><svg class="flecha" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
   </a>
 </nav>
+</main>
 
 <button type="button" class="nx-btn texto" data-nexo-novedades style="align-self:center;margin-top:auto">Qué novedades hay</button>
 <div class="nx-version" data-nexo-version="Nexo · Embolsado" style="margin-top:0">Nexo · Embolsado v3.10.2</div>

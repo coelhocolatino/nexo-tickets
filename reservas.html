@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <!-- Nexo · Reservas (puente) — v3.10.1 (2026-10-09, ronda 24): diseño nuevo con el logo oficial.
      Reenvía al Módulo de Reservas (Apps Script) con el usuario ya logueado (?u=usuario). -->
-<html lang="es" data-pagina="reservas" data-version="v3.10.1">
+<html lang="es" data-pagina="reservas" data-version="v3.10.2">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#E8EDF3" />
 <title>Nexo · Reservas</title>
 <link rel="icon" href="nexo-icon-192.png">
-<link rel="stylesheet" href="nexo-tema.css?v=24">
+<link rel="stylesheet" href="nexo-tema.css?v=27">
 <style>
 body { min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px;
   padding:24px; text-align:center; background:var(--nx-fondo,#E8EDF3); color:var(--nx-tinta,#0B2447); font-family:var(--nx-texto,system-ui,sans-serif); }
@@ -23,13 +23,13 @@ a.manual { min-height:48px; display:inline-flex; align-items:center; padding:0 1
 </style>
 </head>
 <body>
-<div class="caja">
-  <img class="logo" src="nexo-logo-oficial.png" alt="Nexo" />
+<main class="caja">
+  <img class="logo" src="nexo-logo-oficial.png" alt="Nexo" width="480" height="194" />
   <h1>Reservas</h1>
   <div class="rueda" aria-hidden="true"></div>
   <p id="txt">Abriendo el Módulo de Reservas…</p>
   <a class="manual" id="linkManual" href="#">Si no se abre solo, toca aquí</a>
-</div>
+</main>
 <script>
 // URL ".../exec" del proyecto de Apps Script del Módulo de Reservas.
 var RESERVAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbwXkz9LoSa2ucdz9x1_wD9Z0BMsRe9R2vrnZ_MZEeKGSpKN55EQM3cVQLYtdeOL9JwP/exec";

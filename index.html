@@ -51,10 +51,10 @@
      v3.10.2 (2026-10-09): ventana "Qué novedades hay" (nexo-novedades.js), una vez por usuario;
      se vuelve a abrir con el enlace de abajo.
 -->
-<html lang="es" data-pagina="index" data-version="v3.10.3">
+<html lang="es" data-pagina="index" data-version="v3.10.4">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#FEFEFE" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -65,7 +65,7 @@
 <link rel="icon" href="nexo-icon-192.png">
 <link rel="apple-touch-icon" href="nexo-icon-192.png">
 <title>Nexo · SAD Tickets</title>
-<link rel="stylesheet" href="nexo-tema.css?v=26">
+<link rel="stylesheet" href="nexo-tema.css?v=27">
 <script src="nexo-version.js?v=1"></script>
 <script src="nexo-nav.js?v=1"></script>
 <script src="nexo-novedades.js?v=1"></script>
@@ -191,11 +191,11 @@ input[type="date"].control { -webkit-appearance:none; appearance:none; text-alig
 
 <div id="spinner" role="status" aria-live="polite">
   <div id="spinner-ring"></div>
-  <div id="spinner-text">Procesando...</div>
+  <div id="spinner-text">Procesando…</div>
 </div>
 
 <header class="nx-cab">
-  <a class="nx-cab-logo" href="index.html" aria-label="Ir al inicio"><img src="nexo-logo-oficial.png" alt="Nexo"><span class="nx-cab-seccion">Tickets</span></a>
+  <a class="nx-cab-logo" href="index.html" aria-label="Ir al inicio"><img src="nexo-logo-oficial.png" alt="Nexo" width="480" height="194"><span class="nx-cab-seccion">Tickets</span></a>
   <div class="nx-cab-usuario" id="userBadge">
     <span id="badgeNombre">—</span>
     <span class="nx-nivel nivel-tag" id="nivelTag">—</span>
@@ -226,7 +226,7 @@ input[type="date"].control { -webkit-appearance:none; appearance:none; text-alig
       <div class="group group-franja">
         <label for="franja">Franja horaria</label>
         <select class="control" id="franja" name="franja" required>
-          <option value="" disabled selected>Cargando...</option>
+          <option value="" disabled selected>Cargando…</option>
         </select>
       </div>
     </div>
@@ -236,7 +236,7 @@ input[type="date"].control { -webkit-appearance:none; appearance:none; text-alig
       <label for="tienda">Tienda</label>
       <div class="tienda-row">
         <select class="control" id="tienda" name="tienda" required>
-          <option value="" disabled selected>Cargando...</option>
+          <option value="" disabled selected>Cargando…</option>
         </select>
         <a class="btn-asignar" id="btnAsignar" href="asignar.html" title="Pedidos asignados" aria-label="Pedidos asignados"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></svg></a>
       </div>
@@ -245,7 +245,7 @@ input[type="date"].control { -webkit-appearance:none; appearance:none; text-alig
     <div>
       <label for="repartidor">Repartidor</label>
       <select class="control" id="repartidor" name="repartidor" required>
-        <option value="" disabled selected>Cargando...</option>
+        <option value="" disabled selected>Cargando…</option>
       </select>
       <div class="lock-hint" id="hintRepartidor" style="display:none; margin-top:4px;">Repartidor fijado a tu cuenta</div>
     </div>
@@ -362,7 +362,7 @@ if (ES_ADMIN) {
   document.getElementById('btnConfig').href = 'config.html?u=' + encodeURIComponent((sesion && sesion.usuario) || '');
   document.getElementById('btnActualizar').addEventListener('click', async function () {
     if (!confirm('¿Actualizar los pedidos (reconstruir el control de tickets)? Puede tardar unos minutos.')) return;
-    showSpinner('Actualizando pedidos...');
+    showSpinner('Actualizando pedidos…');
     try {
       var r = await postProxy(CONTROL_TICKETS_URL, { accion: 'actualizarManual', usuario: (sesion && sesion.usuario) || '' });
       if (r && r.ok) setMsg('✅ Pedidos actualizados' + (r.periodos ? ' (' + r.periodos + ')' : ''), '#9dffb0');
@@ -523,7 +523,7 @@ function cerrarSesion() {
 /* ============================================================
    SPINNER / MENSAJES
 ============================================================ */
-function showSpinner(t) { spinnerTxt.textContent = t || 'Procesando...'; spinnerEl.classList.add('visible'); }
+function showSpinner(t) { spinnerTxt.textContent = t || 'Procesando…'; spinnerEl.classList.add('visible'); }
 function hideSpinner()  { spinnerEl.classList.remove('visible'); }
 
 function setMsg(text, color) {
@@ -645,8 +645,8 @@ function aplicarDatosListas(data) {
   const prevRep    = repartSel.value || guardado.repartidor || '';
   const prevFranja = document.getElementById('franja').value || guardado.franja || '';
 
-  fillSelect('tienda',     data.tiendas,     'Seleccione tienda...');
-  fillSelect('repartidor', data.repartidores, 'Seleccione repartidor...');
+  fillSelect('tienda',     data.tiendas,     'Seleccione tienda…');
+  fillSelect('repartidor', data.repartidores, 'Seleccione repartidor…');
   TIENDAS_FRANJAS = data.franjasPorTienda || {};
   listasCargadas  = true;
 
@@ -811,7 +811,7 @@ function aplicarReglasFranja() {
   const listaTienda = TIENDAS_FRANJAS[tienda] || [];
 
   if (!tienda || listaTienda.length === 0) {
-    fillSelect('franja', [], 'Franja...');
+    fillSelect('franja', [], 'Franja…');
     franjaSel.disabled = false;
     franjaSel.classList.remove('locked');
     return;
@@ -821,7 +821,7 @@ function aplicarReglasFranja() {
   const permitidas    = conFiltroHora ? getFranjasPermitidas(listaTienda) : listaTienda;
 
   const seleccionActual = franjaSel.value;
-  fillSelect('franja', permitidas, 'Franja...');
+  fillSelect('franja', permitidas, 'Franja…');
 
   if (permitidas.length === 0) {
     setMsg('⚠️ Fuera del horario disponible para esta tienda', '#ffcc00');
@@ -1321,7 +1321,7 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
   }
 
   _submitting = true;
-  showSpinner('Procesando foto...');
+  showSpinner('Procesando foto…');
   setMsg('', '');
 
   try {
@@ -1338,7 +1338,7 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
       }
     }
 
-    showSpinner('Subiendo ticket...');
+    showSpinner('Subiendo ticket…');
 
     // Convertir a base64
     const base64 = await new Promise((res, rej) => {

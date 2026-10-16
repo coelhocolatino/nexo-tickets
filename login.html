@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#FEFEFE" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -14,7 +14,7 @@
 <title>Nexo · Acceso</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="nexo-tema.css?v=24">
+<link rel="stylesheet" href="nexo-tema.css?v=27">
 <style>
 /* Ronda 24 (2026-10-08): diseño nuevo de Nexo (ver nexo-tema.css). Las clases
    de siempre (.step, .msg, .btn, .req-item…) se mantienen porque el script
@@ -83,7 +83,7 @@ input::placeholder { color:#7A879A; font-weight:600; }
 <body class="nx">
 
 <header class="panel-logo">
-  <img src="nexo-logo-oficial.png" alt="Nexo" />
+  <img src="nexo-logo-oficial.png" alt="Nexo" width="480" height="194" />
   <span>Distribución inteligente</span>
 </header>
 
@@ -332,7 +332,7 @@ function hideMsg(id) {
 function setLoading(btnEl, loading, text) {
   if (loading) {
     btnEl.dataset.orig = btnEl.innerHTML;
-    btnEl.innerHTML    = '<span class="spinner"></span>' + (text || "Verificando...");
+    btnEl.innerHTML    = '<span class="spinner"></span>' + (text || "Verificando…");
     btnEl.disabled     = true;
   } else {
     btnEl.innerHTML = btnEl.dataset.orig || btnEl.innerHTML;
@@ -385,7 +385,7 @@ async function verificarUsuario() {
   if (!usuario) { showMsg('msg1', 'Ingresa tu nombre de usuario', 'warn'); return; }
   _busy = true;
   const btn = document.getElementById('btnContinuar');
-  setLoading(btn, true, 'Verificando...');
+  setLoading(btn, true, 'Verificando…');
   hideMsg('msg1');
   try {
     const data = await proxyPost({ accion:'verificarUsuario', usuario: usuario.toLowerCase() });
@@ -431,7 +431,7 @@ async function hacerLogin() {
   if (!pwd) { showMsg('msg2', 'Ingresa tu contraseña', 'warn'); return; }
   _busy = true;
   const btn = document.getElementById('btnLogin');
-  setLoading(btn, true, 'Entrando...');
+  setLoading(btn, true, 'Entrando…');
   hideMsg('msg2');
   try {
     const data = await proxyPost({ accion:'login', usuario:usuarioActual.usuario, password:pwd });
@@ -467,7 +467,7 @@ async function registrarPassword() {
   if (pwd1 !== pwd2)   { showMsg('msg3', '❌ Las contraseñas no coinciden', 'error'); return; }
   _busy = true;
   const btn = document.getElementById('btnRegistrar');
-  setLoading(btn, true, 'Guardando...');
+  setLoading(btn, true, 'Guardando…');
   hideMsg('msg3');
   try {
     const data = await proxyPost({ accion:'registrarPassword', usuario:usuarioActual.usuario, password:pwd1 });
@@ -517,7 +517,7 @@ async function ofrecerBiometria() {
 /* Registrar credencial biométrica */
 async function activarBiometria() {
   const btn = document.getElementById('btnActivarBio');
-  setLoading(btn, true, 'Activando...');
+  setLoading(btn, true, 'Activando…');
   try {
     const challenge = crypto.getRandomValues(new Uint8Array(32));
     const userId    = new TextEncoder().encode(usuarioActual.usuario + '_nexo');
@@ -582,7 +582,7 @@ async function loginBiometrico() {
   let bio;
   try { bio = JSON.parse(bioRaw); } catch { localStorage.removeItem(BIO_KEY); return; }
 
-  setLoading(btn, true, 'Verificando...');
+  setLoading(btn, true, 'Verificando…');
   hideMsg('msg1');
 
   try {
@@ -632,7 +632,7 @@ if (data.nombre && (data.nombre !== bio.nombre || data.nivel !== bio.nivel || da
 }
 
 guardarSesion({ token: Date.now().toString(36) });
-showMsg('msg1', '✅ Biometría verificada. Entrando...', 'success');
+showMsg('msg1', '✅ Biometría verificada. Entrando…', 'success');
 setTimeout(() => window.location.replace('index.html'), 700);
   } catch(err) {
     console.warn('[Nexo] loginBiometrico:', err.name, err.message);

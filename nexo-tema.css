@@ -136,3 +136,12 @@ textarea.nx-input { height:auto; min-height:72px; padding:10px 12px; font-weight
 .nx-nav a:active { transform:scale(.96); }
 .nx-nav-wrap::after { content:''; position:absolute; right:0; top:0; bottom:0; width:28px; pointer-events:none; background:linear-gradient(to left, var(--nx-cabecera), rgba(254,254,254,0)); }
 .nx-nav-wrap.sin-mas::after, .nx-nav-wrap.sin-scroll::after { display:none; }
+
+/* Ronda 26 (accesibilidad): foco visible con teclado/lector (no aparece al tocar con el dedo),
+   transiciones desactivadas si el sistema pide menos movimiento, y esquema de color claro. */
+:root { color-scheme:light; }
+a:focus-visible, button:focus-visible, summary:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
+  outline:3px solid var(--nx-azul) !important; outline-offset:2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration:.01ms !important; scroll-behavior:auto !important; }
+}

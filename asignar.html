@@ -8,14 +8,14 @@
      hoja de entrega en dia.html (?ent=1).
      v3.10.3 (2026-10-09): incidencias con hasta 10 fotos y sin la espera de 10 min tras las 3 llamadas.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.10.4">
+<html lang="es" data-pagina="asignar" data-version="v3.10.5">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#FEFEFE" />
 <title>Nexo · Pedidos asignados</title>
 <link rel="icon" href="nexo-icon-192.png">
-<link rel="stylesheet" href="nexo-tema.css?v=26">
+<link rel="stylesheet" href="nexo-tema.css?v=27">
 <script src="nexo-version.js?v=1"></script>
 <script src="nexo-nav.js?v=1"></script>
 <script>
@@ -167,7 +167,7 @@ details.entregados[open] > summary .flecha { transform:rotate(180deg); }
 </head>
 <body class="nx">
 <header class="nx-cab">
-  <a class="nx-cab-logo" href="index.html" aria-label="Ir al inicio"><img src="nexo-logo-oficial.png" alt="Nexo"><span class="nx-cab-seccion">Reparto</span></a>
+  <a class="nx-cab-logo" href="index.html" aria-label="Ir al inicio"><img src="nexo-logo-oficial.png" alt="Nexo" width="480" height="194"><span class="nx-cab-seccion">Reparto</span></a>
   <div class="nx-cab-usuario"><span id="quien"></span></div>
 </header>
 <main class="nx-pag">
@@ -438,11 +438,11 @@ async function verFoto(id) {
     _fotoCompleta = r.dataUrl;
     extra = '<button class="b-gris" style="width:100%;margin-top:8px;min-height:48px;border:0;border-radius:12px;font-weight:800" onclick="verCompleta()">Ver foto completa</button>';
   }
-  document.getElementById('fotoCont').innerHTML = '<img class="foto" src="' + src + '">' + extra;
+  document.getElementById('fotoCont').innerHTML = '<img class="foto" src="' + src + '" alt="Foto del ticket">' + extra;
 }
-function verCompleta() { document.getElementById('fotoCont').innerHTML = '<img class="foto" src="' + _fotoCompleta + '">'; }
+function verCompleta() { document.getElementById('fotoCont').innerHTML = '<img class="foto" src="' + _fotoCompleta + '" alt="Foto del ticket">'; }
 function verImagen(src) {
-  document.getElementById('fotoCont').innerHTML = '<img class="foto" src="' + src + '">';
+  document.getElementById('fotoCont').innerHTML = '<img class="foto" src="' + src + '" alt="Foto del ticket">';
   document.getElementById('mFoto').classList.add('on');
 }
 
@@ -529,7 +529,7 @@ document.getElementById('incFile').addEventListener('change', async function (ev
   if (incFotos.length >= TIPOS[incTipo].fotosMax) { msg('Máximo de fotos alcanzado.', 'err'); return; }
   var d = await reducir(f, 1400);
   incFotos.push(d);
-  document.getElementById('incMini').innerHTML = incFotos.map(function (x) { return '<img src="' + x + '">'; }).join('');
+  document.getElementById('incMini').innerHTML = incFotos.map(function (x) { return '<img src="' + x + '" alt="Foto adjunta">'; }).join('');
 });
 
 function reducir(file, max) {
@@ -656,7 +656,7 @@ function itemHTML(id, i, it) {
   var d = it.datos || {};
   var key = esc(id) + "'," + i;
   var h = '<div class="tk ' + et.cls + '">';
-  h += it.box ? '<img class="mini" id="mi_' + esc(id) + '_' + i + '" src="' + (it.mini || '') + '" onclick="verMini(\'' + key + ')">' : '<div class="mini"></div>';
+  h += it.box ? '<img class="mini" id="mi_' + esc(id) + '_' + i + '" src="' + (it.mini || '') + '" alt="Miniatura del ticket" onclick="verMini(\'' + key + ')">' : '<div class="mini"></div>';
   h += '<div class="cuerpo"><div class="titulo">' + (it.caja || it.ticket ? 'Caja ' + esc(it.caja || '?') + ' · Ticket ' + esc(it.ticket || '?') : 'Ticket sin leer') +
        (it.manual ? ' · MANUAL' : '') + '</div>';
   var nombre = it.nombre || d.nombre;
