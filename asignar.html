@@ -15,7 +15,7 @@
      repartidor confirma el importe antes de Entregar; orden manual con flechas; el ADM ve los asignados de
      todos los repartidores (filtro), cambia el repartidor, abre el %DIA para editar y deshace entregas.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.10.10">
+<html lang="es" data-pagina="asignar" data-version="v3.10.11">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -201,6 +201,7 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
   </div>
   <!-- Fase 1 multi-ticket: resultado de la lectura de la foto -->
   <div id="lotes"></div>
+  <button type="button" class="b-gris" id="btnFotos" style="width:100%;min-height:48px;border:0;border-radius:12px;font-weight:800;margin:0 0 10px" onclick="abrirFotos()">Ver fotos de tickets</button>
   <div class="nx-pestanas" role="tablist">
     <button class="tab" id="tabRuta" role="tab" onclick="elegirTab('ruta')">Asignados</button>
     <button class="tab" id="tabDisp" role="tab" onclick="elegirTab('disp')">Disponibles</button>
@@ -212,10 +213,18 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
   <div class="info" id="info"></div>
   <div id="msg"></div>
   <div id="lista"></div>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.10</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.11</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
+
+<!-- Ronda 29: lista de fotos de tickets -->
+<div class="modal" id="mFotos"><div class="box">
+  <h2>Fotos de tickets</h2>
+  <div class="nx-campo" id="fotosFechaBox" style="display:none"><label for="fotosFecha">Fecha</label><input class="nx-input" type="date" id="fotosFecha" onchange="cargarFotos()"></div>
+  <div id="fotosLista" style="display:flex;flex-direction:column;gap:8px">Cargando…</div>
+  <div class="row"><button class="b-azul" onclick="cerrar('mFotos')">Cerrar</button></div>
+</div></div>
 
 <!-- Modal foto ticket -->
 <div class="modal" id="mFoto"><div class="box">
@@ -688,6 +697,24 @@ async function verFoto(id) {
     extra = '<button class="b-gris" style="width:100%;margin-top:8px;min-height:48px;border:0;border-radius:12px;font-weight:800" onclick="verCompleta()">Ver foto completa</button>';
   }
   document.getElementById('fotoCont').innerHTML = '<img class="foto" src="' + src + '" alt="Foto del ticket">' + extra;
+}
+/* Ronda 29 · botón «Ver fotos de tickets» */
+async function abrirFotos() {
+  document.getElementById('mFotos').classList.add('on');
+  if (!document.getElementById('fotosFecha').value) document.getElementById('fotosFecha').value = hoyISO();
+  cargarFotos();
+}
+async function cargarFotos() {
+  var box = document.getElementById('fotosLista');
+  box.textContent = 'Cargando…';
+  var r = await api('listarFotosTickets', { tienda: tiendaAct(), fecha: document.getElementById('fotosFecha').value });
+  if (!r.ok) { box.textContent = r.error || 'No se pudieron cargar las fotos.'; return; }
+  document.getElementById('fotosFechaBox').style.display = r.puedeFecha ? '' : 'none';
+  if (!(r.fotos || []).length) { box.textContent = 'No hay fotos de tickets de ' + r.tienda + ' el ' + r.fecha.split('-').reverse().join('/') + '.'; return; }
+  box.innerHTML = r.fotos.map(function (f) {
+    return '<button type="button" class="b-gris" style="text-align:left;min-height:56px;border:0;border-radius:12px;padding:8px 12px;font-weight:700" onclick="verFoto(\'' + esc(f.id) + '\')">' +
+      '<b>' + esc(f.franja) + ' · Caja ' + esc(f.caja) + ' · Ticket ' + esc(f.ticket || '—') + '</b><br><span style="font-weight:600">' + esc(f.nombre || f.direccion || '') + '</span></button>';
+  }).join('');
 }
 function verCompleta() { document.getElementById('fotoCont').innerHTML = '<img class="foto" src="' + _fotoCompleta + '" alt="Foto del ticket">'; }
 function verImagen(src) {
