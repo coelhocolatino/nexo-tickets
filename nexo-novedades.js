@@ -6,9 +6,10 @@
    Después se puede volver a abrir con cualquier enlace/botón que tenga
    el atributo data-nexo-novedades (o llamando a NexoNovedades.abrir()).
    Para una edición nueva: cambiar EDICION y el contenido de NOVEDADES.
+   Ronda 28 (2026-10-16): primero un AVISO destacado (Día Club Carrefour) para todos los perfiles; después las novedades de Pedidos asignados y GRANVIA.
    ============================================================= */
 (function () {
-  var EDICION = '2026-10-ronda24';
+  var EDICION = '2026-10-ronda28';
   var TITULO_FECHA = 'Octubre 2026';
 
   function ic(d) { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>'; }
@@ -31,44 +32,42 @@
 
   /* ---- Contenido (frases cortas y prácticas) ---- */
   var NOVEDADES = {
+    aviso: {
+      titulo: 'Atención',
+      aviso: true,
+      items: [
+        [I.campana, 'DÍA CLUB CARREFOUR', 'La próxima semana: martes 20 y miércoles 21 de octubre. Prepárate para un volumen alto de pedidos.']
+      ]
+    },
     todos: {
       titulo: 'Para todos',
       items: [
-        [I.diseno, 'Nueva imagen', 'Nexo tiene diseño y logo nuevos, más claros y con botones más grandes. La app se actualiza sola al entrar.'],
-        [I.foto, 'Foto con un solo botón', 'Desliza a la DERECHA para sacar la foto con la cámara o a la IZQUIERDA para subirla de la galería. También vale tocar el dibujo.']
+        [I.diseno, 'Barra de accesos', 'Debajo de la cabecera tienes los iconos de cada página. Se desliza hacia los lados si no caben.'],
+        [I.campana, 'Globos de aviso', 'El globo amarillo de %DIA y el rojo de Incidencias te avisan con los pedidos pendientes, con vibración cuando entra uno nuevo.']
       ]
     },
     repartidor: {
       titulo: 'Repartidores',
       items: [
-        [I.foto, 'Subir ticket', 'El botón de la foto está ahora al lado de "Subir ticket".'],
-        [I.ok, 'Entregados de hoy', 'En Pedidos asignados, lo que ya entregaste queda abajo en "Entregados hoy", con el botón gris "Entregado · hora".'],
-        [I.foto, '%DIA más rápido', '"Entregar" abre directamente la foto del ticket. Puedes sacarla o subirla de la galería.'],
-        [I.campana, 'Aviso al móvil', 'En %DIA toca "Activar avisos": te llegará un aviso cuando te asignen un pedido, aunque tengas la app cerrada. En iPhone, instala antes la app en la pantalla de inicio (Compartir → "Añadir a pantalla de inicio").'],
-        [I.tel, 'Cliente ausente sin esperar', 'Con las 3 llamadas hechas ya puedes registrar la incidencia.'],
-        [I.imagen, 'Más fotos en incidencias', 'Puedes añadir hasta 10 fotos en cualquier motivo.']
+        [I.rayo, 'Pedidos asignados, más rápido', 'Al abrir salen primero los "Asignados", que quedan guardados en el móvil. Los "Disponibles" se cargan solo al tocar esa pestaña.'],
+        [I.mano, 'Ordena tus tarjetas', 'Con las flechas de subir y bajar de cada tarjeta eliges el orden de tu ruta. Se queda guardado.'],
+        [I.ok, 'Pedidos de cobro', 'Antes de entregar un pedido con cobro, confirma que has cobrado el importe.'],
+        [I.filtro, 'Solo tu tienda', 'El botón "Asignar" selecciona únicamente los pedidos de tu tienda.'],
+        [I.foto, 'GRANVIA: foto con varios tickets', 'Haz la foto de los tickets; cada uno se lee por separado y aparece en tus pedidos. Si no hay internet, la foto se guarda y se lee sola al volver la conexión.']
       ]
     },
     embolsado: {
       titulo: 'Embolsado',
       items: [
-        [I.rayo, 'Lectura del ticket en segundos', 'La foto del ticket se lee ahora en 2–3 segundos.'],
-        [I.ok, 'La tarjeta se rellena sola', 'Al guardar la foto, la caja, el nº de pedido y la dirección del ticket pasan a la tarjeta.'],
-        [I.mano, 'Cajas, N, F y C a mano', 'Si no se leyó lo escrito a mano, toca la línea "Cajas · N · F · C" de la tarjeta, escríbelo y confirma.'],
-        [I.mas, 'Botón amarillo "+"', 'Nueva reserva también desde el botón redondo amarillo. Puedes arrastrarlo donde te moleste menos.'],
-        [I.panel, 'Incidencias', 'Puedes poner el responsable (usuario, cliente, tienda o no identificado) y finalizarlas. Hay un Panel con pendientes, solucionadas y rankings.'],
-        [I.campana, 'Aviso de incidencia nueva', 'En Incidencias toca "Activar avisos": te llegará un aviso al móvil con cada incidencia nueva.'],
-        [I.correo, 'Informe diario', 'El informe diario sale desde nexo@nexotransportes.com.']
+        [I.mas, 'GRANVIA sin reservas', 'Los pedidos de GRANVIA llegan desde la foto del repartidor, sin reserva previa. Aparecen ya confirmados en DATABASE.']
       ]
     },
     adm: {
       titulo: 'ADM',
       items: [
-        [I.filtro, '%DIA por repartidor', 'En Asignados y Cerrados puedes filtrar por repartidor y ver cuántos pedidos tiene.'],
-        [I.deshacer, 'Deshacer entrega', 'Si un pedido se cerró por error hoy, "Deshacer entrega" lo devuelve al repartidor y borra la foto archivada (queda en la auditoría).'],
-        [I.panel, 'Resolver incidencias', 'Restaurar o eliminar el pedido está ahora en la ventana "Resolver", junto al responsable y la solución.'],
-        [I.campana, 'Avisos al móvil', 'Te llegan avisos de incidencias nuevas y de reservas automáticas creadas con la franja completa.'],
-        [I.reloj, 'Reservas automáticas', 'En Configuración: clientes habituales cada semana o cada 15 días. La reserva se crea sola 3 días antes.']
+        [I.filtro, 'Todos los repartidores', 'En Pedidos asignados ves los pedidos de todos los repartidores, con filtro por repartidor.'],
+        [I.deshacer, 'Cambiar repartidor', 'Desde la tarjeta puedes pasar un pedido a otro repartidor. También puedes deshacer una entrega de cualquier tienda.'],
+        [I.panel, 'Hoja GRANVIA', 'Todo lo leído de los tickets de GRANVIA se graba en la hoja "GRANVIA" de la planilla de reservas, con su estado de entrega.']
       ]
     }
   };
@@ -81,8 +80,8 @@
     return 'repartidor';
   }
   function secciones(p) {
-    if (p === 'adm') return ['todos', 'adm', 'embolsado', 'repartidor'];
-    return ['todos', p];
+    if (p === 'adm') return ['aviso', 'todos', 'adm', 'embolsado', 'repartidor'];
+    return ['aviso', 'todos', p];
   }
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
@@ -101,6 +100,11 @@
     '.nxn-it i{width:44px;height:44px;border-radius:12px;background:var(--nx-tinta,#0B2447);color:#FBBF24;display:grid;place-items:center;font-style:normal}' +
     '.nxn-it b{display:block;font-size:16px;font-weight:800;line-height:1.2}' +
     '.nxn-it span{display:block;margin-top:3px;font-size:14px;font-weight:600;line-height:1.4;color:var(--nx-suave,#4F6078)}' +
+    '.nxn-aviso h3{color:#8A4B00}' +
+    '.nxn-aviso .nxn-it{background:#FBBF24;border:3px solid #0B2447;padding:16px}' +
+    '.nxn-aviso .nxn-it i{background:#0B2447;color:#FBBF24}' +
+    '.nxn-aviso .nxn-it b{font-family:var(--nx-display,"Big Shoulders Display","Arial Narrow",sans-serif);font-size:26px;line-height:1.05;text-transform:uppercase;color:#0B2447}' +
+    '.nxn-aviso .nxn-it span{font-size:16px;font-weight:800;color:#0B2447}' +
     '.nxn-ok{min-height:56px;border:0;border-radius:14px;background:var(--nx-tinta,#0B2447);color:var(--nx-tinta-clara,#F3F7FC);font-size:17px;font-weight:800;' +
     'font-family:inherit;cursor:pointer;position:sticky;bottom:0;box-shadow:0 -8px 16px var(--nx-superficie,#FBFCFA)}';
 
@@ -112,7 +116,7 @@
       '<div class="nxn-cab"><small>' + TITULO_FECHA + '</small><h2 id="nxnTit">Qué novedades hay</h2></div>';
     secciones(p).forEach(function (k) {
       var sec = NOVEDADES[k]; if (!sec) return;
-      h += '<div class="nxn-sec"><h3>' + esc(sec.titulo) + '</h3>' + sec.items.map(function (it) {
+      h += '<div class="nxn-sec' + (sec.aviso ? ' nxn-aviso' : '') + '"><h3>' + esc(sec.titulo) + '</h3>' + sec.items.map(function (it) {
         return '<div class="nxn-it"><i>' + it[0] + '</i><div><b>' + esc(it[1]) + '</b><span>' + esc(it[2]) + '</span></div></div>';
       }).join('') + '</div>';
     });
