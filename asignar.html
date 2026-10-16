@@ -7,12 +7,14 @@
      v3.10.2 (2026-10-09): "Entregar" de un pedido %DIA abre directamente la
      hoja de entrega en dia.html (?ent=1).
      v3.10.3 (2026-10-09): incidencias con hasta 10 fotos y sin la espera de 10 min tras las 3 llamadas.
+     v3.10.8 (2026-10-16, ronda 28): la lectura de fotos con varios tickets es solo de GRANVIA y funciona sin internet
+       (la foto queda guardada en el móvil y se lee sola al volver la red). En TRAVESIA no se lee ninguna foto.
      v3.10.7 (2026-10-16, ronda 28): carga rápida (todo en paralelo, Asignados primero, Disponibles al tocar la
      pestaña, lo último visto se pinta al instante); solo los pedidos de la tienda predefinida; cobro: el
      repartidor confirma el importe antes de Entregar; orden manual con flechas; el ADM ve los asignados de
      todos los repartidores (filtro), cambia el repartidor, abre el %DIA para editar y deshace entregas.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.10.7">
+<html lang="es" data-pagina="asignar" data-version="v3.10.8">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -204,7 +206,7 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
   <div class="info" id="info"></div>
   <div id="msg"></div>
   <div id="lista"></div>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.7</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.8</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
@@ -283,7 +285,7 @@ function api(accion, datos) {
   return fetch(PROXY + '?url=' + encodeURIComponent(EMBOLSADO_URL), {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
   }).then(function (r) { return r.json(); }).catch(function (e) {
-    return { ok: false, error: 'Sin conexión con el servidor.' };
+    return { ok: false, red: true, error: 'Sin conexión con el servidor.' };
   });
 }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -862,6 +864,9 @@ function pintarLote(id) {
 
   if (L.estado === 'leyendo') {
     h += '<div class="lote-leyendo"><div class="rueda"></div>Leyendo tickets…<br><span style="font-weight:600;font-size:13px;color:var(--nx-suave)">Puede tardar hasta 1 minuto. No cierres esta página.</span></div>';
+  } else if (L.estado === 'espera') {
+    h += '<div class="lote-leyendo" style="font-weight:700">Sin conexión · la foto está guardada en este móvil.<br><span style="font-weight:600;font-size:13px;color:var(--nx-suave)">Los tickets se leerán solos cuando vuelva internet. Puedes cerrar la página.</span></div>' +
+         '<button class="b-add" onclick="procesarLote(\'' + esc(id) + '\')">Leer ahora</button>';
   } else if (L.estado === 'error') {
     h += '<div class="lote-res" style="color:var(--nx-rojo)">' + esc(L.error) + '</div>' +
          '<button class="b-add" onclick="procesarLote(\'' + esc(id) + '\')">Reintentar</button>';
@@ -934,14 +939,18 @@ function verMini(id, i) {
 }
 
 async function procesarLote(id) {
-  var L = LOTES[id]; L.estado = 'leyendo'; pintarLote(id);
+  var L = LOTES[id]; if (!L || L.procesando) return;
+  if (!navigator.onLine) { L.estado = 'espera'; pintarLote(id); return; }   // GRANVIA sin internet: se espera
+  L.procesando = true; L.estado = 'leyendo'; pintarLote(id);
   var l = L.lote;
   var r = await api('procesarFotoMultiple', {
     imagenBase64: l.imagen, fecha: l.fecha, franja: l.franja, tienda: l.tienda,
     repartidor: l.repartidor, asignar: l.asignar !== false
   });
+  L.procesando = false;
   if (!r.ok) {
-    L.estado = 'error'; L.error = r.error || 'Error desconocido';
+    if (r.red) L.estado = 'espera';          // sin red / servidor inalcanzable: la foto se conserva y se reintenta
+    else { L.estado = 'error'; L.error = r.error || 'Error desconocido'; }
     pintarLote(id);
     return;
   }
@@ -1003,15 +1012,34 @@ async function procesarPendientes() {
   var lista = await lotesPendientes();
   // Solo los lotes de este usuario (si el móvil se comparte, no se mezclan).
   lista = lista.filter(function (l) { return !l.usuario || l.usuario === USUARIO; });
+  // v3.10.8: leer fotos con varios tickets es solo para GRANVIA. Los lotes de otras tiendas (p. ej. TRAVESIA,
+  // de pruebas antiguas) no se leen; los de más de 3 días se borran del móvil.
+  var utiles = [];
+  for (var q = 0; q < lista.length; q++) {
+    if (esGranvia(lista[q].tienda)) utiles.push(lista[q]);
+    else if (Date.now() - (lista[q].ts || 0) > 3 * 86400000) await borrarLote(lista[q].id);
+  }
+  lista = utiles.filter(function (l) { return !LOTES[l.id]; });
   if (!lista.length) return false;
   cambiarTab('ruta');
   for (var k = 0; k < lista.length; k++) {
-    LOTES[lista[k].id] = { lote: lista[k], estado: 'leyendo', items: [] };
+    LOTES[lista[k].id] = { lote: lista[k], estado: navigator.onLine ? 'leyendo' : 'espera', items: [] };
     pintarLote(lista[k].id);
   }
   for (var j = 0; j < lista.length; j++) await procesarLote(lista[j].id);
   return true;
 }
+function esGranvia(v) { return /granv[ií]a/i.test(String(v || '')); }
+
+// GRANVIA no tiene internet: al volver la red (y cada 30 s mientras haya lotes esperando) se leen solos.
+function reintentarLotes() {
+  if (!navigator.onLine) return;
+  var esperando = Object.keys(LOTES).filter(function (k) { return LOTES[k].estado === 'espera'; });
+  if (esperando.length) { esperando.reduce(function (p, k) { return p.then(function () { return procesarLote(k); }); }, Promise.resolve()).then(function () { cargar(false); }); return; }
+  procesarPendientes().then(function (hubo) { if (hubo) cargar(false); });   // lotes guardados mientras esta página estaba cerrada
+}
+window.addEventListener('online', function () { setTimeout(reintentarLotes, 1500); });
+setInterval(reintentarLotes, 30000);
 
 // Aviso si se sale de la página mientras se leen tickets.
 window.addEventListener('beforeunload', function (e) {

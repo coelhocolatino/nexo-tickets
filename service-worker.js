@@ -1,7 +1,7 @@
 // ==============================
 // Nexo · SAD Tickets - Service Worker v5
 // ==============================
-const CACHE_NAME = "nexo-tickets-v39";   // ronda 28: asignar v3.10.7 (carga rápida, cobro, orden, ADM); ronda 27: avisos en la barra, teléfonos útiles, Config plegable; ronda 26: accesibilidad; ronda 25: barra de iconos + cola; ronda 24: diseño nuevo + version.json + dia + avisos push + incidencias
+const CACHE_NAME = "nexo-tickets-v39";   // ronda 28: asignar.html guardado para abrir SIN internet (GRANVIA), lotes de fotos; ronda 27: avisos en la barra, teléfonos útiles, Config plegable; ronda 26: accesibilidad; ronda 25: barra de iconos + cola; ronda 24: diseño nuevo + version.json + dia + avisos push + incidencias
 
 const ASSETS = [
   "./",
@@ -29,6 +29,7 @@ const ASSETS = [
   "./boton_dia.png",
   "./dia.html",
   "./incidencias.html",
+  "./asignar.html",        // ronda 28: GRANVIA no tiene internet: la página debe abrir sin red
   "./boton_reservas.png",
   "./boton_informe.png"
 ];
@@ -81,7 +82,8 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(
-    caches.match(req).then((cached) => {
+    // Las páginas se buscan sin el ?parámetro (asignar.html?lote=… debe abrir sin red).
+    caches.match(req, req.mode === 'navigate' ? { ignoreSearch: true } : undefined).then((cached) => {
       if (cached) {
         // Update background
         fetch(req).then((response) => {

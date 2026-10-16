@@ -51,7 +51,7 @@
      v3.10.2 (2026-10-09): ventana "Qué novedades hay" (nexo-novedades.js), una vez por usuario;
      se vuelve a abrir con el enlace de abajo.
 -->
-<html lang="es" data-pagina="index" data-version="v3.10.5">
+<html lang="es" data-pagina="index" data-version="v3.10.6">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -810,8 +810,10 @@ function getExifOrientation(dataURL) {
   return 1;
 }
 
-function optimizarFoto(file, rotacionExtra) {
+function optimizarFoto(file, rotacionExtra, maxLado, calidad) {
   rotacionExtra = rotacionExtra || 0;
+  maxLado = maxLado || 1800;   // subida normal: 1800 px; lectura multi-ticket (GRANVIA): 2600 px
+  calidad = calidad || 0.82;
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
@@ -853,7 +855,7 @@ function optimizarFoto(file, rotacionExtra) {
           const finalW = swap2 ? visH : visW;
           const finalH = swap2 ? visW : visH;
 
-          const MAX   = 1800;
+          const MAX   = maxLado;
           const scale = Math.min(MAX / Math.max(finalW, finalH), 1);
           const dstW  = Math.round(finalW * scale);
           const dstH  = Math.round(finalH * scale);
@@ -880,7 +882,7 @@ function optimizarFoto(file, rotacionExtra) {
           c2.toBlob(blob => {
             if (!blob) return reject(new Error('Error al exportar'));
             resolve(new File([blob], 'ticket.jpg', { type: 'image/jpeg' }));
-          }, 'image/jpeg', 0.82);
+          }, 'image/jpeg', calidad);
 
         } catch(err) { reject(err); }
       };
@@ -1183,6 +1185,12 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
   showSpinner('Procesando foto…');
   setMsg('', '');
 
+  // v3.10.6 · GRANVIA: se guarda en el móvil una copia en alta resolución para leer cada ticket por
+  // separado en "Pedidos asignados". Funciona SIN internet (solo IndexedDB): la lectura se hace al volver la red.
+  let loteId = null, errorDefinitivo = false;
+  try { loteId = await prepararLoteGranvia(foto, datosForm); }
+  catch (lErr) { console.warn('[Nexo] Lote GRANVIA:', lErr); loteId = null; }
+
   try {
     // Preparar foto
     let fotoOpt;
@@ -1222,7 +1230,7 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
     if (!navigator.onLine) {
       await guardarEnCola(payload);
       await actualizarBadgePendientes();
-      setMsg('📥 Sin conexión — ticket guardado, se subirá al recuperar red', '#ffcc00');
+      setMsg(loteId ? '📥 Sin conexión — foto guardada. Los tickets se leerán solos en "Pedidos asignados" al volver la red' : '📥 Sin conexión — ticket guardado, se subirá al recuperar red', '#ffcc00');
       resetFormulario();
       showOfflineAlert();
       return;
@@ -1245,6 +1253,7 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
 
     if (err.noReintentar) {
       // Error real de la app (ej. imagen vacía) — reintentar no ayuda, se avisa directo
+      errorDefinitivo = true;
       setMsg('❌ Error: ' + err.message, '#ff6b6b');
     } else {
       // Sin conexión, o fallo intermitente de Google tras varios reintentos:
@@ -1265,7 +1274,56 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
     hideSpinner();
     _submitting = false;
   }
+
+  // GRANVIA: con red se pasa directamente a "Pedidos asignados", donde se leen los tickets.
+  // Sin red (o con error definitivo) la foto queda guardada y se lee al abrir esa página con conexión.
+  if (loteId && !errorDefinitivo && navigator.onLine) {
+    location.href = 'asignar.html?lote=' + encodeURIComponent(loteId);
+  }
 });
+
+/* ============================================================
+   GRANVIA · lote para leer cada ticket por separado (v3.10.6)
+   La foto en alta resolución se guarda en IndexedDB ('nexo-lotes'); asignar.html la lee cuando hay red
+   y la borra del móvil al terminar. Solo tienda GRANVIA: en TRAVESIA no hace falta.
+============================================================ */
+const LOTES_DB = 'nexo-lotes';
+function abrirLotesDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(LOTES_DB, 1);
+    r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains('lotes')) r.result.createObjectStore('lotes', { keyPath: 'id' }); };
+    r.onsuccess = () => res(r.result);
+    r.onerror   = () => rej(r.error);
+  });
+}
+async function guardarLote(lote) {
+  const db = await abrirLotesDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('lotes', 'readwrite');
+    tx.objectStore('lotes').put(lote);
+    tx.oncomplete = () => res();
+    tx.onerror    = () => rej(tx.error);
+  });
+}
+function esGranvia(v) { return /granv[ií]a/i.test(String(v || '')); }
+async function prepararLoteGranvia(foto, v) {
+  if (!esGranvia(v.tienda)) return null;
+  showSpinner('Guardando foto para leer los tickets…');
+  const hq = await optimizarFoto(foto, rotacionManual, 2600, 0.85);
+  const dataUrl = await new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onerror = () => rej(new Error('Error leyendo foto'));
+    r.onload  = ev => res(ev.target.result);
+    r.readAsDataURL(hq);
+  });
+  const lote = {
+    id: 'L' + Date.now(), ts: Date.now(), imagen: dataUrl,
+    fecha: v.fecha, tienda: v.tienda, franja: v.franja, repartidor: v.repartidor,
+    usuario: (sesion && sesion.usuario) || '', asignar: true
+  };
+  await guardarLote(lote);
+  return lote.id;
+}
 
 
 /* ============================================================
@@ -1276,7 +1334,7 @@ const btnAsignar = document.getElementById('btnAsignar');
 const asigHint   = document.getElementById('asigHint');
 function esTravesia(v) { return /trav[eé]s[ií]a/i.test(String(v || '')); }
 function actualizarBtnAsignar() {
-  btnAsignar.style.display = esTravesia(tiendaSel.value) ? 'block' : 'none';
+  btnAsignar.style.display = (esTravesia(tiendaSel.value) || esGranvia(tiendaSel.value)) ? 'block' : 'none';
 }
 tiendaSel.addEventListener('change', actualizarBtnAsignar);
 (function () {
