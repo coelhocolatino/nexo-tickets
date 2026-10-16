@@ -6,10 +6,11 @@
    Después se puede volver a abrir con cualquier enlace/botón que tenga
    el atributo data-nexo-novedades (o llamando a NexoNovedades.abrir()).
    Para una edición nueva: cambiar EDICION y el contenido de NOVEDADES.
+   Ronda 31 (2026-10-16): se mantiene el AVISO del Día Club Carrefour; novedades de %DIA (finalizar con/sin incidencia).
    Ronda 28 (2026-10-16): primero un AVISO destacado (Día Club Carrefour) para todos los perfiles; después las novedades de Pedidos asignados y GRANVIA.
    ============================================================= */
 (function () {
-  var EDICION = '2026-10-ronda28';
+  var EDICION = '2026-10-ronda31';
   var TITULO_FECHA = 'Octubre 2026';
 
   function ic(d) { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>'; }
@@ -39,35 +40,20 @@
         [I.campana, 'DÍA CLUB CARREFOUR', 'La próxima semana: martes 20 y miércoles 21 de octubre. Prepárate para un volumen alto de pedidos.']
       ]
     },
-    todos: {
-      titulo: 'Para todos',
+    dia: {
+      titulo: 'Cómo queda %DIA',
       items: [
-        [I.diseno, 'Barra de accesos', 'Debajo de la cabecera tienes los iconos de cada página. Se desliza hacia los lados si no caben.'],
-        [I.campana, 'Globos de aviso', 'El globo amarillo de %DIA y el rojo de Incidencias te avisan con los pedidos pendientes, con vibración cuando entra uno nuevo.']
+        [I.ok, 'Dos botones para terminar', 'Cada pedido asignado tiene dos: "Finalizar sin incidencia" y "Finalizar con incidencia".'],
+        [I.foto, 'Siempre computa', 'Los dos piden la foto del ticket y entregan el pedido, así que siempre computa para el repartidor.'],
+        [I.campana, 'Con incidencia', 'Justo después de la foto se abre el registro de la incidencia (tipo, observaciones, fotos, llamadas). Queda abierta en Incidencias para gestionarla después.'],
+        [I.mas, '¿Se te olvidó registrarla?', 'Si sales sin registrarla, te avisa de que el pedido ya está entregado. Durante el día puedes añadirla con el botón "Añadir incidencia" de la tarjeta.'],
+        [I.rayo, 'También en Pedidos asignados', 'En las tarjetas %DIA los botones pasan a "Con incidencia" y "Finalizar", y hacen lo mismo.']
       ]
     },
-    repartidor: {
-      titulo: 'Repartidores',
+    gestion: {
+      titulo: 'Incidencias',
       items: [
-        [I.rayo, 'Pedidos asignados, más rápido', 'Al abrir salen primero los "Asignados", que quedan guardados en el móvil. Los "Disponibles" se cargan solo al tocar esa pestaña.'],
-        [I.mano, 'Ordena tus tarjetas', 'Con las flechas de subir y bajar de cada tarjeta eliges el orden de tu ruta. Se queda guardado.'],
-        [I.ok, 'Pedidos de cobro', 'Antes de entregar un pedido con cobro, confirma que has cobrado el importe.'],
-        [I.filtro, 'Solo tu tienda', 'El botón "Asignar" selecciona únicamente los pedidos de tu tienda.'],
-        [I.foto, 'GRANVIA: foto con varios tickets', 'Haz la foto de los tickets; cada uno se lee por separado y aparece en tus pedidos. Si no hay internet, la foto se guarda y se lee sola al volver la conexión.']
-      ]
-    },
-    embolsado: {
-      titulo: 'Embolsado',
-      items: [
-        [I.mas, 'GRANVIA sin reservas', 'Los pedidos de GRANVIA llegan desde la foto del repartidor, sin reserva previa. Aparecen ya confirmados en DATABASE.']
-      ]
-    },
-    adm: {
-      titulo: 'ADM',
-      items: [
-        [I.filtro, 'Todos los repartidores', 'En Pedidos asignados ves los pedidos de todos los repartidores, con filtro por repartidor.'],
-        [I.deshacer, 'Cambiar repartidor', 'Desde la tarjeta puedes pasar un pedido a otro repartidor. También puedes deshacer una entrega de cualquier tienda.'],
-        [I.panel, 'Hoja GRANVIA', 'Todo lo leído de los tickets de GRANVIA se graba en la hoja "GRANVIA" de la planilla de reservas, con su estado de entrega.']
+        [I.deshacer, 'Pedido %DIA ya entregado', 'Si el pedido %DIA ya se entregó, no se ofrece Restaurar ni Eliminar: solo se gestiona la incidencia. El servidor también lo bloquea, para no deshacer por error una entrega que ya computó.']
       ]
     }
   };
@@ -80,8 +66,8 @@
     return 'repartidor';
   }
   function secciones(p) {
-    if (p === 'adm') return ['aviso', 'todos', 'adm', 'embolsado', 'repartidor'];
-    return ['aviso', 'todos', p];
+    if (p === 'repartidor') return ['aviso', 'dia'];
+    return ['aviso', 'dia', 'gestion'];   // ADM y Embolsado gestionan las incidencias
   }
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
