@@ -7,14 +7,15 @@
      v3.10.2 (2026-10-09): "Entregar" de un pedido %DIA abre directamente la
      hoja de entrega en dia.html (?ent=1).
      v3.10.3 (2026-10-09): incidencias con hasta 10 fotos y sin la espera de 10 min tras las 3 llamadas.
-     v3.10.8 (2026-10-16, ronda 28): la lectura de fotos con varios tickets es solo de GRANVIA y funciona sin internet
+     v3.10.9 (2026-10-16, ronda 28): GRANVIA no hace reservas: los tickets leídos sin reserva se crean y se asignan solos (el servidor los graba también en la hoja GRANVIA).
+     v3.10.8: la lectura de fotos con varios tickets es solo de GRANVIA y funciona sin internet
        (la foto queda guardada en el móvil y se lee sola al volver la red). En TRAVESIA no se lee ninguna foto.
      v3.10.7 (2026-10-16, ronda 28): carga rápida (todo en paralelo, Asignados primero, Disponibles al tocar la
      pestaña, lo último visto se pinta al instante); solo los pedidos de la tienda predefinida; cobro: el
      repartidor confirma el importe antes de Entregar; orden manual con flechas; el ADM ve los asignados de
      todos los repartidores (filtro), cambia el repartidor, abre el %DIA para editar y deshace entregas.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.10.8">
+<html lang="es" data-pagina="asignar" data-version="v3.10.9">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -206,7 +207,7 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
   <div class="info" id="info"></div>
   <div id="msg"></div>
   <div id="lista"></div>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.8</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.9</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
@@ -980,7 +981,7 @@ async function resolver(id, i, saltar) {
   spin(true);
   var r = await api('resolverTicketLote', {
     fotoId: L.res.fotoId, box: it.box || '', fecha: f.fecha, franja: L.res.franja || L.lote.franja,
-    caja: f.caja, ticket: f.ticket, datos: datos, repartidor: L.lote.repartidor,
+    caja: f.caja, ticket: f.ticket, datos: datos, repartidor: L.lote.repartidor, tienda: L.lote.tienda,
     asignar: L.lote.asignar !== false, saltar: !!saltar, manual: !!f.manual
   });
   spin(false);
@@ -1012,7 +1013,7 @@ async function procesarPendientes() {
   var lista = await lotesPendientes();
   // Solo los lotes de este usuario (si el móvil se comparte, no se mezclan).
   lista = lista.filter(function (l) { return !l.usuario || l.usuario === USUARIO; });
-  // v3.10.8: leer fotos con varios tickets es solo para GRANVIA. Los lotes de otras tiendas (p. ej. TRAVESIA,
+  // v3.10.9: leer fotos con varios tickets es solo para GRANVIA. Los lotes de otras tiendas (p. ej. TRAVESIA,
   // de pruebas antiguas) no se leen; los de más de 3 días se borran del móvil.
   var utiles = [];
   for (var q = 0; q < lista.length; q++) {
