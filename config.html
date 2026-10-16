@@ -9,16 +9,17 @@
      guardarReservaAuto, borrarReservaAuto; disparador generarReservasAuto).
      Se mantienen: Pedidos diarios emitidos (NEXO SCRIPT, PEDIDOS_TOTALES; GRANVIA en su
      columna) y Límites por franja (Módulo Embolsado, hoja LIMITES). -->
-<html lang="es" data-pagina="config" data-version="v3.10.3">
+<html lang="es" data-pagina="config" data-version="v3.10.4">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#FEFEFE" />
 <link rel="icon" href="nexo-icon-192.png">
 <title>Nexo · Configuración</title>
-<link rel="stylesheet" href="nexo-tema.css?v=27">
+<link rel="stylesheet" href="nexo-tema.css?v=28">
 <script src="nexo-version.js?v=1"></script>
-<script src="nexo-nav.js?v=1"></script>
+<script src="nexo-nav.js?v=2"></script>
+<script src="nexo-telefonos.js?v=1"></script>
 <script>
 /* Solo ADM */
 (function () {
@@ -106,6 +107,20 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
 .sw-fila input::after { content:''; position:absolute; top:3px; left:3px; width:26px; height:26px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(11,36,71,.3); transition:left .15s; }
 .sw-fila input:checked { background:var(--nx-verde); }
 .sw-fila input:checked::after { left:27px; }
+
+/* Ronda 27: secciones plegables */
+.sec.acc { padding:0; gap:0; overflow:hidden; }
+.acc-h { margin:0; font-size:inherit; }
+.acc-h button { width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:64px; padding:14px 16px; border:0; background:transparent; color:var(--nx-tinta); text-align:left; font:inherit; cursor:pointer; }
+.acc-t { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.acc-nombre { font-family:var(--nx-display); font-weight:800; font-size:26px; line-height:1.05; }
+.acc-res { font-size:13px; font-weight:700; color:var(--nx-suave); }
+.acc-chev { flex:0 0 auto; width:40px; height:40px; border-radius:12px; background:var(--nx-chip); display:grid; place-items:center; transition:transform .2s; }
+.sec.acc.abierta .acc-chev { transform:rotate(180deg); }
+.acc-cuerpo { padding:4px 16px 16px; display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--nx-chip); }
+.acc-cuerpo[hidden] { display:none; }
+.tel-dato { font-size:15px; font-weight:600; line-height:1.35; margin:0; }
+@media (prefers-reduced-motion: reduce) { .acc-chev { transition:none; } }
 </style>
 </head>
 <body class="nx">
@@ -115,6 +130,15 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
 </header>
 <main class="nx-pag">
   <h1 class="nx-titulo">Configuración</h1>
+
+  <!-- Teléfonos útiles (Ronda 27) -->
+  <section class="sec" data-acc="telefonos" data-titulo="Teléfonos útiles">
+    <h2>Teléfonos útiles</h2>
+    <p class="tel-dato" id="telEstado">Comprobando…</p>
+    <button class="btn-p" id="btnTel" type="button">Cargar desde la hoja</button>
+    <p class="nota">Descarga de la hoja TEL_UTILES de tu tienda y la guarda en este móvil. Los usuarios de Embolsado la descargan sola la primera vez que abren la pestaña.</p>
+    <div class="msg" id="msgTel"></div>
+  </section>
 
   <!-- Pedidos diarios emitidos -->
   <section class="sec">
@@ -169,6 +193,78 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
 
   <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.1</div>
 </main>
+<script>
+/* Ronda 27: secciones plegables (solo se abre una) + sección de teléfonos útiles. */
+(function () {
+  var RES = {
+    'Pedidos diarios emitidos': 'Total de pedidos por día',
+    'Llamadas desde la app': function () { try { return localStorage.getItem('nexo_ocultar_numero') === '1' ? 'Ocultar número: activado' : 'Ocultar número: desactivado'; } catch (e) { return ''; } },
+    'Límites por franja': '7 días × 4 franjas',
+    'Reservas automáticas': 'Reglas que crean reservas solas'
+  };
+  var CHEV = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+  var secs = Array.prototype.slice.call(document.querySelectorAll('main.nx-pag > section.sec'));
+  var KEY = 'nexo_cfg_abierta';
+  var abierta = ''; try { abierta = localStorage.getItem(KEY) || ''; } catch (e) {}
+  var titulos = secs.map(function (s) { var h = s.querySelector(':scope > h2'); return h ? h.textContent.trim() : ''; });
+  if (titulos.indexOf(abierta) === -1) abierta = titulos[0];
+  function resumenDe(t) {
+    if (t === 'Teléfonos útiles') {
+      var e = window.NexoTelefonos && window.NexoTelefonos.estado();
+      return e && e.guardado ? e.count + ' guardados · ' + e.texto : 'Sin cargar';
+    }
+    var r = RES[t]; return typeof r === 'function' ? r() : (r || '');
+  }
+  function poner(sec, t, abrir) {
+    sec.classList.toggle('abierta', abrir);
+    var b = sec.querySelector('.acc-h button'), c = sec.querySelector('.acc-cuerpo');
+    b.setAttribute('aria-expanded', abrir ? 'true' : 'false'); c.hidden = !abrir;
+    sec.querySelector('.acc-res').textContent = resumenDe(t);
+  }
+  secs.forEach(function (sec, i) {
+    var h2 = sec.querySelector(':scope > h2'); if (!h2) return;
+    var t = titulos[i], id = 'acc' + i;
+    sec.classList.add('acc');
+    var cuerpo = document.createElement('div'); cuerpo.className = 'acc-cuerpo'; cuerpo.id = id;
+    while (h2.nextSibling) cuerpo.appendChild(h2.nextSibling);
+    var cab = document.createElement('h2'); cab.className = 'acc-h';
+    cab.innerHTML = '<button type="button" aria-controls="' + id + '"><span class="acc-t"><span class="acc-nombre"></span><span class="acc-res"></span></span><span class="acc-chev">' + CHEV + '</span></button>';
+    cab.querySelector('.acc-nombre').textContent = t;
+    sec.replaceChild(cab, h2); sec.appendChild(cuerpo);
+    cab.querySelector('button').addEventListener('click', function () {
+      var abrir = !sec.classList.contains('abierta');
+      secs.forEach(function (o, j) { if (o.classList.contains('acc')) poner(o, titulos[j], abrir && o === sec); });
+      abierta = abrir ? t : ''; try { localStorage.setItem(KEY, abierta); } catch (e) {}
+      if (abrir) setTimeout(function () { sec.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 30);
+    });
+    poner(sec, t, t === abierta);
+  });
+  function refrescarResumenes() { secs.forEach(function (o, j) { if (o.classList.contains('acc')) o.querySelector('.acc-res').textContent = resumenDe(titulos[j]); }); }
+  var sw = document.getElementById('swOculto'); if (sw) sw.addEventListener('change', function () { setTimeout(refrescarResumenes, 0); });
+
+  // Teléfonos útiles: estado y botón «Cargar desde la hoja».
+  var T = window.NexoTelefonos, est = document.getElementById('telEstado'), btn = document.getElementById('btnTel'), msg = document.getElementById('msgTel');
+  function pintarTel() {
+    if (!T || !T.elegible) { est.textContent = 'No disponible para este usuario.'; btn.disabled = true; return; }
+    var e = T.estado();
+    est.innerHTML = e.guardado ? '<b>' + e.count + '</b> teléfonos guardados en este móvil (' + e.tienda + ') · última carga ' + e.texto : 'Todavía no hay teléfonos guardados en este móvil.';
+    refrescarResumenes();
+  }
+  btn.addEventListener('click', function () {
+    if (!T) return;
+    btn.disabled = true; var txt = btn.textContent; btn.textContent = 'Cargando…'; msg.textContent = '';
+    T.cargar().then(function (r) {
+      btn.disabled = false; btn.textContent = txt;
+      if (!r.ok) { msg.className = 'msg err'; msg.textContent = '❌ ' + r.error; }
+      else if (!r.existe) { msg.className = 'msg err'; msg.textContent = 'Esa tienda no tiene hoja TEL_UTILES. No se muestra la pestaña.'; }
+      else { msg.className = 'msg ok'; msg.textContent = '✅ ' + r.count + ' teléfonos cargados.'; }
+      pintarTel();
+    });
+  });
+  pintarTel();
+})();
+</script>
+
 
 <!-- Hoja: reserva automática -->
 <div class="modal" id="mRA" onclick="if(event.target===this)cerrarRA()"><div class="box">

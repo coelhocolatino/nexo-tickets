@@ -51,7 +51,7 @@
      v3.10.2 (2026-10-09): ventana "Qué novedades hay" (nexo-novedades.js), una vez por usuario;
      se vuelve a abrir con el enlace de abajo.
 -->
-<html lang="es" data-pagina="index" data-version="v3.10.4">
+<html lang="es" data-pagina="index" data-version="v3.10.5">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -65,29 +65,16 @@
 <link rel="icon" href="nexo-icon-192.png">
 <link rel="apple-touch-icon" href="nexo-icon-192.png">
 <title>Nexo · SAD Tickets</title>
-<link rel="stylesheet" href="nexo-tema.css?v=27">
+<link rel="stylesheet" href="nexo-tema.css?v=28">
 <script src="nexo-version.js?v=1"></script>
-<script src="nexo-nav.js?v=1"></script>
+<script src="nexo-nav.js?v=2"></script>
+<script src="nexo-telefonos.js?v=1"></script>
 <script src="nexo-novedades.js?v=1"></script>
 <script src="nexo-foto.js?v=2"></script>
 <style>
 /* Ronda 24 (2026-10-08): diseño nuevo. Los ids y clases que usa el script
-   (sideStack/.adm/.solo-adm, btnDia/.nuevo, .num, .control/.locked,
+   (.control/.locked,
    .lock-hint, .asig-hint, #spinner.visible…) se mantienen. */
-/* Módulos: cuadrícula de iconos */
-.modulos { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
-.modulos a { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
-  min-height:76px; border:1.5px solid var(--nx-linea); border-radius:14px; background:var(--nx-superficie);
-  color:var(--nx-tinta); text-decoration:none; font-size:12px; font-weight:800; cursor:pointer; transition:transform .12s; }
-.modulos a:active { transform:scale(.95); }
-.modulos .pct { font-family:var(--nx-display); font-weight:800; font-size:24px; line-height:1; }
-.modulos .solo-adm { display:none; }
-.modulos.adm .solo-adm { display:flex; }
-.modulos .num { position:absolute; top:6px; right:6px; min-width:20px; height:20px; padding:0 5px; border-radius:10px;
-  background:var(--nx-rojo); color:#fff; font-size:12px; font-weight:800; display:none; align-items:center; justify-content:center; }
-.btn-dia .num { background:var(--nx-lampara); color:var(--nx-tinta); }
-.btn-dia.nuevo .num { animation:diaPulso 1s ease-in-out 6; }
-@keyframes diaPulso { 50% { transform:scale(1.35); } }
 /* Formulario */
 #ticketForm { display:flex; flex-direction:column; gap:14px; }
 #ticketForm label { display:block; font-size:12px; font-weight:700; color:var(--nx-suave); margin-bottom:4px; }
@@ -205,15 +192,6 @@ input[type="date"].control { -webkit-appearance:none; appearance:none; text-alig
 
 <main class="nx-pag">
 
-  <nav class="modulos" id="sideStack" aria-label="Módulos">
-    <a class="btn-reservas" href="reservas.html" style="display:none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10h16M8 4v4M16 4v4"/></svg>Reservas</a>
-    <a class="btn-dia" id="btnDia" href="dia.html"><span class="pct">%</span>%DIA<span class="num" id="numDia"></span></a>
-    <a id="linkIncidencias" class="btn-inc" href="incidencias.html"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4M12 17.5v.5"/></svg>Incidencias<span class="num" id="numIncidencias"></span></a>
-    <a class="btn-informe" href="informe.html"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Informe</a>
-    <a class="solo-adm" id="btnEmbolsado" href="#"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 12H5zM9 8V6a3 3 0 0 1 6 0v2"/></svg>Embolsado</a>
-    <a class="solo-adm" id="btnActualizar" role="button" tabindex="0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5"/></svg>Actualizar</a>
-    <a class="solo-adm" id="btnConfig" href="config.html"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Config</a>
-  </nav>
 
   <h1 class="nx-titulo">Subir ticket</h1>
 
@@ -336,12 +314,6 @@ const nivelTag = document.getElementById('nivelTag');
 nivelTag.textContent = NIVEL;
 if (ES_ADMIN) nivelTag.classList.add('admin');
 
-// Pasa el usuario ya logueado al Módulo de Reservas, para que no vuelva a pedir contraseña.
-const btnReservas = document.querySelector('.btn-reservas');
-if (btnReservas) {
-  btnReservas.href = 'reservas.html?u=' + encodeURIComponent((sesion && sesion.usuario) || '');
-}
-
 /* ===== Botones de ADM + aviso de incidencias ===== */
 var EMBOLSADO_URL = 'https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoDisEn4qrGWh0tEGfGHn4NXoEqP1ShODyIWQ1bzYyWfcuz_Pqh/exec';
 var CONTROL_TICKETS_URL = 'https://script.google.com/macros/s/AKfycbzEnq5PYv_9pAi-d-dRi-M69rxPxW62Qd3vy61qvGxR9s-YxgkYdWlZ7b2alJrXAt1sYg/exec';
@@ -356,22 +328,20 @@ function postProxy(url, body) {
     });
   });
 }
-if (ES_ADMIN) {
-  document.getElementById('sideStack').classList.add('adm');
-  document.getElementById('btnEmbolsado').href = EMBOLSADO_URL + '?u=' + encodeURIComponent((sesion && sesion.usuario) || '');
-  document.getElementById('btnConfig').href = 'config.html?u=' + encodeURIComponent((sesion && sesion.usuario) || '');
-  document.getElementById('btnActualizar').addEventListener('click', async function () {
-    if (!confirm('¿Actualizar los pedidos (reconstruir el control de tickets)? Puede tardar unos minutos.')) return;
-    showSpinner('Actualizando pedidos…');
-    try {
-      var r = await postProxy(CONTROL_TICKETS_URL, { accion: 'actualizarManual', usuario: (sesion && sesion.usuario) || '' });
-      if (r && r.ok) setMsg('✅ Pedidos actualizados' + (r.periodos ? ' (' + r.periodos + ')' : ''), '#9dffb0');
-      else setMsg('❌ ' + ((r && r.error) || 'No se pudo actualizar'), '#ff6b6b');
-    } catch (e) { setMsg('❌ Error de conexión al actualizar: ' + (e && e.message ? e.message : e), '#ff6b6b'); }
-    hideSpinner();
-    setTimeout(clearMsg, 6000);
-  });
-}
+/* Ronda 27: el menú antiguo de módulos desapareció (era redundante con la barra de accesos).
+   «Actualizar» pasa a la barra (solo ADM, en esta página): nexo-nav.js llama a esta función. */
+window.nexoActualizarPedidos = async function () {
+  if (!ES_ADMIN) return;
+  if (!confirm('¿Actualizar los pedidos (reconstruir el control de tickets)? Puede tardar unos minutos.')) return;
+  showSpinner('Actualizando pedidos…');
+  try {
+    var r = await postProxy(CONTROL_TICKETS_URL, { accion: 'actualizarManual', usuario: (sesion && sesion.usuario) || '' });
+    if (r && r.ok) setMsg('✅ Pedidos actualizados' + (r.periodos ? ' (' + r.periodos + ')' : ''), '#9dffb0');
+    else setMsg('❌ ' + ((r && r.error) || 'No se pudo actualizar'), '#ff6b6b');
+  } catch (e) { setMsg('❌ Error de conexión al actualizar: ' + (e && e.message ? e.message : e), '#ff6b6b'); }
+  hideSpinner();
+  setTimeout(clearMsg, 6000);
+};
 /* Departamento EMBOLSADO (2026-10-02): si la sesión es anterior a este cambio
    (o se entró con un login.html viejo en caché) no trae el departamento. Se
    consulta UNA vez al backend, se guarda en la sesión y, si el usuario es de
@@ -395,122 +365,11 @@ if (ES_ADMIN) {
   }).catch(function () {});
 })();
 
-/* Incidencias (2026-10-02): el botón aparece para TODOS los usuarios.
-   Embolsado y ADM ven todas; cada repartidor ve solo las suyas (el filtro
-   lo aplica el backend del Módulo Embolsado: listarIncidencias /
-   contarIncidenciasAbiertas). El globo rojo cuenta las ABIERTAS que ese
-   usuario puede ver. */
-(function () {
-  if (!sesion || !sesion.usuario) return;
-  var refrescarIncidencias = async function () {
-    try {
-      var r = await postProxy(EMBOLSADO_URL, { accion: 'contarIncidenciasAbiertas', usuario: sesion.usuario });
-      var n = (r && r.ok) ? (r.total || 0) : 0, el = document.getElementById('numIncidencias');
-      el.textContent = n > 99 ? '99+' : String(n);
-      el.style.display = n > 0 ? 'flex' : 'none';
-    } catch (e) { /* sin conexión: se deja el último valor */ }
-  };
-  refrescarIncidencias();
-  setInterval(refrescarIncidencias, 60000);
-})();
-
-/* Los botones laterales van apilados en una columna a la derecha. Cuando la
-   columna baja más que la cabecera (ADM: 6 botones), se acortan solo los
-   campos del formulario que quedan a su altura, para que no se tapen. */
-function ajustarCamposAlStack() {
-  return; // Ronda 24: los módulos ya no van en una columna sobre el formulario.
-  var stack = document.getElementById('sideStack');
-  var form = document.getElementById('ticketForm');
-  if (!stack || !form) return;
-  var hijos = Array.prototype.slice.call(form.children);
-  hijos.forEach(function (el) { el.style.marginRight = ''; });
-  var sb = stack.getBoundingClientRect();
-  if (!sb.height) return;
-  hijos.forEach(function (el) {
-    var r = el.getBoundingClientRect();
-    if (r.height > 0 && r.top < sb.bottom && r.bottom > sb.top) el.style.marginRight = Math.ceil(sb.width + 8) + 'px';
-  });
-}
-window.addEventListener('load', ajustarCamposAlStack);
-window.addEventListener('resize', ajustarCamposAlStack);
-document.addEventListener('DOMContentLoaded', function () {
-  ajustarCamposAlStack();
-  if ('ResizeObserver' in window) {
-    try {
-      var ro = new ResizeObserver(function () { ajustarCamposAlStack(); });
-      ro.observe(document.querySelector('.header'));
-      ro.observe(document.getElementById('sideStack'));
-    } catch (e) {}
-  }
+/* Ronda 27: los globos de %DIA e Incidencias (contadores, vibración y notificación) viven ahora en
+   nexo-nav.js. Aquí solo se muestra el aviso en pantalla cuando llegan pedidos %DIA nuevos. */
+document.addEventListener('nexo:dia-nuevo', function (ev) {
+  setMsg('🔔 ' + (ev && ev.detail && ev.detail.texto || 'Pedidos %DIA nuevos'), '#facc15'); setTimeout(clearMsg, 8000);
 });
-
-/* ===== Pedidos %DIA: botón + contador (amarillo) + vibración =====
-   El botón está SIEMPRE visible (v2.13.0). El contador amarillo muestra:
-   · Repartidores: sus pedidos %DIA asignados y todavía sin entregar.
-   · Gestores (asignar_DIA / ADM / Embolsado / Reservas): pedidos %DIA sin asignar.
-   Se pinta al instante con el último número guardado en este móvil (dia.html
-   lo actualiza cada vez que carga la lista, entrega o registra incidencia) y
-   después se confirma con el servidor. */
-var DIA_URL = 'https://script.google.com/macros/s/AKfycbwrX90CKa7GQki-DUDZFpdGVlGIXZvmiHsRKCEW7ZwBbYkKfYPr3R1kx96Uz9GKL_0m/exec';
-(function () {
-  if (!sesion || !sesion.usuario || /^PEGAR_AQUI/.test(DIA_URL)) return;
-  var btn = document.getElementById('btnDia'), num = document.getElementById('numDia');
-  var clave = 'nexo_dia_cnt_' + String(sesion.usuario).toLowerCase();
-  function leerGuardado() {
-    try { var v = parseInt(localStorage.getItem(clave) || '-1', 10); return isNaN(v) ? -1 : v; } catch (e) { return -1; }
-  }
-  function pintarNum(n) {
-    num.textContent = n > 99 ? '99+' : String(n);
-    num.style.display = n > 0 ? 'flex' : 'none';
-  }
-  // 1) Al instante, sin esperar red: el último número conocido.
-  pintarNum(Math.max(0, leerGuardado()));
-
-  // 2) Confirmar con el servidor. Si falla, reintentos rápidos (4, 8 y 12 s).
-  var enCurso = false, fallos = 0, reintento = null;
-  async function refrescarDia() {
-    if (enCurso) return;
-    enCurso = true;
-    var bien = false;
-    try {
-      var r = await postProxy(DIA_URL, { accion: 'diaResumen', usuario: sesion.usuario });
-      if (r && r.ok) {
-        bien = true;
-        var gestor = r.rol && r.rol.ver;
-        var n = gestor ? (r.nuevos || 0) : (r.misPendientes || 0);
-        pintarNum(n);
-        var antes = leerGuardado();
-        if (antes >= 0 && n > antes) {
-          btn.classList.remove('nuevo'); void btn.offsetWidth; btn.classList.add('nuevo');
-          try { if (navigator.vibrate) navigator.vibrate([300, 120, 300, 120, 300]); } catch (e) {}
-          var t = gestor ? (n - antes) + ' pedido(s) %DIA nuevo(s)' : 'Tienes ' + (n - antes) + ' pedido(s) %DIA asignado(s)';
-          setMsg('🔔 ' + t, '#facc15'); setTimeout(clearMsg, 8000);
-          try {
-            if ('Notification' in window && Notification.permission === 'granted' && navigator.serviceWorker) {
-              navigator.serviceWorker.getRegistration().then(function (reg) {
-                if (reg) reg.showNotification('Nexo · %DIA', { body: t, icon: 'nexo-icon-192.png', vibrate: [300, 120, 300], tag: 'nexo-dia' });
-              });
-            }
-          } catch (e) {}
-        }
-        try { localStorage.setItem(clave, String(n)); } catch (e) {}
-      }
-    } catch (e) { /* sin conexión: se deja el último valor */ }
-    enCurso = false;
-    clearTimeout(reintento);
-    if (bien) fallos = 0;
-    else if (fallos < 3) { fallos++; reintento = setTimeout(refrescarDia, 4000 * fallos); }
-  }
-  refrescarDia();
-  setInterval(refrescarDia, 60000);
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) refrescarDia(); });
-  window.addEventListener('online', function () { fallos = 0; refrescarDia(); });
-  // Volver con el botón "atrás" del móvil (página restaurada de memoria):
-  // repinta con lo que haya dejado dia.html y vuelve a consultar.
-  window.addEventListener('pageshow', function (ev) {
-    if (ev.persisted) { pintarNum(Math.max(0, leerGuardado())); fallos = 0; refrescarDia(); }
-  });
-})();
 
 function cerrarSesion() {
   if (confirm('¿Cerrar sesión?')) {
@@ -1418,9 +1277,6 @@ const asigHint   = document.getElementById('asigHint');
 function esTravesia(v) { return /trav[eé]s[ií]a/i.test(String(v || '')); }
 function actualizarBtnAsignar() {
   btnAsignar.style.display = esTravesia(tiendaSel.value) ? 'block' : 'none';
-  // Ronda 24 (2026-10-09): las reservas son de TRAVESIA — el botón Reservas
-  // solo aparece con esa tienda elegida (el ADM lo ve siempre).
-  if (btnReservas) btnReservas.style.display = (ES_ADMIN || esTravesia(tiendaSel.value)) ? '' : 'none';
 }
 tiendaSel.addEventListener('change', actualizarBtnAsignar);
 (function () {

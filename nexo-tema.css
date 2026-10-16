@@ -145,3 +145,38 @@ a:focus-visible, button:focus-visible, summary:focus-visible, [role="button"]:fo
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration:.01ms !important; scroll-behavior:auto !important; }
 }
+
+/* Ronda 27: globos de aviso en la barra de accesos (antes en el menú antiguo del index) */
+.nx-nav a { position:relative; }
+.nx-nav .nx-num { position:absolute; top:3px; right:5px; min-width:22px; height:22px; padding:0 6px; border-radius:11px;
+  background:var(--nx-rojo); color:#fff; font-size:13px; font-weight:800; line-height:1; display:none; align-items:center; justify-content:center; }
+.nx-nav .nx-num.dia { background:var(--nx-lampara); color:var(--nx-tinta); }
+.nx-nav a.nuevo .nx-num { animation:diaPulso 1s ease-in-out 6; }
+@keyframes diaPulso { 50% { transform:scale(1.35); } }
+
+/* Ronda 27: pestaña lateral de teléfonos útiles (nexo-telefonos.js) */
+.tl-asa { position:fixed; left:0; top:44%; z-index:60; width:36px; height:108px; border:0; border-radius:0 14px 14px 0; background:var(--nx-tinta); color:var(--nx-tinta-clara);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; box-shadow:2px 3px 10px rgba(11,36,71,.28); padding:0; cursor:pointer; touch-action:manipulation; }
+.tl-asa[hidden] { display:none; }
+.tl-vel { position:fixed; inset:0; z-index:90; background:rgba(11,36,71,.45); opacity:0; pointer-events:none; transition:opacity .2s; }
+.tl-vel.on { opacity:1; pointer-events:auto; }
+.tl-panel { position:fixed; left:0; top:0; bottom:0; z-index:91; width:min(86vw,360px); background:var(--nx-superficie); display:flex; flex-direction:column;
+  box-shadow:6px 0 24px rgba(11,36,71,.35); transform:translateX(-102%); transition:transform .22s ease-out; visibility:hidden;
+  padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); padding-left:env(safe-area-inset-left); }
+.tl-panel.on { transform:none; visibility:visible; }
+.tl-cab { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:18px 16px 12px; border-bottom:1px solid var(--nx-linea); }
+.tl-t1 { font-family:var(--nx-display); font-weight:800; font-size:30px; line-height:1; margin:0; }
+.tl-t2 { font-size:12px; font-weight:800; letter-spacing:.08em; color:var(--nx-suave); margin-top:4px; }
+.tl-x { width:44px; height:44px; border:0; border-radius:12px; background:var(--nx-chip); color:var(--nx-tinta); display:grid; place-items:center; cursor:pointer; flex:0 0 auto; }
+.tl-lista { flex:1; overflow-y:auto; overscroll-behavior:contain; padding:6px 10px; }
+.tl-fila { display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:52px; padding:6px 8px; border-bottom:1px solid var(--nx-chip); }
+.tl-n { font-size:14px; font-weight:800; letter-spacing:.02em; min-width:0; overflow-wrap:anywhere; }
+.tl-t { display:flex; align-items:center; gap:6px; flex:0 0 auto; min-height:40px; padding:0 12px; border-radius:12px; background:var(--nx-verde-fondo); color:var(--nx-verde-tinta);
+  font-weight:800; font-size:15px; font-variant-numeric:tabular-nums; text-decoration:none; }
+.tl-t svg { width:16px; height:16px; }
+.tl-sep { height:12px; border-bottom:2px solid var(--nx-linea); margin:4px 0 8px; }
+.tl-vacio { padding:24px 12px; color:var(--nx-suave); font-weight:600; text-align:center; }
+.tl-pie { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 16px 14px; border-top:1px solid var(--nx-linea); font-size:12px; font-weight:700; color:var(--nx-suave); }
+.tl-pie button { min-height:40px; padding:0 12px; border:0; border-radius:10px; background:var(--nx-chip); color:var(--nx-tinta); font:800 13px var(--nx-texto); cursor:pointer; }
+body.tl-bloq { overflow:hidden; }
+@media (prefers-reduced-motion: reduce) { .tl-panel, .tl-vel { transition:none; } }
