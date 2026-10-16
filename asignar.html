@@ -15,7 +15,7 @@
      repartidor confirma el importe antes de Entregar; orden manual con flechas; el ADM ve los asignados de
      todos los repartidores (filtro), cambia el repartidor, abre el %DIA para editar y deshace entregas.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.10.11">
+<html lang="es" data-pagina="asignar" data-version="v3.10.12">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -176,9 +176,13 @@ details.entregados[open] > summary .flecha { transform:rotate(180deg); }
 .orden button { width:44px; height:44px; border:0; border-radius:10px; background:var(--nx-azul-fondo); color:var(--nx-azul);
   display:flex; align-items:center; justify-content:center; cursor:pointer; }
 .orden button:disabled { opacity:.35; cursor:default; }
-.filtro-rep { display:none; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:end; }
-.filtro-rep .cuenta { min-height:52px; padding:0 16px; border-radius:12px; background:var(--nx-tinta); color:var(--nx-tinta-clara);
-  display:flex; align-items:center; font-weight:800; font-size:15px; white-space:nowrap; }
+.top-fila { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.btn-ver { flex:0 0 auto; width:48px; height:48px; border:0; border-radius:12px; background:var(--nx-tinta); color:var(--nx-tinta-clara); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.btn-ver:active { opacity:.8; }
+.filtros { display:none; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:8px; align-items:center; margin:0 0 10px; }
+.filtros .nx-pestanas { margin:0; }
+.filtros select { min-height:52px; width:100%; }
+.filtros select:disabled { opacity:.45; }
 select.nx-input { -webkit-appearance:none; appearance:none; padding-right:36px; font-weight:800;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%230B2447' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E");
   background-repeat:no-repeat; background-position:right 10px center; }
@@ -193,27 +197,28 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
   <div class="nx-cab-usuario"><span id="quien"></span></div>
 </header>
 <main class="nx-pag">
-  <h1 class="nx-titulo">Pedidos asignados</h1>
-  <!-- Ronda 29: el ADM elige la tienda (TRAVESIA / GRANVIA) -->
-  <div class="nx-pestanas" id="selTienda" role="group" aria-label="Tienda" style="display:none">
-    <button type="button" id="tiTRAVESIA" onclick="elegirTiendaAdm('TRAVESIA')">TRAVESIA</button>
-    <button type="button" id="tiGRANVIA" onclick="elegirTiendaAdm('GRANVIA')">GRANVIA</button>
+  <div class="top-fila">
+    <h1 class="nx-titulo">Pedidos asignados</h1>
+    <button type="button" class="btn-ver" id="btnFotos" title="Ver fotos de tickets" aria-label="Ver fotos de tickets" onclick="abrirFotos()"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+  </div>
+  <!-- Ronda 30: tienda y repartidor son dos filtros en la misma línea (solo ADM) -->
+  <div class="filtros" id="filtros">
+    <div class="nx-pestanas" id="selTienda" role="group" aria-label="Tienda">
+      <button type="button" id="tiTRAVESIA" onclick="elegirTiendaAdm('TRAVESIA')">TRAVESIA</button>
+      <button type="button" id="tiGRANVIA" onclick="elegirTiendaAdm('GRANVIA')">GRANVIA</button>
+    </div>
+    <select class="nx-input" id="selRep" aria-label="Repartidor" onchange="filtrarRep(this.value)"></select>
   </div>
   <!-- Fase 1 multi-ticket: resultado de la lectura de la foto -->
   <div id="lotes"></div>
-  <button type="button" class="b-gris" id="btnFotos" style="width:100%;min-height:48px;border:0;border-radius:12px;font-weight:800;margin:0 0 10px" onclick="abrirFotos()">Ver fotos de tickets</button>
   <div class="nx-pestanas" role="tablist">
     <button class="tab" id="tabRuta" role="tab" onclick="elegirTab('ruta')">Asignados</button>
     <button class="tab" id="tabDisp" role="tab" onclick="elegirTab('disp')">Disponibles</button>
   </div>
-  <div class="filtro-rep" id="filtroRep">
-    <div class="nx-campo"><label for="selRep">Repartidor</label><select class="nx-input" id="selRep" onchange="filtrarRep(this.value)"></select></div>
-    <span class="cuenta" id="cuentaRep">0 pedidos</span>
-  </div>
   <div class="info" id="info"></div>
   <div id="msg"></div>
   <div id="lista"></div>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.11</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.12</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
@@ -321,21 +326,33 @@ var TIENDA_SEL = '';
 function tiendaAct() { return ES_ADMIN ? TIENDA_SEL : TIENDA_PRE; }
 function pintarSelTienda() {
   var s = document.getElementById('selTienda'); if (!s) return;
-  s.style.display = ES_ADMIN ? '' : 'none';
+  var fl = document.getElementById('filtros'); if (fl) fl.style.display = ES_ADMIN ? 'grid' : 'none';
   ['TRAVESIA', 'GRANVIA'].forEach(function (t) { var b = document.getElementById('ti' + t); if (b) b.classList.toggle('on', t === TIENDA_SEL); });
 }
+var DISP = {};   // ronda 30: disponibles guardados por tienda (cambiar de tienda no mezcla ni recarga)
 function elegirTiendaAdm(t) {
   if (!ES_ADMIN || t === TIENDA_SEL) return;
+  DISP[TIENDA_SEL] = { disp: disp, ts: dispTs, tramos: tramos, ok: dispCargado };
   TIENDA_SEL = t;
   try { localStorage.setItem('nexo_tienda_adm', t); } catch (e) {}
-  pintarSelTienda();
-  sel = {}; disp = []; dispCargado = false; actualizarBarra();
-  cargar(false);
-  if (tab === 'disp') cargarDisp(true);
+  var c = DISP[t];
+  if (c) { disp = c.disp; dispTs = c.ts; tramos = c.tramos; dispCargado = c.ok; } else { disp = []; dispTs = 0; dispCargado = false; }
+  sel = {};
+  pintarSelTienda(); actualizarBarra(); actualizarPestanas(); pintar();
+  if (tab === 'disp') cargarDisp(false);
 }
+/* Ronda 30: tienda de un pedido ('' si no se sabe, p. ej. %DIA). El ADM ve solo la tienda elegida. */
+function normTiendaC(v) {
+  var t = String(v == null ? '' : v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  if (/^GRAN\s*VIA(?![A-Z0-9])/.test(t)) return 'GRANVIA';
+  if (/^TRAVESIA(?![A-Z0-9])/.test(t)) return 'TRAVESIA';
+  return '';
+}
+function tiendaOk(o) { if (!ES_ADMIN) return true; var t = normTiendaC(o && o.tienda); return !t || t === TIENDA_SEL; }
 var tab = 'ruta', disp = [], ruta = [], sel = {}, tramos = [];
 var dispCargado = false, dispTs = 0, cargando = false, primeraCarga = true, tocoTabs = false;
 var entAdm = null, abiertoEnt = false;   // ronda 24: entregados de hoy (ADM: de todos) y si el bloque está abierto
+var cargaId = 0;
 var rutaAdm = null, repartidores = [], FILTRO_REP = '';   // ronda 28: ADM ve los asignados de todos los repartidores
 /* Pedidos %DIA asignados a mí (backend NEXO · DIA) — se muestran en rosa en "Asignados" */
 var DIA_URL = 'https://script.google.com/macros/s/AKfycbwrX90CKa7GQki-DUDZFpdGVlGIXZvmiHsRKCEW7ZwBbYkKfYPr3R1kx96Uz9GKL_0m/exec', diaRuta = [];
@@ -413,8 +430,8 @@ function botonesOrden(x, pos, total) {
 function listaPendientes() {
   var e, d;
   if (ES_ADMIN && rutaAdm) {
-    e = (rutaAdm.ruta || []).filter(function (o) { return o.entregaEstado !== 'ENTREGADO'; });
-    d = (rutaAdm.dia || []).filter(function (o) { return o.estadoNexo !== 'ENTREGADO'; });
+    e = (rutaAdm.ruta || []).filter(function (o) { return o.entregaEstado !== 'ENTREGADO' && tiendaOk(o); });
+    d = (rutaAdm.dia || []).filter(function (o) { return o.estadoNexo !== 'ENTREGADO' && tiendaOk(o); });
     if (FILTRO_REP) { e = e.filter(function (o) { return repCoincide(o, FILTRO_REP); }); d = d.filter(function (o) { return repCoincide(o, FILTRO_REP); }); }
   } else {
     e = ruta.filter(function (o) { return o.entregaEstado !== 'ENTREGADO'; });
@@ -481,21 +498,30 @@ function opcionesFiltroRep() {
 /* ---- 6.4 · carga: Asignados primero y TODO en paralelo (antes iba una petición detrás de otra) ---- */
 async function cargar(inicial) {
   pintarSelTienda();
+  var id = ++cargaId;
   cargando = true; if (tab === 'ruta') pintarInfo();
-  var tareas = [api('listarMiRuta'), apiDia('diaListar', { vista: 'mios' })];
-  if (ES_ADMIN) tareas.push(api('listarEntregadosHoy', { tienda: tiendaAct() }), apiDia('diaListar', { vista: 'activos' }), api('listarRutaTodos', { tienda: tiendaAct() }));
-  var res = await Promise.all(tareas);
-  var rr = res[0], rdia = res[1];
+  var rr, rdia, rea = null, rda = null, rra = null;
+  if (ES_ADMIN) {
+    // Ronda 30: se piden las dos tiendas de una vez (sin "tienda") y se filtra aquí; así cambiar de tienda es instantáneo.
+    var res = await Promise.all([apiDia('diaListar', { vista: 'mios' }), api('listarEntregadosHoy', {}), apiDia('diaListar', { vista: 'activos' }), api('listarRutaTodos', {})]);
+    rdia = res[0]; rea = res[1]; rda = res[2]; rra = res[3];
+    if (rra && rra.ok) {
+      var yo = String(USUARIO).toLowerCase();
+      rr = { ok: true, pedidos: (rra.pedidos || []).filter(function (o) { return String(o.asignadoUsuario || '').toLowerCase() === yo; }) };
+    } else rr = await api('listarMiRuta');
+  } else {
+    var res2 = await Promise.all([api('listarMiRuta'), apiDia('diaListar', { vista: 'mios' })]);
+    rr = res2[0]; rdia = res2[1];
+  }
+  if (id !== cargaId) return;   // ronda 30: llegó otra carga más reciente; esta respuesta ya no vale
   cargando = false;
   var hoyDM = hoyDMA();
   if (ES_ADMIN) {
-    var rea = res[2], rda = res[3], rra = res[4];
     entAdm = {
       ruta: rea && rea.ok ? (rea.pedidos || []) : [],
       dia: rda && rda.ok ? (rda.pedidos || []).filter(function (o) { return o.estadoNexo === 'ENTREGADO' && String(o.entregaHora || '').indexOf(hoyDM) === 0; }) : []
     };
     if (rda && rda.ok && rda.repartidores) repartidores = rda.repartidores;
-    // Si el script de Embolsado aún no tiene "listarRutaTodos", el ADM ve solo lo suyo + los %DIA de todos.
     rutaAdm = {
       ruta: rra && rra.ok ? (rra.pedidos || []) : null,
       dia: rda && rda.ok ? (rda.pedidos || []).filter(function (o) { return o.estadoNexo === 'ASIGNADO'; }) : []
@@ -522,9 +548,12 @@ async function cargar(inicial) {
 /* Disponibles: se piden al abrir la pestaña (y se refrescan si pasaron 20 s). */
 async function cargarDisp(forzar) {
   if (dispCargado && !forzar && Date.now() - dispTs < 20000) return;
-  var rd = await api('listarDisponibles', { tienda: tiendaAct() });
+  var t = tiendaAct();
+  var rd = await api('listarDisponibles', { tienda: t });
   if (!rd.ok) { msg(rd.error, 'err'); return; }
-  disp = filtrarTienda(rd.pedidos || []);
+  var lista = (rd.pedidos || []).filter(function (o) { return !o.tienda || normTiendaC(o.tienda) === normTiendaC(t); });
+  if (t !== tiendaAct()) { DISP[t] = { disp: lista, ts: Date.now(), tramos: rd.tramos || [], ok: true }; return; }   // el ADM cambió de tienda mientras tanto
+  disp = lista;
   tramos = rd.tramos || [];
   dispCargado = true; dispTs = Date.now();
   actualizarPestanas();
@@ -586,7 +615,7 @@ function pintarInfo() {
   var base;
   if (tab === 'disp') base = tramos.length ? 'Pedidos de hoy · tramo(s) actual(es): ' + tramos.join(', ') : (dispCargado ? 'Ahora mismo no hay ningún tramo de entrega activo.' : 'Cargando pedidos disponibles…');
   else base = ES_ADMIN ? 'Pedidos asignados de todos los repartidores, pendientes de entrega.' : 'Pedidos asignados a ti, pendientes de entrega.';
-  if (tab === 'disp' && tiendaAct()) base += ' · Tienda ' + tiendaAct();
+  if (tiendaAct()) base += ' · Tienda ' + tiendaAct();
   if (tab === 'ruta' && ES_ADMIN && rutaAdm && rutaAdm.faltaScript) base += ' · Falta actualizar el script de Embolsado para ver los de todos los repartidores.';
   info.textContent = base + (cargando && tab === 'ruta' ? ' · Actualizando…' : '');
 }
@@ -594,10 +623,9 @@ function pintarInfo() {
 function pintar() {
   var l = document.getElementById('lista');
   var barra = document.getElementById('barra');
-  var fr = document.getElementById('filtroRep');
+  var sr = document.getElementById('selRep'); if (sr) sr.disabled = (tab === 'disp');
   pintarInfo();
   if (tab === 'disp') {
-    fr.style.display = 'none';
     l.innerHTML = !dispCargado ? '<div class="vacio">Cargando pedidos disponibles…</div>' :
       (disp.length ? disp.map(function (o) { return cardHTML(o, true, false); }).join('') : '<div class="vacio">No hay pedidos disponibles para este tramo.</div>');
     barra.style.display = disp.length ? 'block' : 'none';
@@ -608,14 +636,12 @@ function pintar() {
     var pend = ordenar(listaPendientes());
     var rE, dE;
     if (entAdm) {
-      rE = entAdm.ruta.filter(function (o) { return repCoincide(o, FILTRO_REP); });
-      dE = entAdm.dia.filter(function (o) { return repCoincide(o, FILTRO_REP); });
+      rE = entAdm.ruta.filter(function (o) { return tiendaOk(o) && repCoincide(o, FILTRO_REP); });
+      dE = entAdm.dia.filter(function (o) { return tiendaOk(o) && repCoincide(o, FILTRO_REP); });
     } else {
       rE = ruta.filter(function (o) { return o.entregaEstado === 'ENTREGADO'; });
       dE = diaRuta.filter(function (o) { return o.estadoNexo === 'ENTREGADO'; });
     }
-    fr.style.display = ES_ADMIN ? 'grid' : 'none';
-    if (ES_ADMIN) document.getElementById('cuentaRep').textContent = pend.length + (pend.length === 1 ? ' pedido' : ' pedidos');
     var nE = rE.length + dE.length;
     var bloque = nE ? '<details class="entregados"' + (abiertoEnt ? ' open' : '') + ' ontoggle="abiertoEnt = this.open">' +
       '<summary><span>Entregados hoy (' + nE + ')' + (entAdm ? ' · ' + (FILTRO_REP ? 'filtrado' : 'todos los repartidores') : '') + '</span>' + IC_FLECHA + '</summary>' +

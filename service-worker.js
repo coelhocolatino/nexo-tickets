@@ -1,7 +1,7 @@
 // ==============================
 // Nexo · SAD Tickets - Service Worker v5
 // ==============================
-const CACHE_NAME = "nexo-tickets-v41";   // ronda 29b: botón Fotos; ronda 29: selector de tienda del ADM en Reparto, límites por tienda en Config; ronda 28: asignar.html guardado para abrir SIN internet (GRANVIA), lotes de fotos; ronda 27: avisos en la barra, teléfonos útiles, Config plegable; ronda 26: accesibilidad; ronda 25: barra de iconos + cola; ronda 24: diseño nuevo + version.json + dia + avisos push + incidencias
+const CACHE_NAME = "nexo-tickets-v42";   // ronda 29b: botón Fotos; ronda 29: selector de tienda del ADM en Reparto, límites por tienda en Config; ronda 28: asignar.html guardado para abrir SIN internet (GRANVIA), lotes de fotos; ronda 27: avisos en la barra, teléfonos útiles, Config plegable; ronda 26: accesibilidad; ronda 25: barra de iconos + cola; ronda 24: diseño nuevo + version.json + dia + avisos push + incidencias
 
 const ASSETS = [
   "./",
