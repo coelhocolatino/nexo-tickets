@@ -15,7 +15,7 @@
      repartidor confirma el importe antes de Entregar; orden manual con flechas; el ADM ve los asignados de
      todos los repartidores (filtro), cambia el repartidor, abre el %DIA para editar y deshace entregas.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.10.12">
+<html lang="es" data-pagina="asignar" data-version="v3.10.13">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -218,7 +218,7 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
   <div class="info" id="info"></div>
   <div id="msg"></div>
   <div id="lista"></div>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.12</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.13</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
@@ -461,8 +461,8 @@ function diaCardHTML(o, ord) {
     h += '<div class="acciones hecho" style="grid-template-columns:1fr"><button class="b-hecho" disabled>' + IC_OK + 'Entregado' + horaCorta(o.entregaHora) + '</button></div>';
     if (ES_ADMIN) h += '<button class="b-deshacer" onclick="deshacer(\'dia\',\'' + esc(o.id) + '\',\'' + esc(o.repartidor || o.asignadoA || '') + '\')">Deshacer entrega</button>';
   }
-  else if (propio) h += '<div class="acciones" style="grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)"><a class="b-inc" href="dia.html?id=' + encodeURIComponent(o.id) + '&inc=1">Incidencia</a>' +
-       '<a class="b-ent" href="dia.html?id=' + encodeURIComponent(o.id) + '&ent=1">' + IC_OK + 'Entregar</a></div>';
+  else if (propio) h += '<div class="acciones" style="grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)"><a class="b-inc" href="dia.html?id=' + encodeURIComponent(o.id) + '&ent=1&inc=1">Con incidencia</a>' +
+       '<a class="b-ent" href="dia.html?id=' + encodeURIComponent(o.id) + '&ent=1">' + IC_OK + 'Finalizar</a></div>';
   // 6.1 — ADM: editar el pedido %DIA (se abre en la página %DIA, ya situado en su tarjeta)
   if (ES_ADMIN && o.estadoNexo !== 'ENTREGADO') h += '<a class="b-deshacer" href="dia.html?id=' + encodeURIComponent(o.id) + '">Ver y editar en %DIA</a>';
   return h + '</div>';

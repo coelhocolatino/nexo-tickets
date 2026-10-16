@@ -21,7 +21,7 @@
        cuánto ha tardado y, si no lee nada, lo dice claramente.
      Requiere Embolsado.js de la ronda 24 (finalizarIncidencia, anadirFotosIncidencia,
      panelIncidencias). -->
-<html lang="es" data-pagina="incidencias" data-version="v3.10.5">
+<html lang="es" data-pagina="incidencias" data-version="v3.10.6">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -454,6 +454,9 @@ function abrirRes(id) {
   var i = incPorId(id); if (!i) return;
   var idRes = i['ID RESERVA'] || '';
   RES = { id: id, inc: i, resp: '', accion: '', esDia: /^DIA-/.test(idRes), vinculada: !!idRes, diaHecho: false };
+  // Ronda 31: %DIA entregado igualmente (computa) → no hay pedido que restaurar ni eliminar.
+  var entregadoDia = RES.esDia && /^\[Entregado\]/.test(String(i['OBSERVACIONES'] || ''));
+  if (entregadoDia) RES.vinculada = false;
   el('resTipo').textContent = i['TIPO'];
   el('resSub').textContent = (i['CAJA'] === '%DIA' ? '%DIA, albarán ' + i['TICKET'] : 'Caja ' + i['CAJA'] + ', ticket ' + i['TICKET']) + (i['NOMBRE'] ? ' · ' + i['NOMBRE'] : '');
   el('resUsu').innerHTML = '<option value="">— Elige el usuario —</option>' + USUARIOS.map(function (u) {
@@ -467,6 +470,7 @@ function abrirRes(id) {
   el('resPedWrap').style.display = RES.vinculada && esAdmin ? 'block' : 'none';
   var nota = el('resPedNota');
   if (RES.vinculada && !esAdmin) { nota.style.display = 'block'; nota.textContent = 'Esta incidencia tiene un pedido vinculado: sigue en INCIDENCIA. Si hay que restaurarlo o eliminarlo, avisa a ADM.'; }
+  else if (entregadoDia) { nota.style.display = 'block'; nota.textContent = 'Pedido %DIA ENTREGADO y computado para el repartidor: solo hay que gestionar la incidencia.'; }
   else nota.style.display = 'none';
   elegirAccion('');
   el('mRes').classList.add('on');

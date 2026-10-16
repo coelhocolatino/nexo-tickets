@@ -1,5 +1,8 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — dia.html (Pedidos %DIA)
+     v3.10.7 (2026-10-16, ronda 31): "Finalizar sin incidencia" / "Finalizar con incidencia". Con incidencia el
+       pedido se ENTREGA igualmente (ticket archivado = computa) y después se registra la incidencia, que queda
+       abierta para ADM. "Añadir incidencia" en los entregados de hoy. Requiere NEXO DIA Code.js de la ronda 31.
      v3.10.1 (2026-10-09, ronda 24): diseño nuevo (nexo-tema.css) y cabecera con logo.
        · Entrega: selector deslizante de foto (derecha = sacar, izquierda = subir).
        · Pedido entregado: botón gris "Entregado · HH:MM" (antes verde).
@@ -11,7 +14,7 @@
        "Activar avisos"; la suscripción se guarda en NEXO DIA → hoja _DIA_AVISOS).
      v3.10.3 (2026-10-09): incidencias con hasta 10 fotos y sin la espera de 10 min tras las 3 llamadas.
 -->
-<html lang="es" data-pagina="dia" data-version="v3.10.6">
+<html lang="es" data-pagina="dia" data-version="v3.10.7">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -209,7 +212,7 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
   <div id="msg"></div>
   <div id="lista"><div class="vacio">Cargando…</div></div>
   <button class="nx-btn texto btn-todos" id="btnTodos" onclick="verTodos()">Ver histórico (45 días)</button>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos %DIA">Nexo · Pedidos %DIA v3.10.3</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos %DIA">Nexo · Pedidos %DIA v3.10.7</div>
 </main>
 
 <!-- Imagen ampliada -->
@@ -225,14 +228,15 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
 
 <!-- Entrega con foto -->
 <div class="modal" id="mEnt"><div class="box">
-  <h2>Entregar pedido</h2>
+  <h2 id="entTit">Finalizar pedido</h2>
   <div class="ent-info"><b id="entCli"></b><span id="entSub"></span></div>
+  <p class="nota" id="entNotaInc" style="display:none">El pedido se da por <b>entregado y computa</b>. Después de subir el ticket se abre el registro de la incidencia.</p>
   <p class="nota">La foto del ticket es obligatoria. Desliza a la <b>derecha</b> para sacarla o a la <b>izquierda</b> para subirla.</p>
   <div class="ent-sel"><div id="entFotoSel"></div></div>
   <div class="ent-prev" id="entPrev">Foto del ticket</div>
   <div class="row">
     <button class="b-gris" onclick="cerrar('mEnt')">Cancelar</button>
-    <button class="b-verde" id="btnConfEnt" disabled onclick="confirmarEntrega()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Entregar</button>
+    <button class="b-verde" id="btnConfEnt" disabled onclick="confirmarEntrega()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span id="entBtnTxt">Finalizar</span></button>
   </div>
 </div></div>
 
@@ -351,11 +355,11 @@ async function cargar(silencioso) {
     if (FOCO) { var f = r.pedidos.filter(function (o) { return o.id === FOCO; })[0]; if (f) TAB = f.estadoNexo === 'PENDIENTE' ? 'pend' : f.estadoNexo === 'ASIGNADO' ? 'asig' : 'ent'; marcarTab(); }
   }
   if (cambio || FOCO) pintar();
-  if (ABRIR_INC && FOCO) { var fi = FOCO; ABRIR_INC = false; setTimeout(function () { abrirIncidencia(fi); }, 300); }
-  else if (ABRIR_ENT && FOCO) {
-    var fe = FOCO; ABRIR_ENT = false;
+  // Ronda 31: desde Pedidos asignados → "Finalizar" (ent=1) o "Con incidencia" (inc=1): siempre se entrega primero.
+  if ((ABRIR_ENT || ABRIR_INC) && FOCO) {
+    var fe = FOCO, conInc = ABRIR_INC; ABRIR_ENT = false; ABRIR_INC = false;
     var pe = r.pedidos.filter(function (o) { return o.id === fe; })[0];
-    if (pe && pe.estadoNexo === 'ASIGNADO') setTimeout(function () { abrirEntrega(fe); }, 300);
+    if (pe && pe.estadoNexo === 'ASIGNADO') setTimeout(function () { abrirEntrega(fe, conInc); }, 300);
   }
   programar(r.buscando ? 15000 : 60000);
 }
@@ -597,8 +601,11 @@ function cardHTML(o) {
     h += '<div class="grid2"><div class="fila"><b>Tramo</b>' + tramoTxt(o.tramo) + '</div><div class="fila"><b>Entregó</b>' + esc(o.repartidor || o.entregaUsuario || '—') + '</div></div>';
     if (rol.ver) h += '<div class="grid2"><div class="fila"><b>Tienda</b>' + esc(o.tienda || '—') + '</div><div class="fila"><b>Albarán</b>' + esc(o.albaran) + '</div></div>';
     if (o.archivoNexo && rol.ver) h += '<div class="mini">' + esc(o.archivoNexo) + '</div>';
+    if (o.incidencia) h += '<div class="inc-info">Entregado con incidencia: ' + esc(o.incidencia) + '<div class="mini" style="color:#7A1A12">Computa para el repartidor. ADM la gestiona en Incidencias.</div></div>';
     h += capHTML(o);
     h += '<button class="b-hecho" disabled>' + IC_OK + 'Entregado' + horaCorta(o.entregaHora) + '</button>';
+    if (!o.incidencia && entregadoHoy(o) && (o.asignadoA === USUARIO || o.entregaUsuario === USUARIO || rol.editar))
+      h += '<button class="b-deshacer" onclick="abrirIncidencia(\'' + id + '\',true)">Añadir incidencia</button>';
     if (rol.editar && entregadoHoy(o)) h += '<button class="b-deshacer" onclick="deshacer(\'' + id + '\')">' + IC_DESH + 'Deshacer entrega</button>';
     if (o.historial && rol.ver) h += '<details class="hist"><summary>Historial / auditoría</summary><pre>' + esc(o.historial) + '</pre></details>';
     return h + '</article>';
@@ -643,8 +650,8 @@ function cardHTML(o) {
   if (puedeEntregar) {
     h += '<div class="acciones' + (rol.editar ? ' con-edit' : '') + '">' +
       (rol.editar ? '<button class="b-edit" aria-label="Editar pedido" title="Editar" onclick="abrirEdicion(\'' + id + '\')">' + IC_LAPIZ + '</button>' : '') +
-      '<button class="b-inc" onclick="abrirIncidencia(\'' + id + '\')">Incidencia</button>' +
-      '<button class="b-ent" onclick="abrirEntrega(\'' + id + '\')">' + IC_OK + 'Entregar</button></div>';
+      '<button class="b-inc" onclick="abrirEntrega(\'' + id + '\',true)">Finalizar con incidencia</button>' +
+      '<button class="b-ent" onclick="abrirEntrega(\'' + id + '\',false)">' + IC_OK + 'Finalizar sin incidencia</button></div>';
   } else if (rol.editar) {
     h += '<button class="b-editar" onclick="abrirEdicion(\'' + id + '\')">' + IC_LAPIZ + 'Editar</button>';
   }
@@ -722,11 +729,14 @@ async function asignar(id) {
 }
 
 /* ---- Entrega (selector deslizante: derecha = sacar, izquierda = subir) ---- */
-var ENT_ID = null, ENT_FOTO = null;
+var ENT_ID = null, ENT_FOTO = null, ENT_CONINC = false;
 NexoFoto.crear(document.getElementById('entFotoSel'), { alElegir: fotoEntrega });
-function abrirEntrega(id) {
+function abrirEntrega(id, conInc) {
   var o = DATOS.pedidos.filter(function (x) { return x.id === id; })[0] || {};
-  ENT_ID = id; ENT_FOTO = null;
+  ENT_ID = id; ENT_FOTO = null; ENT_CONINC = !!conInc;
+  document.getElementById('entTit').textContent = ENT_CONINC ? 'Finalizar con incidencia' : 'Finalizar sin incidencia';
+  document.getElementById('entNotaInc').style.display = ENT_CONINC ? '' : 'none';
+  document.getElementById('entBtnTxt').textContent = ENT_CONINC ? 'Finalizar y registrar incidencia' : 'Finalizar';
   document.getElementById('entCli').textContent = o.cliente || '—';
   document.getElementById('entSub').textContent = 'Tramo ' + String(o.tramo || '—').replace('-', '–') + ', albarán ' + (o.albaran || '—');
   document.getElementById('entPrev').innerHTML = 'Foto del ticket';
@@ -763,6 +773,7 @@ async function confirmarEntrega() {
   cerrar('mEnt');
   msg(r.yaEntregado ? 'Este pedido ya estaba entregado.' : 'Pedido ENTREGADO. Ticket archivado: ' + r.archivo, 'ok', 9000);
   delete CAPS[ENT_ID + '|cap']; delete CAP_FALLO[ENT_ID + '|cap']; delete CAP_FALLO[ENT_ID + '|foto'];
+  if (ENT_CONINC) { var idI = ENT_ID; ENT_CONINC = false; await cargar(true); abrirIncidencia(idI, true); return; }
   cargar(true);
 }
 
@@ -856,15 +867,16 @@ var TIPOS = {
   COMPRA_RECHAZADA:     { etiqueta: 'Compra rechazada',           fotosMax: 10, obs: true },
   FRIO_OLVIDADO:        { etiqueta: 'Frío olvidado',              fotosMax: 10, obs: true }
 };
-var incId = null, incTipo = null, incFotos = [], incIntentos = [], incTimer = null;
+var incId = null, incTipo = null, incFotos = [], incIntentos = [], incTimer = null, incTras = false;
 function claveIntentos(id) { return 'nexo_dia_intentos_' + id; }
-function abrirIncidencia(id) {
+function abrirIncidencia(id, tras) {
   var o = DATOS.pedidos.filter(function (x) { return x.id === id; })[0];
-  if (!o || o.estadoNexo !== 'ASIGNADO') { msg('Este pedido no está pendiente en tu ruta.', 'err'); return; }
+  incTras = !!tras;
+  if (!o || o.estadoNexo !== (incTras ? 'ENTREGADO' : 'ASIGNADO')) { msg(incTras ? 'El pedido no consta como entregado: vuelve a intentarlo.' : 'Este pedido no está pendiente en tu ruta.', 'err'); return; }
   incId = id; incTipo = null; incFotos = []; clearInterval(incTimer);
   // Las tentativas de "Cliente ausente" se guardan en el teléfono por si se cierra la página.
   try { incIntentos = JSON.parse(localStorage.getItem(claveIntentos(id)) || '[]'); } catch (e) { incIntentos = []; }
-  document.getElementById('incTitulo').textContent = 'Incidencia · %DIA · Albarán ' + (o.albaran || '');
+  document.getElementById('incTitulo').textContent = (incTras ? 'Incidencia (pedido entregado)' : 'Incidencia') + ' · %DIA · Albarán ' + (o.albaran || '');
   document.getElementById('incTipos').innerHTML = Object.keys(TIPOS).map(function (k) {
     return '<button class="tipo" id="t_' + k + '" onclick="elegirTipo(\'' + k + '\')">' + TIPOS[k].etiqueta + '</button>';
   }).join('');
@@ -874,7 +886,10 @@ function abrirIncidencia(id) {
   document.getElementById('mInc').classList.add('on');
   if (incIntentos.length) elegirTipo('CLIENTE_AUSENTE');
 }
-function cerrarInc() { clearInterval(incTimer); cerrar('mInc'); }
+function cerrarInc(forzar) {
+  if (incTras && !forzar && !confirm('El pedido ya está entregado. ¿Salir SIN registrar la incidencia?\n\n(Podrás añadirla hoy desde la tarjeta: "Añadir incidencia".)')) return;
+  clearInterval(incTimer); cerrar('mInc');
+}
 function elegirTipo(k) {
   incTipo = k; incFotos = []; clearInterval(incTimer);
   Object.keys(TIPOS).forEach(function (x) { document.getElementById('t_' + x).classList.toggle('on', x === k); });
@@ -926,11 +941,11 @@ async function enviarIncidencia() {
     if (incIntentos.length < 3) { alert('Hacen falta 3 tentativas de contacto.'); return; }
   }
   spin(true, 'Registrando incidencia…');
-  var r = await api('diaRegistrarIncidencia', { id: incId, tipo: incTipo, observaciones: obs, intentos: incTipo === 'CLIENTE_AUSENTE' ? incIntentos : [], fotos: incFotos }, 2);
+  var r = await api('diaRegistrarIncidencia', { id: incId, tipo: incTipo, observaciones: obs, intentos: incTipo === 'CLIENTE_AUSENTE' ? incIntentos : [], fotos: incFotos, trasEntrega: incTras }, 2);
   spin(false);
   if (!r.ok) { alert(r.error); return; }
   try { localStorage.removeItem(claveIntentos(incId)); } catch (e) {}
-  cerrarInc(); msg('Incidencia registrada. Se ha avisado a Embolsado y ADM.', 'ok'); cargar(true);
+  cerrarInc(true); msg(incTras ? 'Pedido entregado (computa) e incidencia registrada. Se ha avisado a Embolsado y ADM.' : 'Incidencia registrada. Se ha avisado a Embolsado y ADM.', 'ok'); cargar(true);
 }
 
 /* ============ INICIO ============ */
