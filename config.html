@@ -1,5 +1,10 @@
 <!DOCTYPE html>
 <!-- Nexo · Configuración (solo ADM)
+     v3.10.7 (2026-10-17): el correo trae además un botón «Abrir informe interactivo» (el PDF no puede llevar los filtros).
+     v3.10.6 (2026-10-16, ronda 32): nueva sección «Informe de Productividad»: lista de usuarios autorizados (columna
+       INFORME_AUTO de USUARIOS), interruptor del envío automático diario a las 21:00 (PDF del informe de cada usuario a su
+       CORREO), «Enviar ahora» por nivel (1, 2, 3, ADM) y pruebas manuales (revisar / generar PDF / enviarme la prueba).
+       Backend: Módulo Embolsado → InformeProductividad.gs.
      v3.10.2 (2026-10-16, ronda 25): interruptor «Ocultar mi número al llamar» (marca #31# antes del número
        en «Llamar al cliente» de Incidencias). Se guarda en ESTE móvil; depende de la operadora: probar en 2 móviles.
      v3.10.1 (2026-10-09, ronda 24): diseño nuevo (nexo-tema.css) y nueva sección
@@ -9,7 +14,7 @@
      guardarReservaAuto, borrarReservaAuto; disparador generarReservasAuto).
      Se mantienen: Pedidos diarios emitidos (NEXO SCRIPT, PEDIDOS_TOTALES; GRANVIA en su
      columna) y Límites por franja (Módulo Embolsado, hoja LIMITES). -->
-<html lang="es" data-pagina="config" data-version="v3.10.5">
+<html lang="es" data-pagina="config" data-version="v3.10.7">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -121,6 +126,28 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
 .acc-cuerpo[hidden] { display:none; }
 .tel-dato { font-size:15px; font-weight:600; line-height:1.35; margin:0; }
 @media (prefers-reduced-motion: reduce) { .acc-chev { transition:none; } }
+
+/* Ronda 32: Informe de Productividad */
+.ip-sep { border:0; border-top:1px solid var(--nx-chip); margin:4px 0; width:100%; }
+.ip-sub { margin:0; font-family:var(--nx-display); font-weight:800; font-size:22px; line-height:1.1; }
+.ip-g { display:flex; flex-direction:column; gap:6px; }
+.ip-gh { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:2px 2px 0; }
+.ip-gh b { font-size:15px; font-weight:800; }
+.ip-gh span { font-size:12px; font-weight:700; color:var(--nx-suave); }
+.ip-gh button { min-height:44px; padding:0 14px; border:0; border-radius:10px; background:var(--nx-azul-fondo); color:var(--nx-azul); font:800 13px var(--nx-texto); cursor:pointer; flex:0 0 auto; }
+.ip-fila { background:var(--nx-campo); border-radius:14px; padding:10px 12px 10px 14px; min-height:60px; }
+.ip-fila.nop { opacity:.65; cursor:default; }
+.ip-fila b { text-transform:uppercase; overflow-wrap:anywhere; }
+.ip-fila .t { display:block; font-size:13px; font-weight:700; color:var(--nx-suave); overflow-wrap:anywhere; }
+.ip-fila .t.falta { color:#7A1A12; }
+.chips.niv { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.ip-pruebas { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.ip-pruebas button { min-height:60px; padding:6px; font-size:14px; line-height:1.2; }
+.ip-checks { display:flex; flex-direction:column; gap:6px; }
+.ip-check { padding:10px 12px; border-radius:12px; font-size:14px; font-weight:700; line-height:1.35; overflow-wrap:anywhere; }
+.ip-check.ok { background:var(--nx-verde-fondo); color:var(--nx-verde-tinta); }
+.ip-check.aviso { background:#FFF8E1; color:#6B4E00; }
+.ip-check.error { background:var(--nx-rojo-fondo); color:#7A1A12; }
 </style>
 </head>
 <body class="nx">
@@ -195,7 +222,47 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
     <div class="msg" id="msgRA"></div>
   </section>
 
-  <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.1</div>
+  <!-- Informe de Productividad (Ronda 32) -->
+  <section class="sec" id="secIP">
+    <h2>Informe de Productividad</h2>
+    <p class="nota">Cada usuario autorizado recibe en su correo el PDF de su propio informe (el enlace de la columna INFORME de USUARIOS) y un botón para abrir el informe en vivo con sus filtros.</p>
+    <div class="msg" id="ipAvisoMotor"></div>
+    <label class="sw-fila" for="ipActivo">
+      <span><b>Envío automático todos los días a las <span id="ipHora">21</span>:00</b><span class="nota" id="ipActivoNota" style="display:block;margin-top:2px">Cargando…</span></span>
+      <input type="checkbox" id="ipActivo" />
+    </label>
+
+    <div><span class="etq">Usuarios autorizados para el envío automático</span>
+      <div id="ipLista" style="display:flex;flex-direction:column;gap:14px"><div class="ra-vacio">Cargando…</div></div>
+    </div>
+    <div class="actual" id="ipEstadoLista"></div>
+    <div class="fila-btn">
+      <button class="btn-s" id="ipDeshacer" type="button" disabled>Deshacer</button>
+      <button class="btn-p" id="ipGuardar" type="button" disabled>Guardar</button>
+    </div>
+    <div class="msg" id="msgIP"></div>
+
+    <hr class="ip-sep" />
+    <h3 class="ip-sub">Enviar ahora</h3>
+    <p class="nota">Elige uno o más niveles y se envía a todos sus usuarios activos que tengan correo e informe (estén o no autorizados arriba).</p>
+    <div class="chips niv" id="ipNiv" role="group" aria-label="Niveles a los que enviar"></div>
+    <button class="btn-p" id="ipEnviar" type="button" disabled>Enviar ahora</button>
+    <div class="actual" id="ipEstadoEnvio"></div>
+    <div class="msg" id="msgIPEnvio"></div>
+
+    <hr class="ip-sep" />
+    <h3 class="ip-sub">Pruebas manuales</h3>
+    <p class="nota">«Revisar» comprueba todo sin generar ni enviar nada. «Generar PDF» crea el PDF y dice cuánto pesa y cuánto tarda. «Enviarme la prueba» te manda el PDF solo a ti.</p>
+    <div class="campo"><label for="ipUsuarioPrueba">Probar con el informe de</label><select class="in" id="ipUsuarioPrueba"></select></div>
+    <div class="ip-pruebas">
+      <button class="btn-s" type="button" data-ip-prueba="simular">Revisar<br>sin enviar</button>
+      <button class="btn-s" type="button" data-ip-prueba="pdf">Generar PDF<br>de prueba</button>
+      <button class="btn-s" type="button" data-ip-prueba="correo">Enviarme<br>la prueba</button>
+    </div>
+    <div class="ip-checks" id="ipChecks" aria-live="polite"></div>
+  </section>
+
+  <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.7</div>
 </main>
 <script>
 /* Ronda 27: secciones plegables (solo se abre una) + sección de teléfonos útiles. */
@@ -204,7 +271,8 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
     'Pedidos diarios emitidos': 'Total de pedidos por día',
     'Llamadas desde la app': function () { try { return localStorage.getItem('nexo_ocultar_numero') === '1' ? 'Ocultar número: activado' : 'Ocultar número: desactivado'; } catch (e) { return ''; } },
     'Límites por franja': '7 días × 4 franjas',
-    'Reservas automáticas': 'Reglas que crean reservas solas'
+    'Reservas automáticas': 'Reglas que crean reservas solas',
+    'Informe de Productividad': function () { return window.ipResumenTexto || 'Envío automático por correo'; }
   };
   var CHEV = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
   var secs = Array.prototype.slice.call(document.querySelectorAll('main.nx-pag > section.sec'));
@@ -319,7 +387,7 @@ function hoyISO() { var d = new Date(); return d.getFullYear() + '-' + String(d.
 function fechaES(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso; }
 function fechaCorta(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] : iso; }
 function aviso(id, t, tipo) { var m = el(id); m.textContent = t || ''; m.className = 'msg' + (t ? ' ' + (tipo || 'ok') : ''); }
-function spin(on) { el('spin').classList.toggle('on', !!on); }
+function spin(on, texto) { if (on) el('spin').textContent = texto || 'Guardando…'; el('spin').classList.toggle('on', !!on); }
 function postA(url, body) {
   body.usuario = sesion.usuario;
   return fetch(PROXY + '?url=' + encodeURIComponent(url), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -530,7 +598,186 @@ function borrarRA() {
   });
 }
 
-if (String(sesion.nivel || '').toLowerCase() === 'admin') { cargar(); cargarLimites(); cargarRA(); }
+
+/* ================= INFORME DE PRODUCTIVIDAD (Ronda 32 · Módulo Embolsado → InformeProductividad.gs) ================= */
+var IP = { niveles: [], usuarios: [], aut: {}, orig: {}, activo: false, activoOrig: false, hora: 21, motor: { configurado: false }, envSel: {}, ultimoAuto: '' };
+var ipTimer = 0, ipEnviando = false;
+function ipNumAut(m) { return Object.keys(m).filter(function (k) { return m[k]; }).length; }
+function ipResumen() {
+  var n = ipNumAut(IP.orig);
+  window.ipResumenTexto = (IP.activoOrig ? 'Automático ' + IP.hora + ':00' : 'Automático apagado') + ' · ' + n + (n === 1 ? ' autorizado' : ' autorizados');
+  var r = el('secIP') && el('secIP').querySelector('.acc-res'); if (r) r.textContent = window.ipResumenTexto;
+}
+function ipActNota() {
+  var t;
+  if (!IP.motor.configurado) t = 'Antes hay que configurar el motor de PDF (propiedad PDF_TOKEN del script).';
+  else t = IP.activo ? 'Activado: se envía a los usuarios autorizados.' : 'Apagado: no se envía nada solo.';
+  if (IP.ultimoAuto) t += ' Último envío automático: ' + fechaES(IP.ultimoAuto) + '.';
+  el('ipActivoNota').textContent = t;
+}
+function cargarIP() {
+  postEmbolsado({ accion: 'ipObtenerConfig' }).then(function (r) {
+    if (!r || !r.ok) { el('ipLista').innerHTML = '<div class="ra-vacio">' + esc((r && r.error) || 'No se pudo cargar.') + '</div>'; el('ipActivoNota').textContent = ''; return; }
+    IP.niveles = r.niveles || []; IP.usuarios = r.usuarios || []; IP.hora = r.hora; IP.motor = r.motor || { configurado: false }; IP.ultimoAuto = r.ultimoAuto || '';
+    IP.aut = {}; IP.orig = {};
+    IP.usuarios.forEach(function (u) { IP.aut[u.usuario] = !!u.autorizado; IP.orig[u.usuario] = !!u.autorizado; });
+    IP.activo = IP.activoOrig = !!r.activo;
+    el('ipHora').textContent = r.hora; el('ipActivo').checked = IP.activo;
+    if (!IP.motor.configurado) { var m = el('ipAvisoMotor'); m.className = 'msg err'; m.textContent = 'Falta configurar el motor de PDF: añade la propiedad PDF_TOKEN en el script (ver LEEME). Mientras tanto no se puede enviar ningún informe.'; }
+    else aviso('ipAvisoMotor', '');
+    pintarIPLista(); pintarIPNiveles(); pintarIPPrueba(); ipActNota(); ipResumen();
+    if (r.envio) mostrarEnvioIP(r.envio, true);
+  });
+}
+function ipCambios() {
+  if (IP.activo !== IP.activoOrig) return true;
+  return IP.usuarios.some(function (u) { return !!IP.aut[u.usuario] !== !!IP.orig[u.usuario]; });
+}
+function revisarIP() {
+  var c = ipCambios(), n = ipNumAut(IP.aut);
+  el('ipGuardar').disabled = !c; el('ipDeshacer').disabled = !c;
+  el('ipEstadoLista').textContent = n + (n === 1 ? ' usuario autorizado' : ' usuarios autorizados') + (c ? ' · hay cambios sin guardar.' : '.');
+}
+function pintarIPLista() {
+  var h = '';
+  IP.niveles.forEach(function (n) {
+    var us = IP.usuarios.filter(function (u) { return u.nivel === n.id; });
+    if (!us.length) return;
+    var marcables = us.filter(function (u) { return u.enviable; });
+    var todos = marcables.length > 0 && marcables.every(function (u) { return IP.aut[u.usuario]; });
+    h += '<div class="ip-g"><div class="ip-gh"><div><b>' + esc(n.etiqueta) + '</b> <span>' + us.length + (us.length === 1 ? ' usuario' : ' usuarios') + '</span></div>' +
+      (marcables.length ? '<button type="button" data-ip-todos="' + esc(n.id) + '">' + (todos ? 'Quitar todos' : 'Marcar todos') + '</button>' : '') + '</div>';
+    us.forEach(function (u) {
+      var dis = !u.enviable && !IP.aut[u.usuario];
+      var falta = u.motivoNo ? u.motivoNo.charAt(0).toUpperCase() + u.motivoNo.slice(1) : '';
+      h += '<label class="sw-fila ip-fila' + (dis ? ' nop' : '') + '"><span><b>' + esc(u.nombre || u.usuario) + '</b>' +
+        '<span class="t' + (u.enviable ? '' : ' falta') + '">' + (u.enviable ? esc(u.correo) : '⚠ ' + esc(falta) + (u.correo ? ' · ' + esc(u.correo) : '')) + '</span></span>' +
+        '<input type="checkbox" data-ip-u="' + esc(u.usuario) + '"' + (IP.aut[u.usuario] ? ' checked' : '') + (dis ? ' disabled' : '') + ' /></label>';
+    });
+    h += '</div>';
+  });
+  el('ipLista').innerHTML = h || '<div class="ra-vacio">No hay usuarios activos.</div>';
+  revisarIP();
+}
+el('ipLista').addEventListener('change', function (e) {
+  var u = e.target.getAttribute && e.target.getAttribute('data-ip-u'); if (!u) return;
+  IP.aut[u] = e.target.checked; aviso('msgIP', ''); pintarIPLista();
+});
+el('ipLista').addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('[data-ip-todos]'); if (!b) return;
+  var nivel = b.getAttribute('data-ip-todos');
+  var marcables = IP.usuarios.filter(function (u) { return u.nivel === nivel && u.enviable; });
+  var todos = marcables.every(function (u) { return IP.aut[u.usuario]; });
+  marcables.forEach(function (u) { IP.aut[u.usuario] = !todos; });
+  aviso('msgIP', ''); pintarIPLista();
+});
+el('ipActivo').addEventListener('change', function () {
+  if (this.checked && !IP.motor.configurado) {
+    this.checked = false;
+    aviso('msgIP', 'No se puede activar todavía: falta configurar el motor de PDF (propiedad PDF_TOKEN del script).', 'err');
+    return;
+  }
+  IP.activo = this.checked; aviso('msgIP', ''); ipActNota(); revisarIP();
+});
+el('ipDeshacer').addEventListener('click', function () {
+  IP.aut = JSON.parse(JSON.stringify(IP.orig)); IP.activo = IP.activoOrig; el('ipActivo').checked = IP.activo;
+  aviso('msgIP', ''); ipActNota(); pintarIPLista();
+});
+el('ipGuardar').addEventListener('click', function () {
+  var lista = Object.keys(IP.aut).filter(function (k) { return IP.aut[k]; });
+  if (IP.activo && !lista.length && !confirm('El envío automático está activado pero no hay ningún usuario autorizado, así que no se enviará nada. ¿Guardar igualmente?')) return;
+  spin(true, 'Guardando…');
+  postEmbolsado({ accion: 'ipGuardarConfig', activo: IP.activo, autorizados: lista }).then(function (r) {
+    spin(false);
+    if (!r || !r.ok) { aviso('msgIP', (r && r.error) || 'No se pudo guardar.', 'err'); return; }
+    IP.orig = JSON.parse(JSON.stringify(IP.aut)); IP.activo = IP.activoOrig = !!r.activo; el('ipActivo').checked = IP.activo;
+    var av = (r.avisos || []).join('\n');
+    aviso('msgIP', av || ('Guardado: ' + lista.length + (lista.length === 1 ? ' usuario autorizado' : ' usuarios autorizados') + (IP.activo ? ' · envío automático activado (' + IP.hora + ':00).' : ' · envío automático apagado.')), av ? 'err' : 'ok');
+    ipActNota(); revisarIP(); ipResumen();
+  });
+});
+
+/* --- Enviar ahora --- */
+function pintarIPNiveles() {
+  el('ipNiv').innerHTML = IP.niveles.map(function (n) { return '<button type="button" data-n="' + esc(n.id) + '" aria-pressed="' + (IP.envSel[n.id] ? 'true' : 'false') + '" class="' + (IP.envSel[n.id] ? 'on' : '') + '">' + esc(n.etiqueta) + '</button>'; }).join('');
+  actBtnEnviar();
+}
+function destinosEnvio() { return IP.usuarios.filter(function (u) { return IP.envSel[u.nivel] && u.enviable; }); }
+function actBtnEnviar() {
+  var n = destinosEnvio().length, b = el('ipEnviar');
+  b.disabled = n === 0 || ipEnviando;
+  b.textContent = ipEnviando ? 'Enviando…' : (n ? 'Enviar ahora a ' + n + (n === 1 ? ' usuario' : ' usuarios') : 'Enviar ahora');
+}
+el('ipNiv').addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('button[data-n]'); if (!b) return;
+  var id = b.getAttribute('data-n'); IP.envSel[id] = !IP.envSel[id]; aviso('msgIPEnvio', ''); pintarIPNiveles();
+});
+el('ipEnviar').addEventListener('click', function () {
+  var dest = destinosEnvio(); if (!dest.length || ipEnviando) return;
+  var nombres = dest.slice(0, 15).map(function (u) { return '• ' + (u.nombre || u.usuario).toUpperCase() + ' → ' + u.correo; }).join('\n') + (dest.length > 15 ? '\n… y ' + (dest.length - 15) + ' más' : '');
+  if (!confirm('¿Enviar ahora el Informe de Productividad en PDF a ' + dest.length + (dest.length === 1 ? ' usuario' : ' usuarios') + '?\n\n' + nombres)) return;
+  var niveles = IP.niveles.filter(function (n) { return IP.envSel[n.id]; }).map(function (n) { return n.id; });
+  ipEnviando = true; actBtnEnviar(); aviso('msgIPEnvio', '');
+  postEmbolsado({ accion: 'ipEnviarAhora', niveles: niveles }).then(function (r) {
+    if (!r || !r.ok) { ipEnviando = false; actBtnEnviar(); aviso('msgIPEnvio', (r && r.error) || 'No se pudo lanzar el envío.', 'err'); return; }
+    el('ipEstadoEnvio').textContent = 'En cola… empieza en menos de 1 minuto. 0 de ' + r.total + '.';
+    ipVigilar();
+  });
+});
+function ipVigilar() {
+  clearTimeout(ipTimer);
+  ipTimer = setTimeout(function () {
+    postEmbolsado({ accion: 'ipEstadoEnvio' }).then(function (r) { if (r && r.ok && r.envio) mostrarEnvioIP(r.envio); else ipVigilar(); });
+  }, 10000);
+}
+function mostrarEnvioIP(e, alCargar) {
+  var enCurso = (e.estado === 'en_cola' || e.estado === 'procesando') && !e.obsoleta;
+  ipEnviando = enCurso;
+  if (enCurso) {
+    el('ipEstadoEnvio').textContent = (e.hechos ? 'Enviando… ' : 'En cola… empieza en menos de 1 minuto. ') + e.hechos + ' de ' + e.total + (e.actual ? ' (' + String(e.actual).toUpperCase() + ')' : '') + '.';
+    ipVigilar();
+  } else {
+    clearTimeout(ipTimer);
+    el('ipEstadoEnvio').textContent = '';
+    var ok = (e.ok || []).length, ko = (e.fallos || []).length;
+    var det = ko ? '\n' + e.fallos.map(function (f) { return '• ' + String(f.usuario).toUpperCase() + ': ' + f.error; }).join('\n') : '';
+    var om = (e.omitidos && e.omitidos.length) ? '\nOmitidos: ' + e.omitidos.map(function (o) { return String(o.usuario).toUpperCase() + ' (' + o.motivo + ')'; }).join(', ') : '';
+    if (e.estado === 'terminado') {
+      aviso('msgIPEnvio', (alCargar ? 'Último envío (' + e.creada + ', ' + (e.origen === 'auto' ? 'automático' : 'manual') + '): ' : 'Terminado: ') + ok + (ok === 1 ? ' enviado' : ' enviados') + (ko ? ', ' + ko + ' con error' : '') + '.' + det + om, ko ? 'err' : 'ok');
+    } else if (e.obsoleta) {
+      aviso('msgIPEnvio', 'El último envío (' + e.creada + ') se quedó a medias: ' + ok + ' enviados, ' + (e.pendientes || 0) + ' sin enviar. Puedes lanzarlo otra vez.', 'err');
+    }
+  }
+  actBtnEnviar();
+}
+
+/* --- Pruebas manuales --- */
+function pintarIPPrueba() {
+  var sel = el('ipUsuarioPrueba');
+  var con = IP.usuarios.filter(function (u) { return u.tieneInforme; });
+  sel.innerHTML = con.length ? con.map(function (u) { return '<option value="' + esc(u.usuario) + '">' + esc((u.nombre || u.usuario).toUpperCase()) + ' · ' + esc(u.nivelEtiqueta) + '</option>'; }).join('') : '<option value="">(nadie tiene informe)</option>';
+  var mio = String(sesion.usuario || '').toLowerCase();
+  if (con.some(function (u) { return u.usuario === mio; })) sel.value = mio;
+}
+var IP_ICO = { ok: '✅ ', aviso: '⚠️ ', error: '❌ ' };
+function ejecutarPruebaIP(modo) {
+  if (modo === 'correo' && !confirm('Se generará el PDF y se te enviará SOLO a ti (asunto «[PRUEBA]»). ¿Continuar?')) return;
+  el('ipChecks').innerHTML = '';
+  spin(true, modo === 'simular' ? 'Revisando…' : 'Generando el PDF… puede tardar hasta 1 minuto');
+  postEmbolsado({ accion: 'ipProbar', modo: modo, usuarioPrueba: el('ipUsuarioPrueba').value }).then(function (r) {
+    spin(false);
+    if (!r || !r.checks) { el('ipChecks').innerHTML = '<div class="ip-check error">❌ ' + esc((r && r.error) || 'La prueba falló.') + '</div>'; return; }
+    el('ipChecks').innerHTML = r.checks.map(function (c) {
+      var n = (c.nivel === 'ok' || c.nivel === 'aviso') ? c.nivel : 'error';
+      return '<div class="ip-check ' + n + '">' + IP_ICO[n] + esc(c.texto) + '</div>';
+    }).join('');
+  });
+}
+document.querySelectorAll('[data-ip-prueba]').forEach(function (b) {
+  b.addEventListener('click', function () { ejecutarPruebaIP(b.getAttribute('data-ip-prueba')); });
+});
+
+if (String(sesion.nivel || '').toLowerCase() === 'admin') { cargar(); cargarLimites(); cargarRA(); cargarIP(); }
 </script>
 </body>
 </html>
