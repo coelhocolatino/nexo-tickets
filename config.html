@@ -9,7 +9,7 @@
      guardarReservaAuto, borrarReservaAuto; disparador generarReservasAuto).
      Se mantienen: Pedidos diarios emitidos (NEXO SCRIPT, PEDIDOS_TOTALES; GRANVIA en su
      columna) y Límites por franja (Módulo Embolsado, hoja LIMITES). -->
-<html lang="es" data-pagina="config" data-version="v3.10.4">
+<html lang="es" data-pagina="config" data-version="v3.10.5">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -172,7 +172,11 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
   <!-- Límites -->
   <section class="sec">
     <h2>Límites por franja</h2>
-    <p class="nota">Nº máximo de reservas por día de la semana y franja (hoja LIMITES). Vale para Reservas y Embolsado desde que se guarda.</p>
+    <p class="nota" id="limNota">Nº máximo de reservas por día de la semana y franja (hoja LIMITES). Vale para Reservas y Embolsado desde que se guarda.</p>
+    <div class="nx-pestanas" role="group" aria-label="Tienda de los límites">
+      <button class="on" data-limtienda="TRAVESIA" onclick="elegirTiendaLim(this)">TRAVESIA</button>
+      <button data-limtienda="GRANVIA" onclick="elegirTiendaLim(this)">GRANVIA</button>
+    </div>
     <div class="actual" id="limEstado">Cargando…</div>
     <div class="lim" id="limTabla"></div>
     <div class="fila-btn">
@@ -368,7 +372,17 @@ var LIM_MAX = 999;
 var LIM_ETIQUETA = { LUNES: 'Lun', MARTES: 'Mar', MIERCOLES: 'Mié', JUEVES: 'Jue', VIERNES: 'Vie', SABADO: 'Sáb', DOMINGO: 'Dom' };
 var LIM_NOMBRE = { LUNES: 'Lunes', MARTES: 'Martes', MIERCOLES: 'Miércoles', JUEVES: 'Jueves', VIERNES: 'Viernes', SABADO: 'Sábado', DOMINGO: 'Domingo' };
 var LIM_DIA_JS = ['DOMINGO', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
-var limOriginal = {}, limFranjas = [], limDias = [];
+var limOriginal = {}, limFranjas = [], limDias = [], limTienda = 'TRAVESIA';
+function elegirTiendaLim(b) {
+  var t = b.getAttribute('data-limtienda');
+  if (t === limTienda) return;
+  var sin = !btnLimGuardar.disabled;
+  if (sin && !confirm('Hay cambios sin guardar en ' + limTienda + '. ¿Descartarlos y cambiar a ' + t + '?')) return;
+  limTienda = t;
+  document.querySelectorAll('[data-limtienda]').forEach(function (x) { x.classList.toggle('on', x === b); });
+  el('limNota').textContent = 'Nº máximo de reservas por día de la semana y franja de ' + t + ' (hoja ' + (t === 'GRANVIA' ? 'LIMITES_GRANVIA' : 'LIMITES') + '). Vale desde que se guarda.';
+  aviso('msgLim', ''); cargarLimites();
+}
 var limTabla = el('limTabla'), limEstado = el('limEstado'), btnLimGuardar = el('btnLimGuardar'), btnLimDeshacer = el('btnLimDeshacer');
 function etiquetaFranja(f) { return String(f).replace(/H$/i, '').replace('-', '–'); }
 function pintarLimites() {
@@ -402,7 +416,7 @@ function revisarLimites() {
 }
 function cargarLimites() {
   limEstado.textContent = 'Cargando…';
-  postEmbolsado({ accion: 'obtenerLimites' }).then(function (r) {
+  postEmbolsado({ accion: 'obtenerLimites', tienda: limTienda }).then(function (r) {
     if (!r || !r.ok) { limTabla.innerHTML = ''; limEstado.textContent = (r && r.error) || 'No se pudieron leer los límites.'; return; }
     limOriginal = r.limites; limFranjas = r.franjas; limDias = r.dias;
     pintarLimites();
@@ -414,12 +428,12 @@ btnLimGuardar.addEventListener('click', function () {
   var rev = revisarLimites();
   if (rev.errores || !rev.cambios.length) return;
   var lista = rev.cambios.map(function (c) { return '• ' + LIM_NOMBRE[c.dia] + ' ' + c.franja + ': ' + c.antes + ' → ' + c.ahora; }).join('\n');
-  if (!confirm('¿Guardar ' + rev.cambios.length + (rev.cambios.length === 1 ? ' cambio' : ' cambios') + ' en los límites?\n\n' + lista)) return;
+  if (!confirm('¿Guardar ' + rev.cambios.length + (rev.cambios.length === 1 ? ' cambio' : ' cambios') + ' en los límites de ' + limTienda + '?\n\n' + lista)) return;
   var envio = {};
   rev.cambios.forEach(function (c) { (envio[c.dia] = envio[c.dia] || {})[c.franja] = c.ahora; });
   btnLimGuardar.disabled = true; btnLimDeshacer.disabled = true; aviso('msgLim', '');
   limEstado.textContent = 'Guardando…';
-  postEmbolsado({ accion: 'guardarLimites', limites: envio }).then(function (r) {
+  postEmbolsado({ accion: 'guardarLimites', limites: envio, tienda: limTienda }).then(function (r) {
     if (!r || !r.ok) { aviso('msgLim', (r && r.error) || 'No se pudieron guardar los límites.', 'err'); revisarLimites(); return; }
     limOriginal = r.limites; pintarLimites();
     aviso('msgLim', 'Límites guardados (' + r.cambiados + (r.cambiados === 1 ? ' cambio).' : ' cambios).'), 'ok');
