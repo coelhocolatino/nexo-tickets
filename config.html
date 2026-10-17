@@ -1,5 +1,8 @@
 <!DOCTYPE html>
 <!-- Nexo · Configuración (solo ADM)
+     v3.10.10 (2026-10-17, ronda 34): en «Reservas automáticas», NOMBRE y DIRECCIÓN en campos separados
+       (antes un solo campo «Cliente / dirección»). El nombre se graba en la columna NOMBRE de DATABASE
+       y la dirección en CLIENTE/DIRECCIÓN, igual que hace el ticket.
      v3.10.9 (2026-10-17, ronda 34): las reservas automáticas se crean el MISMO DÍA de madrugada
        (antes, 3 días antes). Solo cambia el texto; el cambio real está en Embolsado.gs (RA_DIAS_ANTES).
      v3.10.8 (2026-10-17, ronda 33): se retira la sección «Informe de Productividad»
@@ -14,7 +17,7 @@
      guardarReservaAuto, borrarReservaAuto; disparador generarReservasAuto).
      Se mantienen: Pedidos diarios emitidos (NEXO SCRIPT, PEDIDOS_TOTALES; GRANVIA en su
      columna) y Límites por franja (Módulo Embolsado, hoja LIMITES). -->
-<html lang="es" data-pagina="config" data-version="v3.10.9">
+<html lang="es" data-pagina="config" data-version="v3.10.10">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -200,7 +203,7 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
     <div class="msg" id="msgRA"></div>
   </section>
 
-  <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.9</div>
+  <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.10</div>
 </main>
 <script>
 /* Ronda 27: secciones plegables (solo se abre una) + sección de teléfonos útiles. */
@@ -278,7 +281,8 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
 <!-- Hoja: reserva automática -->
 <div class="modal" id="mRA" onclick="if(event.target===this)cerrarRA()"><div class="box">
   <h2>Reserva automática</h2>
-  <div><label class="etq" for="raCli">Cliente / dirección</label><input class="in-cli" id="raCli" autocomplete="off" placeholder="NOMBRE O DIRECCIÓN" /></div>
+  <div><label class="etq" for="raNom">Nombre del cliente</label><input class="in-cli" id="raNom" autocomplete="off" placeholder="NOMBRE Y APELLIDOS" /></div>
+  <div><label class="etq" for="raDir">Dirección</label><input class="in-cli" id="raDir" autocomplete="off" placeholder="CALLE, NÚMERO, PISO" /></div>
   <div><span class="etq">Se repite</span>
     <div class="nx-pestanas" role="tablist">
       <button id="raSem" onclick="elegirFrec('SEMANAL')">Cada semana</button>
@@ -466,17 +470,20 @@ function cargarRA() {
 function pintarRA() {
   el('raLista').innerHTML = RA.length ? RA.map(function (x) {
     var prox = x.activa ? (x.proximas && x.proximas.length ? 'Próxima: ' + fechaCorta(x.proximas[0]) : '') : 'En pausa';
-    return '<div class="ra' + (x.activa ? '' : ' pausada') + '"><div><b>' + esc(x.clienteDireccion) + '</b><span class="t">' +
-      esc(x.texto.replace(/, \d.*$/, '')) + (prox ? ' · ' + esc(prox) : '') + '</span></div>' +
+    var titulo = x.nombre || x.direccion || x.clienteDireccion;
+    var sub = (x.nombre && x.direccion ? x.direccion + ' · ' : '') + x.texto.replace(/, \d.*$/, '');
+    return '<div class="ra' + (x.activa ? '' : ' pausada') + '"><div><b>' + esc(titulo) + '</b><span class="t">' +
+      esc(sub) + (prox ? ' · ' + esc(prox) : '') + '</span></div>' +
       '<span class="chip-f">' + esc(etiquetaFranja(x.franja)) + 'h</span>' +
       '<button type="button" aria-label="Editar" onclick="abrirRA(\'' + esc(x.id) + '\')">' + IC_LAPIZ + '</button></div>';
   }).join('') : '<div class="ra-vacio">Aún no hay reservas automáticas.</div>';
 }
 function abrirRA(id) {
   var x = id ? RA.filter(function (r) { return r.id === id; })[0] : null;
-  raEd = x ? { id: x.id, cli: x.clienteDireccion, frec: x.frecuencia, dia: x.dia, franja: x.franja, inicio: x.inicio, activa: x.activa, hist: x.historial }
-           : { id: null, cli: '', frec: 'SEMANAL', dia: 6, franja: RA_FRANJAS[2] || RA_FRANJAS[0], inicio: proximoDia(6), activa: true, hist: '' };
-  el('raCli').value = raEd.cli;
+  raEd = x ? { id: x.id, nombre: x.nombre || '', direccion: x.direccion || x.clienteDireccion || '', frec: x.frecuencia, dia: x.dia, franja: x.franja, inicio: x.inicio, activa: x.activa, hist: x.historial }
+           : { id: null, nombre: '', direccion: '', frec: 'SEMANAL', dia: 6, franja: RA_FRANJAS[2] || RA_FRANJAS[0], inicio: proximoDia(6), activa: true, hist: '' };
+  el('raNom').value = raEd.nombre;
+  el('raDir').value = raEd.direccion;
   el('raDiasChips').innerHTML = DIAS_LETRA.map(function (l, i) { return '<button type="button" data-d="' + (i + 1) + '" onclick="elegirDia(' + (i + 1) + ')">' + l + '</button>'; }).join('');
   el('raFranjas').style.setProperty('--nf', RA_FRANJAS.length);
   el('raFranjas').innerHTML = RA_FRANJAS.map(function (f) { return '<button type="button" data-f="' + f + '" onclick="elegirFranja(\'' + f + '\')">' + etiquetaFranja(f) + 'h</button>'; }).join('');
@@ -486,7 +493,7 @@ function abrirRA(id) {
   el('raHist').textContent = raEd.hist || '';
   marcarRA();
   el('mRA').classList.add('on');
-  if (!raEd.id) setTimeout(function () { el('raCli').focus(); }, 100);
+  if (!raEd.id) setTimeout(function () { el('raNom').focus(); }, 100);
 }
 function cerrarRA() { el('mRA').classList.remove('on'); raEd = null; }
 function elegirFrec(f) { raEd.frec = f; marcarRA(); }
@@ -512,12 +519,12 @@ function marcarRA() {
 }
 function pausarRA() { raEd.activa = !raEd.activa; marcarRA(); }
 function guardarRA() {
-  var cli = el('raCli').value.trim(), ini = el('raInicio').value;
-  if (!cli) { alert('Escribe el cliente o la dirección.'); el('raCli').focus(); return; }
+  var nom = el('raNom').value.trim().toUpperCase(), dir = el('raDir').value.trim().toUpperCase(), ini = el('raInicio').value;
+  if (!dir) { alert('Escribe la dirección.'); el('raDir').focus(); return; }
   if (!ini) { alert('Elige la fecha de la primera reserva.'); return; }
   if (diaDeISO(ini) !== raEd.dia) { alert('La primera reserva tiene que caer en ' + DIAS_PLURAL[raEd.dia].replace(/s$/, '') + '.'); return; }
   spin(true);
-  postEmbolsado({ accion: 'guardarReservaAuto', id: raEd.id, clienteDireccion: cli, frecuencia: raEd.frec, dia: raEd.dia, franja: raEd.franja, inicio: ini, activa: raEd.activa })
+  postEmbolsado({ accion: 'guardarReservaAuto', id: raEd.id, nombre: nom, direccion: dir, frecuencia: raEd.frec, dia: raEd.dia, franja: raEd.franja, inicio: ini, activa: raEd.activa })
     .then(function (r) {
       spin(false);
       if (!r || !r.ok) { alert((r && r.error) || 'No se pudo guardar.'); return; }
