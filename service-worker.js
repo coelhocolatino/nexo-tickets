@@ -1,7 +1,7 @@
 // ==============================
 // Nexo · SAD Tickets - Service Worker v5
 // ==============================
-const CACHE_NAME = "nexo-tickets-v45";   // ronda 32b: correo con botón al informe en vivo; ronda 32: Config → Informe de Productividad (envío automático 21h, por nivel, pruebas); ronda 31: finalizar con/sin incidencia (%DIA); ronda 29b: botón Fotos; ronda 29: selector de tienda del ADM en Reparto, límites por tienda en Config; ronda 28: asignar.html guardado para abrir SIN internet (GRANVIA), lotes de fotos; ronda 27: avisos en la barra, teléfonos útiles, Config plegable; ronda 26: accesibilidad; ronda 25: barra de iconos + cola; ronda 24: diseño nuevo + version.json + dia + avisos push + incidencias
+const CACHE_NAME = "nexo-tickets-v46";   // ronda 33: se retira el Informe de Productividad; el informe diario deja de bloquear la app (candado corto + escritura por lotes) y reintento automático; ronda 31: finalizar con/sin incidencia (%DIA); ronda 29b: botón Fotos; ronda 29: selector de tienda del ADM en Reparto, límites por tienda en Config; ronda 28: asignar.html guardado para abrir SIN internet (GRANVIA), lotes de fotos; ronda 27: avisos en la barra, teléfonos útiles, Config plegable; ronda 26: accesibilidad; ronda 25: barra de iconos + cola; ronda 24: diseño nuevo + version.json + dia + avisos push + incidencias
 
 const ASSETS = [
   "./",
