@@ -17,8 +17,13 @@
      pestaña, lo último visto se pinta al instante); solo los pedidos de la tienda predefinida; cobro: el
      repartidor confirma el importe antes de Entregar; orden manual con flechas; el ADM ve los asignados de
      todos los repartidores (filtro), cambia el repartidor, abre el %DIA para editar y deshace entregas.
+     v3.11.0 (2026-10-19, ronda 43): ENTREGAR ES SUBIR EL TICKET, como en los %DIA. Cada pedido se archiva al
+     entregarlo con la foto que ya sacó el embolsado (acción entregarYSubir del Módulo Embolsado; el nombre del
+     archivo lleva al final C<caja>-T<ticket> para que dos pedidos del mismo tramo no se pisen). KM (opcional),
+     XR y XP se marcan en la propia tarjeta. «Asignar a mi ruta» ya NO salta a index.html: se queda aquí y pasa
+     a la pestaña de la ruta. Al repartidor no se le pide ninguna foto.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.10.14">
+<html lang="es" data-pagina="asignar" data-version="v3.11.0">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -74,6 +79,18 @@ body.nx { padding-bottom:96px; }
 .chips { display:flex; flex-wrap:wrap; gap:6px; }
 .chip { background:var(--nx-chip); border-radius:6px; padding:4px 8px; font-size:12px; font-weight:800; }
 .cobro-badge { align-self:flex-start; background:var(--nx-tinta); color:#FFF1A6; border-radius:8px; padding:6px 10px; font-size:14px; font-weight:800; }
+
+/* Ronda 43: KM (opcional), XR y XP de ESE pedido, en la propia tarjeta. */
+.entrega-datos { display:flex; align-items:flex-end; gap:8px; }
+.entrega-datos .km { flex:0 0 102px; }
+.entrega-datos .km b { display:block; color:var(--nx-suave); font-weight:700; font-size:12px; margin-bottom:2px; }
+.entrega-datos .km input { width:100%; min-height:48px; border:1.5px solid var(--nx-linea); border-radius:10px; padding:8px 10px;
+  font-family:inherit; font-size:17px; font-weight:800; color:var(--nx-tinta); background:var(--nx-campo); }
+.entrega-datos .marca { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; min-height:48px;
+  border:1.5px solid var(--nx-linea); border-radius:10px; background:var(--nx-campo); font-size:15px; font-weight:800; cursor:pointer; }
+.entrega-datos .marca input { width:24px; height:24px; accent-color:var(--nx-tinta); margin:0; }
+.entrega-datos .marca.on { border-color:var(--nx-tinta); background:var(--nx-azul-fondo); }
+.card.cobro .entrega-datos .km input, .card.cobro .entrega-datos .marca { background:rgba(255,255,255,.65); }
 .acciones { display:grid; grid-template-columns:52px minmax(0,1fr) minmax(0,1.25fr); gap:8px; }
 .acciones button, .acciones a { min-height:52px; border:0; border-radius:12px; font:800 15px var(--nx-texto); text-decoration:none;
   display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; }
@@ -646,7 +663,16 @@ function cardHTML(o, conCheck, conAcc, ord) {
     h += '<div class="acciones hecho">' + cam + '<button class="b-hecho" disabled>' + IC_OK + 'Entregado' + horaCorta(o.entregaTs) + '</button></div>';
     if (ES_ADMIN) h += '<button class="b-deshacer" onclick="deshacer(\'emb\',\'' + esc(o.id) + '\',\'' + esc(o.repartidor || '') + '\')">Deshacer entrega</button>';
   }
-  else if (conAcc && propio) h += '<div class="acciones">' + cam + '<button class="b-inc" onclick="abrirIncidencia(\'' + esc(o.id) + '\')">Incidencia</button><button class="b-ent" onclick="entregado(\'' + esc(o.id) + '\')">' + IC_OK + 'Entregar</button></div>';
+  else if (conAcc && propio) {
+    // Ronda 43: KM / XR / XP antes de los botones; lo marcado viaja en el nombre del ticket.
+    var sid = idSeguro(o.id), dd = datosEntrega[o.id] || {};
+    h += '<div class="entrega-datos">' +
+      '<label class="km"><b>KM (opc.)</b><input id="km_' + sid + '" type="text" inputmode="numeric" placeholder="\u2014" value="' + esc(dd.km || '') + '" aria-label="Kilometros de este pedido" oninput="guardarDatoEntrega(\'' + esc(o.id) + '\',\'km\',this.value)"></label>' +
+      '<label class="marca' + (dd.xr ? ' on' : '') + '"><input type="checkbox" id="xr_' + sid + '"' + (dd.xr ? ' checked' : '') + ' onchange="guardarDatoEntrega(\'' + esc(o.id) + '\',\'xr\',this.checked)">XR</label>' +
+      '<label class="marca' + (dd.xp ? ' on' : '') + '"><input type="checkbox" id="xp_' + sid + '"' + (dd.xp ? ' checked' : '') + ' onchange="guardarDatoEntrega(\'' + esc(o.id) + '\',\'xp\',this.checked)">XP</label>' +
+      '</div>';
+    h += '<div class="acciones">' + cam + '<button class="b-inc" onclick="abrirIncidencia(\'' + esc(o.id) + '\')">Incidencia</button><button class="b-ent" onclick="entregado(\'' + esc(o.id) + '\')">' + IC_OK + 'Entregar y subir</button></div>';
+  }
   else h += '<div class="acciones solo-cam">' + cam + '</div>';
   // 6.1 — ADM: pasar el pedido a otro repartidor
   if (ES_ADMIN && conAcc && o.entregaEstado !== 'ENTREGADO') h += '<button class="b-deshacer" onclick="abrirReasig(\'' + esc(o.id) + '\')">Cambiar repartidor</button>';
@@ -713,11 +739,21 @@ async function asignarSeleccion() {
   var r = await api('asignarPedidos', { ids: ids, tienda: tiendaAct() });
   spin(false);
   if (!r.ok) { msg(r.error, 'err'); return; }
-  if (r.rechazados && r.rechazados.length) msg(r.rechazados.length + ' pedido(s) ya no estaban disponibles.', 'err');
+  // Ronda 43: se dice POR QUÉ se quedó fuera cada pedido (p. ej. «sin foto del ticket»).
+  if (r.rechazados && r.rechazados.length) {
+    var motivos = {};
+    r.rechazados.forEach(function (x) { var m = x.motivo || 'Ya no estaba disponible'; motivos[m] = (motivos[m] || 0) + 1; });
+    msg(Object.keys(motivos).map(function (m) { return motivos[m] + ' pedido(s): ' + m.toLowerCase(); }).join(' · '), 'err');
+  }
   if (r.total > 0) {
-    try { sessionStorage.setItem('nexo_asignados', String((parseInt(sessionStorage.getItem('nexo_asignados') || '0', 10) || 0) + r.total)); } catch (e) {}
+    // Ronda 43: ya NO se salta a index.html a subir un ticket. El ticket de cada
+    // pedido se sube solo al entregarlo, con la foto del embolsado.
+    try { sessionStorage.removeItem('nexo_asignados'); } catch (e) {}
     try { sessionStorage.removeItem(CLAVE_CACHE); } catch (e) {}
-    location.href = 'index.html';
+    sel = {};
+    if (!(r.rechazados && r.rechazados.length)) msg(r.total + ' pedido(s) en tu ruta. El ticket se sube al entregar cada uno.', 'ok');
+    tocoTabs = true; cambiarTab('ruta');
+    cargar(false); cargarDisp(true);
     return;
   }
   sel = {}; cargar(false); cargarDisp(true);
@@ -814,6 +850,31 @@ async function recortar(src, box, maxAncho) {
   c.getContext('2d').drawImage(img, x0, y0, w, h, 0, 0, c.width, c.height);
   return c.toDataURL('image/jpeg', 0.88);
 }
+/* ============ Ronda 43 · KM / XR / XP DE CADA PEDIDO ============
+   Lo que marca el repartidor se guarda en memoria mientras la tarjeta está en
+   pantalla, para que una recarga de la lista no borre lo que acaba de poner.
+   KM es opcional (en blanco = 0KM). XR y XP son sí/no: viajan en el nombre del
+   ticket como #XR y #D. */
+var datosEntrega = {};
+function idSeguro(id) { return String(id).replace(/[^\w]/g, '_'); }
+function guardarDatoEntrega(id, campo, valor) {
+  var d = datosEntrega[id] || (datosEntrega[id] = {});
+  if (campo === 'km') {
+    d.km = String(valor == null ? '' : valor).replace(/[^\d]/g, '').slice(0, 4);
+    var k = document.getElementById('km_' + idSeguro(id));
+    if (k && k.value !== d.km) k.value = d.km;
+  } else {
+    d[campo] = !!valor;
+    var inp = document.getElementById(campo + '_' + idSeguro(id));
+    if (inp && inp.parentNode && inp.parentNode.classList) inp.parentNode.classList.toggle('on', !!valor);
+  }
+}
+function datosDeEntrega(id) {
+  var d = datosEntrega[id] || {};
+  var k = document.getElementById('km_' + idSeguro(id));
+  return { km: parseInt((k ? k.value : d.km) || '0', 10) || 0, xr: !!d.xr, xp: !!d.xp };
+}
+
 /* Ronda 28 · 6.2 — si el pedido es de COBRO, el repartidor confirma primero que ha cobrado. */
 var cobroId = null;
 function buscarPedidoRuta(id) {
@@ -845,18 +906,40 @@ function cobroNo() {
   cerrar('mCobro');
   if (cobroId) confirmarEntrega(cobroId, false, '', true);
 }
+/* Ronda 43: ENTREGAR ES SUBIR EL TICKET.
+   Se manda la acción entregarYSubir con KM / XR / XP y, si la foto del pedido
+   es una hoja con VARIOS tickets, solo el recorte de este (el mismo que se ve
+   en el modal de la foto). Si el pedido tiene su propia foto, no hace falta
+   bajarla: el servidor la coge de Drive. Si no se puede archivar, el pedido
+   se queda en la ruta para volver a intentarlo. */
 async function confirmarEntrega(id, cobrado, importe, sinCobrar) {
-  if (!cobrado && !sinCobrar && !confirm('¿Confirmas que el pedido ha sido ENTREGADO?')) return;
+  if (!cobrado && !sinCobrar && !confirm('¿Confirmas que el pedido ha sido ENTREGADO?\n\nSe sube el ticket con la foto del embolsado.')) return;
+  var o = buscarPedidoRuta(id) || {};
+  var d = datosDeEntrega(id);
   spin(true);
-  var r = await api('marcarEntregado', { id: id, cobroConfirmado: !!cobrado, cobroImporte: importe || '', cobroSinConfirmar: !!sinCobrar });
+  var img = '';
+  if (o.tieneBox) {
+    try {
+      var rf = await api('fotoTicketBase64', { id: id });
+      if (rf && rf.ok && rf.dataUrl) img = rf.box ? await recortar(rf.dataUrl, rf.box, 1400) : rf.dataUrl;
+    } catch (e) { /* si falla el recorte, el servidor sube la foto del pedido tal cual */ }
+  }
+  var r = await api('entregarYSubir', {
+    id: id, imagenBase64: img, km: d.km, xr: d.xr, xp: d.xp,
+    cobroConfirmado: !!cobrado, cobroImporte: importe || '', cobroSinConfirmar: !!sinCobrar
+  });
   spin(false);
-  if (!r.ok) { msg(r.error, 'err'); return; }
-  msg(r.incidencia ? 'Pedido entregado · incidencia abierta a tu nombre por el cobro.'
-                   : (r.cobroDifiere ? 'Pedido entregado · ojo: el importe cobrado no coincide con el del pedido (' + (r.cobroPedido || '') + ').'
-                                     : 'Pedido entregado.'), r.incidencia || r.cobroDifiere ? 'err' : 'ok');
+  if (!r.ok) {
+    msg(r.error + (r.reintentable ? ' El pedido sigue en tu ruta: vuelve a darle a Entregar.' : ''), 'err');
+    return;
+  }
+  var extra = (d.km ? ' · ' + d.km + ' km' : '') + (d.xr ? ' · XR' : '') + (d.xp ? ' · XP' : '');
+  msg(r.incidencia ? 'Pedido entregado y ticket subido · incidencia abierta a tu nombre por el cobro.'
+                   : (r.cobroDifiere ? 'Pedido entregado y ticket subido · ojo: el importe cobrado no coincide con el del pedido (' + (r.cobroPedido || '') + ').'
+                                     : 'Pedido entregado y ticket subido' + extra + '.'), r.incidencia || r.cobroDifiere ? 'err' : 'ok');
+  delete datosEntrega[id];
   // Se refleja al instante (sin esperar a la hoja) y después se confirma con el servidor.
-  var o = buscarPedidoRuta(id);
-  if (o) { o.entregaEstado = 'ENTREGADO'; o.entregaTs = hoyDMA() + ' ' + new Date().toTimeString().slice(0, 8); guardarCache(); actualizarPestanas(); pintar(); }
+  if (o && o.id) { o.entregaEstado = 'ENTREGADO'; o.entregaTs = hoyDMA() + ' ' + new Date().toTimeString().slice(0, 8); guardarCache(); actualizarPestanas(); pintar(); }
   cargar(false);
 }
 
