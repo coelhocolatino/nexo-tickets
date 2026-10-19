@@ -37,7 +37,6 @@ img{max-width:100%}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.7/babel.min.js"></script>
 
 <style>
 /* Layout: una columna de bandas apiladas; cabecera fija con los dos filtros,
@@ -60,6 +59,7 @@ img{max-width:100%}
   --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b;
   --seq-1:#184f95; --seq-2:#256abf; --seq-3:#3987e5; --seq-4:#6da7ec; --seq-5:#9ec5f4;
   --proj:#55606e;         /* trama de proyección */
+  --water:#2f7fd6;        /* el acuario del total */
   --font-display:"Barlow Condensed","Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
   --font-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
@@ -72,7 +72,7 @@ img{max-width:100%}
     --brand:#2a78d6; --brand-soft:rgba(42,120,214,.10);
     --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300;
     --seq-1:#9ec5f4; --seq-2:#6da7ec; --seq-3:#3987e5; --seq-4:#256abf; --seq-5:#184f95;
-    --proj:#aab2bd;
+    --proj:#aab2bd; --water:#7fc0f0;
   }
 }
 :root[data-theme="light"]{
@@ -83,7 +83,7 @@ img{max-width:100%}
   --brand:#2a78d6; --brand-soft:rgba(42,120,214,.10);
   --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300;
   --seq-1:#9ec5f4; --seq-2:#6da7ec; --seq-3:#3987e5; --seq-4:#256abf; --seq-5:#184f95;
-  --proj:#aab2bd;
+  --proj:#aab2bd; --water:#7fc0f0;
 }
 
 body{background:var(--plane);color:var(--ink);font-family:var(--font-body);-webkit-font-smoothing:antialiased}
@@ -136,9 +136,35 @@ table.hm td{width:26px;height:24px;border-radius:4px;text-align:center;font-size
 @media (prefers-reduced-motion:reduce){
   .enter{animation:none}
   .tile:hover{transform:none}
+  .water .drift{animation:none}
   *{transition-duration:.01ms!important}
 }
 .scrollx{overflow-x:auto}
+
+/* el acuario del cuadro Total: el agua sube con la proyección y ondea */
+.water{position:absolute;inset:0;pointer-events:none;color:var(--water)}
+.water svg{width:100%;height:100%;display:block}
+.water .lvl{transform-box:view-box;transform-origin:0 0;transition:transform 1.5s cubic-bezier(.2,.7,.3,1)}
+.water .drift{transform-box:view-box;transform-origin:0 0;animation:drift 9s linear infinite;
+  transition:animation-duration .3s ease}
+.water .drift.b{animation-duration:6.2s;animation-direction:reverse}
+.tile:hover .water .drift{animation-duration:3.2s}
+.tile:hover .water .drift.b{animation-duration:2.3s}
+@keyframes drift{from{transform:translateX(0)}to{transform:translateX(-200px)}}
+.tilebody{position:relative;z-index:1}
+
+/* filas y chips que filtran */
+.filtro{font:inherit;background:transparent;border:0;padding:0;text-align:left;width:100%;cursor:pointer;
+  border-radius:8px;transition:background .16s ease}
+.filtro:hover{background:var(--surface-2)}
+.filtro[aria-pressed="true"]{background:var(--brand-soft)}
+.chipf{cursor:pointer;font:inherit;transition:border-color .16s ease,background .16s ease}
+.chipf[aria-pressed="true"]{border-color:var(--brand);background:var(--brand-soft)}
+.hm td.sel{outline:2px solid var(--brand);outline-offset:-2px}
+.hm th.fr{cursor:pointer;border-radius:4px}
+.hm th.fr:hover{color:var(--ink)}
+.hm th.fr[aria-pressed="true"]{color:var(--brand)}
+.hm td.on{cursor:pointer}
 .navbtn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;
   font:inherit;font-size:15px;font-weight:700;border:1px solid var(--ring);border-radius:12px;padding:14px 12px;
   background:var(--surface-2);color:var(--ink);cursor:pointer;transition:transform .12s ease,background .18s ease}
@@ -656,13 +682,53 @@ function Delta({
     }
   }, label));
 }
+/* Dos olas desfasadas, con la línea de flotación a la altura del porcentaje. */
+const OLA = "M-200 0 q50 -5 100 0 t100 0 t100 0 t100 0 t100 0 t100 0 L400 140 L-200 140 Z";
+function Agua({
+  pct
+}) {
+  const [alto, setAlto] = useState(0); // arranca vacío y sube al cargar
+  useEffect(() => {
+    const id = setTimeout(() => setAlto(pct), 120);
+    return () => clearTimeout(id);
+  }, [pct]);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "water",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("svg", {
+    viewBox: "0 0 200 100",
+    preserveAspectRatio: "none"
+  }, /*#__PURE__*/React.createElement("g", {
+    className: "lvl",
+    style: {
+      transform: "translateY(" + (100 - alto) + "px)"
+    }
+  }, /*#__PURE__*/React.createElement("g", {
+    transform: "translate(0,3)"
+  }, /*#__PURE__*/React.createElement("g", {
+    className: "drift b",
+    opacity: ".3"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: OLA,
+    fill: "currentColor"
+  }))), /*#__PURE__*/React.createElement("g", {
+    transform: "translate(70,0)"
+  }, /*#__PURE__*/React.createElement("g", {
+    className: "drift",
+    opacity: ".52"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: OLA,
+    fill: "currentColor"
+  }))))));
+}
 function Tile({
   label,
   value,
   unit,
   foot,
   children,
-  accent
+  accent,
+  agua
 }) {
   const v = useCountUp(value);
   return /*#__PURE__*/React.createElement(Card, {
@@ -675,7 +741,11 @@ function Tile({
     style: accent ? {
       background: accent
     } : undefined
+  }), agua && /*#__PURE__*/React.createElement(Agua, {
+    pct: agua.pct
   }), /*#__PURE__*/React.createElement("div", {
+    className: "tilebody"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "eyebrow"
   }, label), /*#__PURE__*/React.createElement("div", {
     className: "flex items-end gap-2 mt-1"
@@ -694,7 +764,7 @@ function Tile({
     style: {
       color: "var(--ink-2)"
     }
-  }, foot));
+  }, foot)));
 }
 
 /* tooltip propio: mismo tipo y tinta que el resto de la página */
@@ -714,12 +784,16 @@ function Tip({
       boxShadow: "0 12px 32px -18px rgba(0,0,0,.7)",
       minWidth: 140
     }
-  }, label != null && label !== "" && /*#__PURE__*/React.createElement("div", {
-    className: "eyebrow",
-    style: {
-      marginBottom: 4
-    }
-  }, label, suffix), payload.filter(p => p.value != null).map((p, i) => /*#__PURE__*/React.createElement("div", {
+  }, label != null && label !== "" && (() => {
+    const p0 = payload[0] && payload[0].payload;
+    const dia = p0 && p0.dia && p0.dia !== label ? " · " + p0.dia : "";
+    return /*#__PURE__*/React.createElement("div", {
+      className: "eyebrow",
+      style: {
+        marginBottom: 4
+      }
+    }, label, dia, suffix);
+  })(), payload.filter(p => p.value != null).map((p, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
     className: "flex items-center gap-2 text-[12.5px]",
     style: {
@@ -754,8 +828,12 @@ function App() {
   const [drillDay, setDrillDay] = useState(null);
   const [drillTienda, setDrillTienda] = useState(null);
   const [desglose, setDesglose] = useState("arbol"); // arbol | mapa
+  const [mapaSel, setMapaSel] = useState(null); // {franja, dia|null}
+  const [incTipo, setIncTipo] = useState(null);
+  const [incResp, setIncResp] = useState(null);
   const [clubUp, setClubUp] = useState(null);
   const [clubDate, setClubDate] = useState(DATA.clubDefault);
+  const VE_OPERACION = PUEDE_ELEGIR; // ADM (o vista previa fuera de la app)
   const periodo = DATA.periodos.find(p => p.id === periodoId);
   const prevPeriodo = DATA.periodos.find(p => p.id === periodo.prev) || periodo;
   const yearPeriodo = DATA.periodos.find(p => p.id === periodo.year);
@@ -876,11 +954,52 @@ function App() {
       max
     };
   }, [periodoId, rep, elapsed]);
+
+  /* tarjetas de las entregas de la franja (y del día) elegidos en el mapa */
+  const mapaCards = useMemo(() => {
+    if (!mapaSel) return [];
+    const out = [];
+    for (const r of DATA.rows) {
+      const [f, ti, ri, fri, p, xp, xr] = r;
+      if (f < periodo.ini || f > periodo.fin) continue;
+      if (rep !== "*" && DATA.reps[ri] !== rep) continue;
+      if (DATA.franjas[fri] !== mapaSel.franja) continue;
+      if (mapaSel.dia && f !== mapaSel.dia) continue;
+      out.push({
+        k: f + ti + ri + fri,
+        f,
+        tienda: DATA.tiendas[ti],
+        quien: DATA.reps[ri],
+        franja: DATA.franjas[fri],
+        p,
+        xp,
+        xr,
+        total: p + xp + xr
+      });
+    }
+    return out.sort((a, b) => a.f < b.f ? 1 : a.f > b.f ? -1 : a.tienda.localeCompare(b.tienda));
+  }, [mapaSel, periodoId, rep]);
+
+  /* al abrir el mapa, se elige sola la franja con más entregas */
+  useEffect(() => {
+    setMapaSel(null);
+    setIncTipo(null);
+    setIncResp(null);
+  }, [periodoId, rep]);
+  useEffect(() => {
+    if (desglose !== "mapa" || mapaSel || !mapa.rows.length) return;
+    const mejor = [...mapa.rows].sort((a, b) => b.vals.reduce((x, y) => x + y, 0) - a.vals.reduce((x, y) => x + y, 0))[0];
+    if (mejor) setMapaSel({
+      franja: mejor.franja,
+      dia: null
+    });
+  }, [desglose, periodoId, rep, mapaSel]);
   const serieSemana = useMemo(() => [1, 2, 3, 4, 5, 6, 0].map(k => ({
     dia: DOW[k],
     media: Math.round(proj.med[k] || 0),
     k
   })), [periodoId, rep, elapsed]);
+  const nivelAgua = periodo.closed ? 100 : Math.max(2, Math.min(100, proj.total ? agg.total / proj.total * 100 : 0));
   const seriesCol = [T.s1, T.s2, T.s3, T.s4, T.s5, T.s6, T["ink-3"]];
   const axis = {
     stroke: T.axis,
@@ -1025,17 +1144,31 @@ function App() {
   }, /*#__PURE__*/React.createElement("span", {
     className: "num"
   }, nf(agg.xp)), " XP"))), /*#__PURE__*/React.createElement(Tile, {
-    label: "Total P + XR + XP",
+    label: "Total",
     value: agg.total,
     unit: "entregas",
-    accent: "var(--brand)"
+    accent: "var(--good)",
+    agua: {
+      pct: nivelAgua
+    }
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex flex-wrap gap-2 mt-2"
   }, /*#__PURE__*/React.createElement(Delta, {
     now: curTotal,
     before: prevSame,
     label: "per\xEDodo ant."
-  }))), /*#__PURE__*/React.createElement(Tile, {
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "text-[12px] mt-2",
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, periodo.closed ? "Período cerrado." : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    className: "num",
+    style: {
+      fontWeight: 700,
+      color: "var(--ink)"
+    }
+  }, Math.round(nivelAgua), "%"), " de la proyección"))), /*#__PURE__*/React.createElement(Tile, {
     label: periodo.closed ? "Cierre real" : "Proyección a cierre",
     value: periodo.closed ? agg.total : Math.round(proj.total),
     unit: "entregas",
@@ -1192,7 +1325,7 @@ function App() {
     strokeWidth: 2,
     dot: false,
     animationDuration: anim
-  }), yearDaily.length > 0 && /*#__PURE__*/React.createElement(RC.Line, {
+  }), yearDaily.length > 0 && VE_OPERACION && /*#__PURE__*/React.createElement(RC.Line, {
     dataKey: "anio",
     name: "A\xF1o anterior (operaci\xF3n)",
     stroke: T["ink-3"],
@@ -1214,7 +1347,7 @@ function App() {
     n: "Comparaci\xF3n",
     title: "Mismo tramo de cada per\xEDodo",
     sub: "Primeros " + elapsed + " días de cada período, para comparar lo comparable.",
-    right: /*#__PURE__*/React.createElement(Seg, {
+    right: VE_OPERACION ? /*#__PURE__*/React.createElement(Seg, {
       label: "\xC1mbito",
       value: compMode,
       onChange: setCompMode,
@@ -1225,9 +1358,9 @@ function App() {
         v: "op",
         l: "Operación"
       }]
-    })
+    }) : null
   }), (() => {
-    const mio = compMode === "mio" && rep !== "*";
+    const mio = (!VE_OPERACION || compMode === "mio") && rep !== "*";
     const now = mio ? curTotal : opTotal,
       before = mio ? prevSame : opPrevSame;
     const filas = [{
@@ -1807,7 +1940,7 @@ function App() {
     style: {
       color: "var(--ink-3)"
     }
-  }, "Elige una tienda."))) : /*#__PURE__*/React.createElement("div", {
+  }, "Elige una tienda."))) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "scrollx"
   }, /*#__PURE__*/React.createElement("table", {
     className: "hm"
@@ -1817,30 +1950,136 @@ function App() {
     }
   }, "Franja"), mapa.dias.map(f => /*#__PURE__*/React.createElement("th", {
     key: f
-  }, toDate(f).getUTCDate())))), /*#__PURE__*/React.createElement("tbody", null, mapa.rows.map(r => /*#__PURE__*/React.createElement("tr", {
-    key: r.franja
-  }, /*#__PURE__*/React.createElement("th", {
-    style: {
-      textAlign: "left"
-    }
-  }, r.franja), r.vals.map((v, i) => {
-    const k = v / mapa.max;
-    const step = v === 0 ? null : k > .8 ? "seq-1" : k > .6 ? "seq-2" : k > .4 ? "seq-3" : k > .2 ? "seq-4" : "seq-5";
-    return /*#__PURE__*/React.createElement("td", {
-      key: i,
-      title: fmtDay(mapa.dias[i]) + " · " + r.franja + " · " + v,
-      style: step ? {
-        background: "var(--" + step + ")",
-        color: k > .4 ? "#fff" : "var(--ink)"
-      } : undefined,
-      className: "num"
-    }, v || "");
-  }))))), /*#__PURE__*/React.createElement("p", {
+  }, toDate(f).getUTCDate())))), /*#__PURE__*/React.createElement("tbody", null, mapa.rows.map(r => {
+    const activa = mapaSel && mapaSel.franja === r.franja;
+    return /*#__PURE__*/React.createElement("tr", {
+      key: r.franja
+    }, /*#__PURE__*/React.createElement("th", {
+      className: "fr",
+      scope: "row",
+      role: "button",
+      tabIndex: 0,
+      "aria-pressed": !!activa,
+      style: {
+        textAlign: "left"
+      },
+      onClick: () => setMapaSel(activa && !mapaSel.dia ? null : {
+        franja: r.franja,
+        dia: null
+      }),
+      onKeyDown: e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setMapaSel(activa && !mapaSel.dia ? null : {
+            franja: r.franja,
+            dia: null
+          });
+        }
+      }
+    }, r.franja), r.vals.map((v, i) => {
+      const k = v / mapa.max;
+      const step = v === 0 ? null : k > .8 ? "seq-1" : k > .6 ? "seq-2" : k > .4 ? "seq-3" : k > .2 ? "seq-4" : "seq-5";
+      const sel = activa && mapaSel.dia === mapa.dias[i];
+      return /*#__PURE__*/React.createElement("td", {
+        key: i,
+        title: fmtDay(mapa.dias[i]) + " · " + r.franja + " · " + v,
+        className: "num" + (v ? " on" : "") + (sel ? " sel" : ""),
+        onClick: v ? () => setMapaSel(sel ? {
+          franja: r.franja,
+          dia: null
+        } : {
+          franja: r.franja,
+          dia: mapa.dias[i]
+        }) : undefined,
+        style: step ? {
+          background: "var(--" + step + ")",
+          color: k > .4 ? "#fff" : "var(--ink)"
+        } : undefined
+      }, v || "");
+    }));
+  })))), /*#__PURE__*/React.createElement("p", {
     className: "text-[11.5px] mt-2",
     style: {
       color: "var(--ink-3)"
     }
-  }, "Azul m\xE1s oscuro, m\xE1s entregas. Las celdas vac\xEDas son d\xEDas sin reparto en esa franja."))), /*#__PURE__*/React.createElement(Card, {
+  }, "Azul m\xE1s oscuro, m\xE1s entregas. Toca una franja para ver sus entregas, o una celda para un solo d\xEDa."), /*#__PURE__*/React.createElement("div", {
+    className: "mt-4 pt-3",
+    style: {
+      borderTop: "1px solid var(--ring)"
+    }
+  }, !mapaSel ? /*#__PURE__*/React.createElement("p", {
+    className: "text-[13px]",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, "Elige una franja del mapa.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-center gap-2 mb-3"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "eyebrow"
+  }, mapaSel.franja, mapaSel.dia ? " · " + fmtDay(mapaSel.dia) : " · todo el período"), /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, nf(mapaCards.reduce((a, b) => a + b.total, 0))), " entregas"), mapaSel.dia && /*#__PURE__*/React.createElement("button", {
+    className: "pill chipf",
+    onClick: () => setMapaSel({
+      franja: mapaSel.franja,
+      dia: null
+    })
+  }, "ver toda la franja")), /*#__PURE__*/React.createElement("div", {
+    className: "grid gap-2",
+    style: {
+      gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))",
+      maxHeight: 320,
+      overflowY: "auto"
+    }
+  }, mapaCards.map(c => /*#__PURE__*/React.createElement("div", {
+    key: c.k,
+    style: {
+      background: "var(--surface-2)",
+      border: "1px solid var(--ring)",
+      borderRadius: 10,
+      padding: "9px 11px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline justify-between gap-2"
+  }, /*#__PURE__*/React.createElement("strong", {
+    className: "text-[13px] truncate"
+  }, c.tienda), /*#__PURE__*/React.createElement("span", {
+    className: "disp num font-bold text-[17px]"
+  }, c.total)), /*#__PURE__*/React.createElement("div", {
+    className: "text-[12px]",
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, fmtDay(c.f), " \xB7 ", DOW[dow(c.f)]), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap gap-1.5 mt-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, c.p), " P"), c.xr > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "pill",
+    style: {
+      color: "var(--s4)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, c.xr), " XR"), c.xp > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "pill",
+    style: {
+      color: "var(--s5)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, c.xp), " XP"), rep === "*" && /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, c.quien)))), !mapaCards.length && /*#__PURE__*/React.createElement("p", {
+    className: "text-[13px]",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, "Sin entregas en esa franja.")))))), /*#__PURE__*/React.createElement(Card, {
     className: "p-4 mb-8 enter",
     style: {
       animationDelay: "300ms"
@@ -1860,15 +2099,69 @@ function App() {
     const maxT = Math.max(1, ...tipos.map(t => t[1]));
     const tasa = agg.total ? dentro.length / agg.total * 100 : 0;
     const colResp = r => r === "Cliente" ? T.s1 : r === "Tienda" ? T.s2 : T["ink-3"];
+    const visibles = dentro.filter(i => (!incTipo || i.tipo === incTipo) && (!incResp || i.resp === incResp));
+    const hayFiltro = !!(incTipo || incResp);
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionHead, {
       n: "Incidencias",
       title: "Del d\xEDa y del per\xEDodo",
-      right: /*#__PURE__*/React.createElement("span", {
-        className: "pill"
-      }, /*#__PURE__*/React.createElement("span", {
-        className: "num"
-      }, tasa.toFixed(1).replace(".", ","), "%"), " de las entregas"),
-      sub: "Hoja INCIDENCIAS, filtrada por el usuario que la registró y por fecha."
+      right: /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 116,
+          height: 116,
+          position: "relative",
+          flex: "0 0 auto"
+        }
+      }, /*#__PURE__*/React.createElement(RC.ResponsiveContainer, {
+        width: "100%",
+        height: "100%"
+      }, /*#__PURE__*/React.createElement(RC.RadialBarChart, {
+        innerRadius: "70%",
+        outerRadius: "100%",
+        barSize: 11,
+        startAngle: 90,
+        endAngle: -270,
+        data: [{
+          name: "Tasa",
+          value: Math.min(5, tasa)
+        }]
+      }, /*#__PURE__*/React.createElement(RC.PolarAngleAxis, {
+        type: "number",
+        domain: [0, 5],
+        tick: false
+      }), /*#__PURE__*/React.createElement(RC.RadialBar, {
+        background: {
+          fill: T.grid
+        },
+        dataKey: "value",
+        cornerRadius: 6,
+        fill: T.serious,
+        animationDuration: anim
+      }))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          position: "absolute",
+          inset: 0,
+          display: "grid",
+          placeItems: "center",
+          pointerEvents: "none"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "text-center"
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "disp num font-bold",
+        style: {
+          fontSize: 24,
+          lineHeight: 1,
+          color: T.serious
+        }
+      }, tasa.toFixed(1).replace(".", ","), "%"), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 9.5,
+          fontWeight: 600,
+          color: "var(--ink-3)",
+          marginTop: 1
+        }
+      }, "de entregas")))),
+      sub: "Hoja INCIDENCIAS, filtrada por el usuario que la registró y por fecha. El aro va de 0 a 5 %."
     }), /*#__PURE__*/React.createElement("div", {
       className: "flex gap-3 flex-wrap items-start mb-5"
     }, [{
@@ -1925,7 +2218,14 @@ function App() {
       className: "eyebrow"
     }, "Por tipo"), tipos.map(([k, v]) => /*#__PURE__*/React.createElement("li", {
       key: k
-    }, /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("button", {
+      className: "filtro",
+      "aria-pressed": incTipo === k,
+      style: {
+        padding: "4px 6px"
+      },
+      onClick: () => setIncTipo(incTipo === k ? null : k)
+    }, /*#__PURE__*/React.createElement("span", {
       className: "flex items-baseline justify-between gap-2 text-[12.5px]"
     }, /*#__PURE__*/React.createElement("span", {
       className: "truncate",
@@ -1935,31 +2235,35 @@ function App() {
       }
     }, k), /*#__PURE__*/React.createElement("strong", {
       className: "num"
-    }, v)), /*#__PURE__*/React.createElement("div", {
+    }, v)), /*#__PURE__*/React.createElement("span", {
       style: {
+        display: "block",
         height: 6,
         background: "var(--grid)",
         borderRadius: 3,
         marginTop: 3,
         overflow: "hidden"
       }
-    }, /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("span", {
       style: {
+        display: "block",
         width: v / maxT * 100 + "%",
         height: "100%",
         background: T.s2,
         borderRadius: 3
       }
-    }))))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    })))))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       className: "eyebrow mb-2"
     }, "De qui\xE9n fue"), /*#__PURE__*/React.createElement("div", {
       className: "flex flex-wrap gap-2"
-    }, resp.map(([k, v]) => /*#__PURE__*/React.createElement("span", {
+    }, resp.map(([k, v]) => /*#__PURE__*/React.createElement("button", {
       key: k,
-      className: "pill",
+      className: "pill chipf",
+      "aria-pressed": incResp === k,
       style: {
         color: "var(--ink)"
-      }
+      },
+      onClick: () => setIncResp(incResp === k ? null : k)
     }, /*#__PURE__*/React.createElement("span", {
       style: {
         width: 8,
@@ -1980,15 +2284,27 @@ function App() {
         minWidth: 0
       }
     }, /*#__PURE__*/React.createElement("div", {
-      className: "eyebrow mb-2"
-    }, "Una a una"), /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-wrap items-center gap-2 mb-2"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "eyebrow"
+    }, "Una a una"), hayFiltro && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+      className: "pill"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "num"
+    }, visibles.length), " de ", dentro.length), /*#__PURE__*/React.createElement("button", {
+      className: "pill chipf",
+      onClick: () => {
+        setIncTipo(null);
+        setIncResp(null);
+      }
+    }, "quitar filtro"))), /*#__PURE__*/React.createElement("div", {
       className: "flex flex-col gap-2",
       style: {
         maxHeight: 300,
         overflowY: "auto",
         paddingRight: 4
       }
-    }, dentro.map(i => /*#__PURE__*/React.createElement("div", {
+    }, visibles.map(i => /*#__PURE__*/React.createElement("div", {
       key: i.id,
       style: {
         background: "var(--surface-2)",
@@ -2026,7 +2342,7 @@ function App() {
       className: "pill"
     }, /*#__PURE__*/React.createElement("span", {
       className: "num"
-    }, i.int), " intentos"), rep === "*" && /*#__PURE__*/React.createElement("span", {
+    }, i.int), " ", i.int === 1 ? "intento" : "intentos"), rep === "*" && /*#__PURE__*/React.createElement("span", {
       className: "pill"
     }, i.u), i.url && /*#__PURE__*/React.createElement("a", {
       href: i.url,
@@ -2042,7 +2358,12 @@ function App() {
       style: {
         color: "var(--ink-3)"
       }
-    }, i.sol))))), /*#__PURE__*/React.createElement("div", {
+    }, i.sol))), !visibles.length && /*#__PURE__*/React.createElement("p", {
+      className: "text-[13px]",
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, "Ninguna con ese filtro."))), /*#__PURE__*/React.createElement("div", {
       className: "text-[12.5px] leading-relaxed",
       style: {
         color: "var(--ink-2)",
