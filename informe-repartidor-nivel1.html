@@ -174,63 +174,147 @@ const DATA = {
     "LHERRERA": "sin alta en USUARIOS",
     "JMLOPEZ": "inactivo"
   },
-  "demo": {
-    "conduccion": {
-      "score": 82,
-      "km": 1240,
-      "metricas": [{
-        "k": "Aceleraciones bruscas",
-        "v": 14,
-        "u": "/1.000 km",
-        "pct": 35
-      }, {
-        "k": "Frenadas bruscas",
-        "v": 9,
-        "u": "/1.000 km",
-        "pct": 22
-      }, {
-        "k": "Exceso de velocidad",
-        "v": 3,
-        "u": "% del tiempo",
-        "pct": 30
-      }, {
-        "k": "Ralentí",
-        "v": 11,
-        "u": "% del tiempo",
-        "pct": 55
-      }, {
-        "k": "Curvas forzadas",
-        "v": 6,
-        "u": "/1.000 km",
-        "pct": 15
-      }]
-    },
-    "incidencias": {
-      "hoy": 1,
-      "periodo": 7,
-      "abiertas": 2,
-      "finalizadas": 5,
-      "tipos": [{
-        "k": "Cliente ausente",
-        "v": 3
-      }, {
-        "k": "Falta producto",
-        "v": 2
-      }, {
-        "k": "Dirección errónea",
-        "v": 1
-      }, {
-        "k": "Cobro no confirmado",
-        "v": 1
-      }, {
-        "k": "Producto dañado",
-        "v": 0
-      }, {
-        "k": "Otra",
-        "v": 0
-      }]
-    }
-  }
+  "conduccion": {
+    "periodo": "19/09/2026",
+    "filas": [{
+      "rep": "ABRAHAM",
+      "tiempo": "221:17",
+      "km": 4279.3,
+      "acel": 4.5,
+      "freno": 4.2,
+      "score": 96.3
+    }, {
+      "rep": "WBEZERRA",
+      "tiempo": "38:58",
+      "km": 707.4,
+      "acel": 9.0,
+      "freno": 8.1,
+      "score": 92.5
+    }, {
+      "rep": "WEXPOSITO",
+      "tiempo": "23:27",
+      "km": 481.2,
+      "acel": 21.7,
+      "freno": 33.2,
+      "score": 72.5
+    }, {
+      "rep": "LARAUJO",
+      "tiempo": "3:57",
+      "km": 85.1,
+      "acel": 16.6,
+      "freno": 49.9,
+      "score": 66.0
+    }]
+  },
+  "incidencias": [{
+    "id": "9b91733a",
+    "f": "2026-10-10",
+    "u": "WEXPOSITO",
+    "tipo": "Cliente ausente",
+    "estado": "RESTAURADA",
+    "resp": "Cliente",
+    "cli": "ARMANDO GONZALEZ RODRIGUEZ",
+    "fin": "2026-10-10",
+    "int": 3,
+    "url": "https://drive.google.com/file/d/1SKgedYFEpyIFlZd9G8A35Y6Sj_wosWjf/view",
+    "sol": "Su mujer no estaba. Dice que estará él de 19-22h."
+  }, {
+    "id": "66590ba9",
+    "f": "2026-10-10",
+    "u": "WEXPOSITO",
+    "tipo": "Producto faltante o dañado",
+    "estado": "SOLUCIONADA",
+    "resp": "Tienda",
+    "cli": "MARIA LUZ GONZALEZ QUEIJA",
+    "fin": "2026-10-10",
+    "int": 0,
+    "url": "https://drive.google.com/file/d/1ZvgzdCnseRRh8mxEpSZiOSD7gLAW__88/view",
+    "sol": "Problema en la botella. El cliente dice que no hace falta cambiarla."
+  }, {
+    "id": "8b64e419",
+    "f": "2026-10-13",
+    "u": "WBEZERRA",
+    "tipo": "Cliente ausente",
+    "estado": "SOLUCIONADA",
+    "resp": "Cliente",
+    "cli": "BOUCHRA",
+    "fin": "2026-10-14",
+    "int": 3,
+    "url": "https://drive.google.com/file/d/1-h9qW6XdGA7Lw83wQNKwScnvgaM6uL1w/view",
+    "sol": "Se entregó el mismo día en el mismo tramo."
+  }, {
+    "id": "8713ca83",
+    "f": "2026-10-15",
+    "u": "WEXPOSITO",
+    "tipo": "Cliente ausente",
+    "estado": "SOLUCIONADA",
+    "resp": "Cliente",
+    "cli": "RICON DO PORRON",
+    "fin": "2026-10-15",
+    "int": 3,
+    "url": "https://drive.google.com/file/d/1pfCPcDcCMuKRoOv1X7VtONh_phMurWzM/view",
+    "sol": "El cliente estaba en el gimnasio. Se vuelve en el siguiente tramo."
+  }, {
+    "id": "fcd941cc",
+    "f": "2026-10-15",
+    "u": "WBEZERRA",
+    "tipo": "Cliente ausente",
+    "estado": "SOLUCIONADA",
+    "resp": "Cliente",
+    "cli": "MARIA ALEJANDRA GARCIA SOLIDORO",
+    "fin": "2026-10-15",
+    "int": 3,
+    "url": "https://drive.google.com/file/d/1LZx5XxMgtvahw2nIYSZHtrtBN7xhEow2/view",
+    "sol": "El cliente no estaba. Volvió y se entregó el mismo día."
+  }, {
+    "id": "4d11a463",
+    "f": "2026-10-16",
+    "u": "WCOELHO",
+    "tipo": "Compra rechazada",
+    "estado": "SOLUCIONADA",
+    "resp": "No identificado",
+    "cli": "TESTE TESTE",
+    "fin": "2026-10-16",
+    "int": 0,
+    "url": "https://drive.google.com/file/d/1C1o7FxIkAgZ7IUPIybXQnWgxk8HW8sxk/view",
+    "sol": "Fila de prueba."
+  }, {
+    "id": "98d0367c",
+    "f": "2026-10-16",
+    "u": "ABRAHAM",
+    "tipo": "Dirección incorrecta",
+    "estado": "SOLUCIONADA",
+    "resp": "Tienda",
+    "cli": "MARÍA DEL MAR",
+    "fin": "2026-10-16",
+    "int": 0,
+    "url": "https://drive.google.com/file/d/1SYb6vPKEjLkzsCFmn6MyzwDYsRNNTFae/view",
+    "sol": "Se cobró otro ticket de la tienda, que se entregará en la próxima vuelta."
+  }, {
+    "id": "b3e1541b",
+    "f": "2026-10-16",
+    "u": "WBEZERRA",
+    "tipo": "Cliente ausente",
+    "estado": "SOLUCIONADA",
+    "resp": "Cliente",
+    "cli": "AZAHARA MELEÁN ÁLVAREZ",
+    "fin": "2026-10-16",
+    "int": 1,
+    "url": "https://drive.google.com/file/d/1L5DX2Fi_-h4wv2tFUoXNRgOuH9J5ZoGb/view",
+    "sol": "Entregado en segunda vuelta dentro del tramo."
+  }, {
+    "id": "6bb3352e",
+    "f": "2026-10-17",
+    "u": "WEXPOSITO",
+    "tipo": "Cliente ausente",
+    "estado": "SOLUCIONADA",
+    "resp": "Cliente",
+    "cli": "YOLANDA FERNÁNDEZ FERRERO",
+    "fin": "2026-10-17",
+    "int": 1,
+    "url": "https://drive.google.com/file/d/1I8IjkrL26aEzklEe-QIM2Xj5udhF1Pkw/view",
+    "sol": "Se dejó en la puerta y se apuntó el DNI."
+  }]
 };
 const {
   useState,
@@ -1317,16 +1401,50 @@ function App() {
     }
   }, /*#__PURE__*/React.createElement(SectionHead, {
     n: "Estilo de conducci\xF3n",
-    title: "Puntuaci\xF3n de la furgoneta",
+    title: rep === "*" ? "Toda la flota" : "Al volante",
     right: /*#__PURE__*/React.createElement("span", {
-      className: "pill demo"
-    }, "datos de ejemplo"),
-    sub: "Queda a la espera de la telemetr\xEDa; la pantalla ya est\xE1 hecha."
+      className: "pill"
+    }, "carga del ", DATA.conduccion.periodo),
+    sub: "Hoja ESTILO CONDUCCI\xD3N de MANTENIMIENTO_FLOTA_COLATINO. En aceleraci\xF3n y frenado, cuanto m\xE1s bajo, mejor."
   }), (() => {
-    const d = DATA.demo.conduccion;
-    const score = d.score;
-    const col = score >= 85 ? T.good : score >= 70 ? T.warn : T.crit;
-    return /*#__PURE__*/React.createElement("div", {
+    const filas = DATA.conduccion.filas;
+    const mia = rep === "*" ? null : filas.find(f => f.rep === rep);
+    if (rep !== "*" && !mia) return /*#__PURE__*/React.createElement("p", {
+      className: "text-[13px]",
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, rep, " todav\xEDa no aparece en la hoja ESTILO CONDUCCI\xD3N.");
+    const mAcel = filas.reduce((s, f) => s + f.acel, 0) / filas.length;
+    const mFreno = filas.reduce((s, f) => s + f.freno, 0) / filas.length;
+    const d = mia || {
+      score: filas.reduce((s, f) => s + f.score, 0) / filas.length,
+      acel: mAcel,
+      freno: mFreno,
+      km: filas.reduce((s, f) => s + f.km, 0),
+      tiempo: null
+    };
+    const score = Math.round(d.score * 10) / 10;
+    const col = score >= 90 ? T.good : score >= 75 ? T.warn : T.crit;
+    const tope = Math.max(...filas.map(f => Math.max(f.acel, f.freno)));
+    const colorIdx = (v, m) => v <= m ? T.s3 : v <= m * 1.6 ? T.warn : T.crit;
+    const metricas = [{
+      k: "Índice de aceleración",
+      v: d.acel,
+      u: "",
+      pct: d.acel / tope * 100,
+      c: colorIdx(d.acel, mAcel),
+      ref: "media de la flota " + mAcel.toFixed(1).replace(".", ",")
+    }, {
+      k: "Índice de frenado",
+      v: d.freno,
+      u: "",
+      pct: d.freno / tope * 100,
+      c: colorIdx(d.freno, mFreno),
+      ref: "media de la flota " + mFreno.toFixed(1).replace(".", ",")
+    }];
+    const maxScore = 100;
+    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       className: "flex flex-wrap items-center gap-5"
     }, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -1377,17 +1495,17 @@ function App() {
         lineHeight: 1,
         color: col
       }
-    }, score), /*#__PURE__*/React.createElement("div", {
+    }, String(score).replace(".", ",")), /*#__PURE__*/React.createElement("div", {
       className: "eyebrow",
       style: {
         fontSize: 10
       }
     }, "sobre 100")))), /*#__PURE__*/React.createElement("ul", {
-      className: "flex-1 flex flex-col gap-2",
+      className: "flex-1 flex flex-col gap-2.5",
       style: {
-        minWidth: 180
+        minWidth: 190
       }
-    }, d.metricas.map(m => /*#__PURE__*/React.createElement("li", {
+    }, metricas.map(m => /*#__PURE__*/React.createElement("li", {
       key: m.k
     }, /*#__PURE__*/React.createElement("div", {
       className: "flex items-baseline justify-between text-[12.5px]"
@@ -1399,14 +1517,10 @@ function App() {
     }, m.k), /*#__PURE__*/React.createElement("span", {
       className: "num",
       style: {
-        color: "var(--ink)"
+        color: "var(--ink)",
+        fontWeight: 700
       }
-    }, m.v, /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: "var(--ink-3)",
-        fontWeight: 600
-      }
-    }, " ", m.u))), /*#__PURE__*/React.createElement("div", {
+    }, String(m.v).replace(".", ","))), /*#__PURE__*/React.createElement("div", {
       style: {
         height: 6,
         background: "var(--grid)",
@@ -1419,15 +1533,67 @@ function App() {
         width: Math.min(100, m.pct) + "%",
         height: "100%",
         borderRadius: 3,
-        background: m.pct > 70 ? T.crit : m.pct > 40 ? T.warn : T.s3,
+        background: m.c,
         transition: "width .5s cubic-bezier(.2,.7,.3,1)"
       }
-    })))), /*#__PURE__*/React.createElement("li", {
-      className: "text-[12px] mt-1",
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "text-[11px] mt-0.5",
       style: {
         color: "var(--ink-3)"
       }
-    }, d.km, " km en el per\xEDodo")));
+    }, m.ref))), /*#__PURE__*/React.createElement("li", {
+      className: "flex gap-2 flex-wrap mt-0.5"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "pill"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "num"
+    }, nf(d.km)), " km"), d.tiempo && /*#__PURE__*/React.createElement("span", {
+      className: "pill"
+    }, d.tiempo, " al volante")))), /*#__PURE__*/React.createElement("div", {
+      className: "mt-4 pt-3",
+      style: {
+        borderTop: "1px solid var(--ring)"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "eyebrow mb-2"
+    }, "Puntuaci\xF3n de los ", filas.length), /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-col gap-1.5"
+    }, [...filas].sort((a, b) => b.score - a.score).map(f => /*#__PURE__*/React.createElement("div", {
+      key: f.rep,
+      className: "flex items-center gap-2 text-[12.5px]"
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 84,
+        fontWeight: f.rep === rep ? 700 : 600,
+        color: f.rep === rep ? "var(--ink)" : "var(--ink-2)"
+      },
+      className: "truncate"
+    }, f.rep), /*#__PURE__*/React.createElement("span", {
+      style: {
+        flex: 1,
+        height: 8,
+        background: "var(--grid)",
+        borderRadius: 4,
+        overflow: "hidden",
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: "block",
+        width: f.score / maxScore * 100 + "%",
+        height: "100%",
+        borderRadius: 4,
+        background: f.rep === rep ? T.brand : T["seq-2"],
+        opacity: f.rep === rep ? 1 : .55,
+        transition: "width .5s cubic-bezier(.2,.7,.3,1)"
+      }
+    })), /*#__PURE__*/React.createElement("strong", {
+      className: "num",
+      style: {
+        width: 40,
+        textAlign: "right"
+      }
+    }, String(f.score).replace(".", ",")))))));
   })())), /*#__PURE__*/React.createElement(Card, {
     className: "p-4 mb-8 enter",
     style: {
@@ -1609,38 +1775,47 @@ function App() {
     style: {
       animationDelay: "300ms"
     }
-  }, /*#__PURE__*/React.createElement(SectionHead, {
-    n: "Incidencias",
-    title: "Del d\xEDa y del per\xEDodo",
-    right: /*#__PURE__*/React.createElement("span", {
-      className: "pill demo"
-    }, "datos de ejemplo"),
-    sub: "Saldr\xE1n de la hoja INCIDENCIAS, filtradas por responsable y fecha."
-  }), (() => {
-    const d = DATA.demo.incidencias;
-    const max = Math.max(1, ...d.tipos.map(t => t.v));
-    return /*#__PURE__*/React.createElement("div", {
-      className: "grid gap-5",
-      style: {
-        gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))"
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "flex gap-3 flex-wrap items-start"
+  }, (() => {
+    const dentro = DATA.incidencias.filter(i => i.f >= periodo.ini && i.f <= periodo.fin && (rep === "*" || i.u === rep));
+    const hoy = dentro.filter(i => i.f === SNAPSHOT).length;
+    const cerradas = dentro.filter(i => i.fin).length;
+    const abiertas = dentro.length - cerradas;
+    const cuenta = campo => {
+      const m = new Map();
+      dentro.forEach(i => m.set(i[campo] || "Sin indicar", (m.get(i[campo] || "Sin indicar") || 0) + 1));
+      return [...m.entries()].sort((a, b) => b[1] - a[1]);
+    };
+    const tipos = cuenta("tipo"),
+      resp = cuenta("resp");
+    const maxT = Math.max(1, ...tipos.map(t => t[1]));
+    const tasa = agg.total ? dentro.length / agg.total * 100 : 0;
+    const colResp = r => r === "Cliente" ? T.s1 : r === "Tienda" ? T.s2 : T["ink-3"];
+    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionHead, {
+      n: "Incidencias",
+      title: "Del d\xEDa y del per\xEDodo",
+      right: /*#__PURE__*/React.createElement("span", {
+        className: "pill"
+      }, /*#__PURE__*/React.createElement("span", {
+        className: "num"
+      }, tasa.toFixed(1).replace(".", ","), "%"), " de las entregas"),
+      sub: "Hoja INCIDENCIAS, filtrada por el usuario que la registró y por fecha."
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "flex gap-3 flex-wrap items-start mb-5"
     }, [{
       l: "Hoy",
-      v: d.hoy,
-      c: T.warn
+      v: hoy,
+      c: hoy ? T.warn : T["ink-3"]
     }, {
       l: "Período",
-      v: d.periodo,
+      v: dentro.length,
       c: T.s2
     }, {
-      l: "Abiertas",
-      v: d.abiertas,
-      c: T.crit
+      l: "Sin cerrar",
+      v: abiertas,
+      c: abiertas ? T.crit : T["ink-3"]
     }, {
-      l: "Finalizadas",
-      v: d.finalizadas,
+      l: "Cerradas",
+      v: cerradas,
       c: T.good
     }].map(x => /*#__PURE__*/React.createElement("div", {
       key: x.l,
@@ -1659,26 +1834,38 @@ function App() {
         color: x.c,
         lineHeight: 1.05
       }
-    }, x.v)))), /*#__PURE__*/React.createElement("ul", {
-      className: "flex flex-col gap-2",
+    }, x.v)))), dentro.length === 0 ? /*#__PURE__*/React.createElement("p", {
+      className: "text-[13px]",
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, "Ninguna incidencia registrada en este per\xEDodo", rep === "*" ? "" : " por " + rep, ". El registro de incidencias empez\xF3 el 10 de octubre.") : /*#__PURE__*/React.createElement("div", {
+      className: "grid gap-5",
+      style: {
+        gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-col gap-4",
       style: {
         minWidth: 0
       }
+    }, /*#__PURE__*/React.createElement("ul", {
+      className: "flex flex-col gap-2"
     }, /*#__PURE__*/React.createElement("li", {
       className: "eyebrow"
-    }, "Por tipo"), d.tipos.map(t => /*#__PURE__*/React.createElement("li", {
-      key: t.k
+    }, "Por tipo"), tipos.map(([k, v]) => /*#__PURE__*/React.createElement("li", {
+      key: k
     }, /*#__PURE__*/React.createElement("div", {
-      className: "flex items-baseline justify-between text-[12.5px]"
+      className: "flex items-baseline justify-between gap-2 text-[12.5px]"
     }, /*#__PURE__*/React.createElement("span", {
       className: "truncate",
       style: {
         color: "var(--ink-2)",
         fontWeight: 600
       }
-    }, t.k), /*#__PURE__*/React.createElement("strong", {
+    }, k), /*#__PURE__*/React.createElement("strong", {
       className: "num"
-    }, t.v)), /*#__PURE__*/React.createElement("div", {
+    }, v)), /*#__PURE__*/React.createElement("div", {
       style: {
         height: 6,
         background: "var(--grid)",
@@ -1688,15 +1875,108 @@ function App() {
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        width: t.v / max * 100 + "%",
+        width: v / maxT * 100 + "%",
         height: "100%",
-        background: "var(--s2)",
+        background: T.s2,
         borderRadius: 3
       }
-    }))))), /*#__PURE__*/React.createElement("div", {
-      className: "text-[12.5px] leading-relaxed",
+    }))))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "eyebrow mb-2"
+    }, "De qui\xE9n fue"), /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-wrap gap-2"
+    }, resp.map(([k, v]) => /*#__PURE__*/React.createElement("span", {
+      key: k,
+      className: "pill",
+      style: {
+        color: "var(--ink)"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 8,
+        height: 8,
+        borderRadius: 2,
+        background: colResp(k),
+        display: "inline-block"
+      }
+    }), k, " ", /*#__PURE__*/React.createElement("strong", {
+      className: "num"
+    }, v)))), !resp.some(([k]) => /usuario|repartidor/i.test(k)) && /*#__PURE__*/React.createElement("p", {
+      className: "text-[11.5px] mt-2",
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, "Ninguna tiene como responsable al repartidor."))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "eyebrow mb-2"
+    }, "Una a una"), /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-col gap-2",
+      style: {
+        maxHeight: 300,
+        overflowY: "auto",
+        paddingRight: 4
+      }
+    }, dentro.map(i => /*#__PURE__*/React.createElement("div", {
+      key: i.id,
+      style: {
+        background: "var(--surface-2)",
+        border: "1px solid var(--ring)",
+        borderRadius: 10,
+        padding: "9px 11px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-baseline justify-between gap-2"
+    }, /*#__PURE__*/React.createElement("strong", {
+      className: "text-[13px]"
+    }, i.tipo), /*#__PURE__*/React.createElement("span", {
+      className: "num text-[12px]",
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, fmtDay(i.f))), /*#__PURE__*/React.createElement("div", {
+      className: "text-[12px] truncate",
       style: {
         color: "var(--ink-2)"
+      }
+    }, i.cli), /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-wrap items-center gap-1.5 mt-1.5"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "pill",
+      style: {
+        color: colResp(i.resp)
+      }
+    }, i.resp), /*#__PURE__*/React.createElement("span", {
+      className: "pill",
+      style: {
+        color: i.fin ? "var(--good)" : "var(--crit)"
+      }
+    }, i.estado.toLowerCase()), i.int > 0 && /*#__PURE__*/React.createElement("span", {
+      className: "pill"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "num"
+    }, i.int), " intentos"), rep === "*" && /*#__PURE__*/React.createElement("span", {
+      className: "pill"
+    }, i.u), i.url && /*#__PURE__*/React.createElement("a", {
+      href: i.url,
+      target: "_blank",
+      rel: "noopener noreferrer",
+      className: "pill",
+      style: {
+        color: "var(--brand)",
+        textDecoration: "none"
+      }
+    }, "ticket")), i.sol && /*#__PURE__*/React.createElement("p", {
+      className: "text-[11.5px] mt-1.5",
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, i.sol))))), /*#__PURE__*/React.createElement("div", {
+      className: "text-[12.5px] leading-relaxed",
+      style: {
+        color: "var(--ink-2)",
+        minWidth: 0
       }
     }, /*#__PURE__*/React.createElement("p", {
       className: "mb-2"
@@ -1708,7 +1988,7 @@ function App() {
       style: {
         color: "var(--ink-3)"
       }
-    }, "Cliente ausente con vuelta = ticket nuevo y entrega nueva.")));
+    }, "Cliente ausente con vuelta = ticket nuevo y entrega nueva. Una incidencia RESTAURADA es la que devolvi\xF3 el pedido a la ruta."))));
   })()), /*#__PURE__*/React.createElement("footer", {
     className: "text-[12px] leading-relaxed enter",
     style: {
@@ -1737,9 +2017,13 @@ function App() {
     }
   }, "Niveles y tienda por defecto"), " \u2014 hoja USUARIOS de DATABASE."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("strong", {
     style: {
-      color: "var(--warn)"
+      color: "var(--ink-2)"
     }
-  }, "Estilo de conducci\xF3n e incidencias"), " \u2014 datos de ejemplo: falta conectar la telemetr\xEDa de las furgonetas y la hoja INCIDENCIAS.")), /*#__PURE__*/React.createElement("p", {
+  }, "Estilo de conducci\xF3n"), " \u2014 hoja ESTILO CONDUCCI\xD3N de MANTENIMIENTO_FLOTA_COLATINO. Carga del ", DATA.conduccion.periodo, ": es la \xFAltima que hay, todav\xEDa no va por per\xEDodo."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("strong", {
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, "Incidencias"), " \u2014 planilla INCIDENCIAS, filtrada por el usuario que la registr\xF3. El registro arranc\xF3 el 10 de octubre, as\xED que el per\xEDodo anterior sale vac\xEDo.")), /*#__PURE__*/React.createElement("p", {
     className: "mt-3"
   }, "Foto de los datos del ", fmtDay(SNAPSHOT), " de 2026. En Nexo esta misma pantalla leer\xEDa las hojas en vivo y el selector de repartidor solo lo ver\xEDa el ADM."))));
 }
