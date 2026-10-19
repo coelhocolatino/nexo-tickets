@@ -7,6 +7,7 @@ const ASSETS = [
   "./",
   "./login.html",
   "./index.html",
+  "./auto.html",
   "./inicio-embolsado.html",
   "./manifest.json",
   "./nexo-icon-192.png",
