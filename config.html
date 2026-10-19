@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <!-- Nexo · Configuración (solo ADM)
      v3.10.10 (2026-10-17, ronda 34): en «Reservas automáticas», NOMBRE y DIRECCIÓN en campos separados
+     v3.10.11 (2026-10-19, ronda 41): «Informes automáticos» — por tienda, el informe diario y el
+                                      mensual se encienden, se configuran y se envían por separado
        (antes un solo campo «Cliente / dirección»). El nombre se graba en la columna NOMBRE de DATABASE
        y la dirección en CLIENTE/DIRECCIÓN, igual que hace el ticket.
      v3.10.9 (2026-10-17, ronda 34): las reservas automáticas se crean el MISMO DÍA de madrugada
@@ -17,7 +19,7 @@
      guardarReservaAuto, borrarReservaAuto; disparador generarReservasAuto).
      Se mantienen: Pedidos diarios emitidos (NEXO SCRIPT, PEDIDOS_TOTALES; GRANVIA en su
      columna) y Límites por franja (Módulo Embolsado, hoja LIMITES). -->
-<html lang="es" data-pagina="config" data-version="v3.10.10">
+<html lang="es" data-pagina="config" data-version="v3.10.11">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -140,6 +142,10 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
 .cfg-dest label{display:flex;align-items:center;gap:9px;padding:8px 2px;font-size:14px;cursor:pointer}
 .cfg-dest input[type=radio]{width:20px;height:20px;flex:none}
 .cfg-aviso{font-size:13px;color:var(--nx-suave,#4F6078);margin:2px 0 10px}
+.cfg-bloque{border:1px solid var(--nx-borde,#DCE3EC);border-radius:12px;padding:12px 14px;margin:0 0 14px;background:#fff}
+.cfg-bloque>.cfg-tit{font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--nx-azul,#17407A);margin:0 0 6px}
+.cfg-bloque .sw-fila{padding-left:0;padding-right:0}
+.cfg-bloque .cfg-dest{margin-top:8px;padding-top:6px;border-top:1px dashed var(--nx-borde,#DCE3EC)}
 </style>
 </head>
 <body class="nx">
@@ -242,7 +248,9 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
     'Límites por franja': '7 días × 4 franjas',
     'Reservas automáticas': 'Reglas que crean reservas solas',
     'Informes automáticos': function () {
-      if (!CFG.datos) return 'Diario y mensual por tienda';
+      /* Este bloque corre antes de que exista CFG: sin typeof, petaría y dejaría
+         las secciones de abajo (Teléfonos útiles) a medio montar. */
+      if (typeof CFG === 'undefined' || !CFG.datos) return 'Diario y mensual por tienda';
       var on = CFG.datos.filter(function (t) { return t.diario || t.mensual; }).length;
       return on + ' de ' + CFG.datos.length + ' tiendas con envío automático';
     }
@@ -258,7 +266,8 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
       var e = window.NexoTelefonos && window.NexoTelefonos.estado();
       return e && e.guardado ? e.count + ' guardados · ' + e.texto : 'Sin cargar';
     }
-    var r = RES[t]; return typeof r === 'function' ? r() : (r || '');
+    var r = RES[t];
+    try { return typeof r === 'function' ? r() : (r || ''); } catch (e) { return ''; }
   }
   function poner(sec, t, abrir) {
     sec.classList.toggle('abierta', abrir);
@@ -605,24 +614,45 @@ function cfgOrdenCampos(t) {
   return t.campos.concat(fuera);
 }
 
+function cfgDestinoHtml(suf, titulo, destino, correos, grupo) {
+  return '<div class="cfg-dest"><span class="etq">' + titulo + '</span>' +
+    '<label><input type="radio" name="cfgDest' + suf + '" value="GRUPO"' + (destino !== 'MANUAL' ? ' checked' : '') +
+      ' onchange="cfgMarcar()"><span>Como siempre &mdash; <b>' + esc(grupo) + '</b></span></label>' +
+    '<label><input type="radio" name="cfgDest' + suf + '" value="MANUAL"' + (destino === 'MANUAL' ? ' checked' : '') +
+      ' onchange="cfgMarcar()"><span>Escribir los correos</span></label>' +
+    '<textarea class="in" id="cfgCorreos' + suf + '" rows="2" placeholder="correo@uno.com, correo@dos.com"' +
+      (destino === 'MANUAL' ? '' : ' style="display:none"') + '>' + esc((correos || []).join(', ')) + '</textarea>' +
+    '</div>';
+}
+
 function cfgPintar() {
   var t = cfgActual();
   if (!t) { el('cfgCuerpo').innerHTML = '<div class="ra-vacio">Sin datos.</div>'; return; }
   var orden = cfgOrdenCampos(t);
+  var esDia = CFG.tienda === 'GRUPO %DIA';
+  var g = CFG.grupos[CFG.tienda] || {};
   var h = '';
 
-  h += '<label class="sw-fila" for="cfgDiario"><span><b>Informe diario automático</b>' +
+  /* ── Informe diario: su interruptor y SUS destinatarios ── */
+  h += '<div class="cfg-bloque"><div class="cfg-tit">Informe diario</div>';
+  h += '<label class="sw-fila" for="cfgDiario"><span><b>Enviarlo automáticamente</b>' +
        '<span class="nota" style="display:block;margin-top:2px">' +
-       (CFG.tienda === 'GRUPO %DIA' ? 'El %DIA todavía no tiene informe diario.' : 'Sale solo cada día a las 11:00.') +
+       (esDia ? 'El %DIA todavía no tiene informe diario.' : 'Sale solo cada día a las 11:00.') +
        '</span></span><input type="checkbox" id="cfgDiario"' + (t.diario ? ' checked' : '') +
-       (CFG.tienda === 'GRUPO %DIA' ? ' disabled' : '') + '></label>';
+       (esDia ? ' disabled' : '') + '></label>';
+  /* En el %DIA no hay informe diario todavía: preguntar a quién enviarlo solo confunde. */
+  if (!esDia) h += cfgDestinoHtml('D', 'A quién se envía el informe diario', t.diarioDestino, t.diarioCorreos,
+                                  g.diario || 'el grupo de la hoja CORREOS');
+  h += '</div>';
 
-  h += '<label class="sw-fila" for="cfgMensual"><span><b>Informe mensual automático</b>' +
+  /* ── Informe mensual: su interruptor, sus columnas y SUS destinatarios ── */
+  h += '<div class="cfg-bloque"><div class="cfg-tit">Informe mensual</div>';
+  h += '<label class="sw-fila" for="cfgMensual"><span><b>Enviarlo automáticamente</b>' +
        '<span class="nota" style="display:block;margin-top:2px">' +
-       (CFG.tienda === 'GRUPO %DIA' ? 'Pendiente: el informe mensual del %DIA aún no está hecho.' : 'Sale solo el día 27 a las 21:00.') +
+       (esDia ? 'Pendiente: el informe mensual del %DIA aún no está hecho.' : 'Sale solo el día 27 a las 21:00.') +
        '</span></span><input type="checkbox" id="cfgMensual"' + (t.mensual ? ' checked' : '') + '></label>';
 
-  h += '<div><span class="etq">Columnas del informe mensual</span>' +
+  h += '<div style="margin-top:10px"><span class="etq">Columnas del informe mensual</span>' +
        '<div class="cfg-aviso">Marca las que quieras y usa las flechas para ordenarlas. Tiene que quedar al menos una.</div>';
   orden.forEach(function (id, i) {
     var on = t.campos.indexOf(id) !== -1;
@@ -635,16 +665,9 @@ function cfgPintar() {
            '</span></div>';
   });
   h += '</div>';
-
-  var grupo = CFG.grupos[CFG.tienda] || 'el grupo de la hoja CORREOS';
-  h += '<div class="cfg-dest"><span class="etq">A quién se envía</span>' +
-       '<label><input type="radio" name="cfgDest" value="GRUPO"' + (t.destino !== 'MANUAL' ? ' checked' : '') +
-         ' onchange="cfgMarcar()"><span>Como siempre — <b>' + esc(grupo) + '</b></span></label>' +
-       '<label><input type="radio" name="cfgDest" value="MANUAL"' + (t.destino === 'MANUAL' ? ' checked' : '') +
-         ' onchange="cfgMarcar()"><span>Escribir los correos</span></label>' +
-       '<textarea class="in" id="cfgCorreos" rows="2" placeholder="correo@uno.com, correo@dos.com"' +
-         (t.destino === 'MANUAL' ? '' : ' style="display:none"') + '>' + esc((t.correos || []).join(', ')) + '</textarea>' +
-       '</div>';
+  h += cfgDestinoHtml('M', 'A quién se envía el informe mensual', t.mensualDestino, t.mensualCorreos,
+                      g.mensual || 'el grupo de la hoja CORREOS');
+  h += '</div>';
 
   el('cfgCuerpo').innerHTML = h;
   var sw = el('cfgDiario'); if (sw) sw.addEventListener('change', cfgMarcar);
@@ -662,15 +685,25 @@ function cfgRecoger() {
   var orden = cfgOrdenCampos(t);
   CFG.orden[t.tienda] = orden;
   t.campos = orden.filter(function (id) { var c = el('cfgC_' + id); return c && c.checked; });
-  var r = document.querySelector('input[name="cfgDest"]:checked');
-  t.destino = r ? r.value : 'GRUPO';
-  t.correos = String((el('cfgCorreos') || {}).value || '').split(/[,;\s]+/)
-    .map(function (x) { return x.trim(); }).filter(function (x) { return x; });
+
+  function leer(suf) {
+    var r = document.querySelector('input[name="cfgDest' + suf + '"]:checked');
+    return {
+      destino: r ? r.value : 'GRUPO',
+      correos: String((el('cfgCorreos' + suf) || {}).value || '').split(/[,;\s]+/)
+        .map(function (x) { return x.trim(); }).filter(function (x) { return x; })
+    };
+  }
+  var dia = leer('D'), men = leer('M');
+  t.diarioDestino = dia.destino;   t.diarioCorreos = dia.correos;
+  t.mensualDestino = men.destino;  t.mensualCorreos = men.correos;
 }
 function cfgMarcar() {
-  var ta = el('cfgCorreos');
-  var r = document.querySelector('input[name="cfgDest"]:checked');
-  if (ta) ta.style.display = (r && r.value === 'MANUAL') ? '' : 'none';
+  ['D', 'M'].forEach(function (suf) {
+    var ta = el('cfgCorreos' + suf);
+    var r = document.querySelector('input[name="cfgDest' + suf + '"]:checked');
+    if (ta) ta.style.display = (r && r.value === 'MANUAL') ? '' : 'none';
+  });
   cfgRecoger();
   var cambiado = JSON.stringify(CFG.datos) !== CFG.original;
   el('btnCfgGuardar').disabled = !cambiado;
