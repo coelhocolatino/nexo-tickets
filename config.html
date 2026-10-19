@@ -129,6 +129,17 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
 .acc-cuerpo[hidden] { display:none; }
 .tel-dato { font-size:15px; font-weight:600; line-height:1.35; margin:0; }
 @media (prefers-reduced-motion: reduce) { .acc-chev { transition:none; } }
+/* Ronda 41: informes automáticos */
+.cfg-campo{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--nx-linea,#D7DEE8);border-radius:10px;margin-bottom:6px;background:#fff}
+.cfg-campo.off{opacity:.55}
+.cfg-campo .nom{flex:1;font-weight:600;font-size:14px}
+.cfg-campo input[type=checkbox]{width:22px;height:22px;flex:none}
+.cfg-mover{display:flex;gap:4px;flex:none}
+.cfg-mover button{width:34px;height:34px;border:1px solid var(--nx-linea,#D7DEE8);background:#fff;border-radius:8px;font-size:15px;line-height:1;cursor:pointer;color:var(--nx-tinta,#102A4C)}
+.cfg-mover button:disabled{opacity:.3;cursor:default}
+.cfg-dest label{display:flex;align-items:center;gap:9px;padding:8px 2px;font-size:14px;cursor:pointer}
+.cfg-dest input[type=radio]{width:20px;height:20px;flex:none}
+.cfg-aviso{font-size:13px;color:var(--nx-suave,#4F6078);margin:2px 0 10px}
 </style>
 </head>
 <body class="nx">
@@ -203,7 +214,24 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
     <div class="msg" id="msgRA"></div>
   </section>
 
-  <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.10</div>
+  <!-- Informes automáticos (Ronda 41) -->
+  <section class="sec">
+    <h2>Informes automáticos</h2>
+    <p class="nota">Qué informes salen solos, qué columnas lleva el mensual y a quién se envían. Se guarda en la hoja INFORMES_CONFIG de DATABASE. Apagar el envío automático no impide generarlos a mano.</p>
+    <div class="nx-pestanas" role="group" aria-label="Tienda de los informes">
+      <button class="on" data-cfgtienda="TRAVESIA" onclick="elegirTiendaCfg(this)">TRAVESIA</button>
+      <button data-cfgtienda="GRANVIA" onclick="elegirTiendaCfg(this)">GRANVIA</button>
+      <button data-cfgtienda="GRUPO %DIA" onclick="elegirTiendaCfg(this)">GRUPO %DIA</button>
+    </div>
+    <div id="cfgCuerpo"><div class="ra-vacio">Cargando…</div></div>
+    <div class="fila-btn">
+      <button class="btn-s" id="btnCfgDeshacer" type="button" disabled>Deshacer</button>
+      <button class="btn-p" id="btnCfgGuardar" type="button" disabled>Guardar</button>
+    </div>
+    <div class="msg" id="msgCfg"></div>
+  </section>
+
+  <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.11</div>
 </main>
 <script>
 /* Ronda 27: secciones plegables (solo se abre una) + sección de teléfonos útiles. */
@@ -212,7 +240,12 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
     'Pedidos diarios emitidos': 'Total de pedidos por día',
     'Llamadas desde la app': function () { try { return localStorage.getItem('nexo_ocultar_numero') === '1' ? 'Ocultar número: activado' : 'Ocultar número: desactivado'; } catch (e) { return ''; } },
     'Límites por franja': '7 días × 4 franjas',
-    'Reservas automáticas': 'Reglas que crean reservas solas'
+    'Reservas automáticas': 'Reglas que crean reservas solas',
+    'Informes automáticos': function () {
+      if (!CFG.datos) return 'Diario y mensual por tienda';
+      var on = CFG.datos.filter(function (t) { return t.diario || t.mensual; }).length;
+      return on + ' de ' + CFG.datos.length + ' tiendas con envío automático';
+    }
   };
   var CHEV = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
   var secs = Array.prototype.slice.call(document.querySelectorAll('main.nx-pag > section.sec'));
@@ -544,7 +577,151 @@ function borrarRA() {
   });
 }
 
-if (String(sesion.nivel || '').toLowerCase() === 'admin') { cargar(); cargarLimites(); cargarRA(); }
+
+/* ================= INFORMES AUTOMÁTICOS (Ronda 41) ================= */
+var CFG = { datos: null, campos: [], grupos: {}, tienda: 'TRAVESIA', original: '', orden: {} };
+
+function elegirTiendaCfg(b) {
+  cfgRecoger();                                   // no se pierde lo tocado en la pestaña anterior
+  document.querySelectorAll('[data-cfgtienda]').forEach(function (x) { x.classList.toggle('on', x === b); });
+  CFG.tienda = b.getAttribute('data-cfgtienda');
+  cfgPintar();
+}
+function cfgActual() {
+  for (var i = 0; i < CFG.datos.length; i++) if (CFG.datos[i].tienda === CFG.tienda) return CFG.datos[i];
+  return null;
+}
+function cfgEtiqueta(id) {
+  for (var i = 0; i < CFG.campos.length; i++) if (CFG.campos[i].id === id) return CFG.campos[i].etiqueta;
+  return id;
+}
+/** Los elegidos en su orden y detrás los que no están, para poder añadirlos. */
+function cfgOrdenCampos(t) {
+  // Si ya se movió algo, manda ese orden (incluidos los no marcados, para que la
+  // lista no salte al repintar). Si no, los elegidos primero y detrás el resto.
+  var guardado = CFG.orden[t.tienda];
+  if (guardado && guardado.length === CFG.campos.length) return guardado.slice();
+  var fuera = CFG.campos.map(function (c) { return c.id; }).filter(function (id) { return t.campos.indexOf(id) === -1; });
+  return t.campos.concat(fuera);
+}
+
+function cfgPintar() {
+  var t = cfgActual();
+  if (!t) { el('cfgCuerpo').innerHTML = '<div class="ra-vacio">Sin datos.</div>'; return; }
+  var orden = cfgOrdenCampos(t);
+  var h = '';
+
+  h += '<label class="sw-fila" for="cfgDiario"><span><b>Informe diario automático</b>' +
+       '<span class="nota" style="display:block;margin-top:2px">' +
+       (CFG.tienda === 'GRUPO %DIA' ? 'El %DIA todavía no tiene informe diario.' : 'Sale solo cada día a las 11:00.') +
+       '</span></span><input type="checkbox" id="cfgDiario"' + (t.diario ? ' checked' : '') +
+       (CFG.tienda === 'GRUPO %DIA' ? ' disabled' : '') + '></label>';
+
+  h += '<label class="sw-fila" for="cfgMensual"><span><b>Informe mensual automático</b>' +
+       '<span class="nota" style="display:block;margin-top:2px">' +
+       (CFG.tienda === 'GRUPO %DIA' ? 'Pendiente: el informe mensual del %DIA aún no está hecho.' : 'Sale solo el día 27 a las 21:00.') +
+       '</span></span><input type="checkbox" id="cfgMensual"' + (t.mensual ? ' checked' : '') + '></label>';
+
+  h += '<div><span class="etq">Columnas del informe mensual</span>' +
+       '<div class="cfg-aviso">Marca las que quieras y usa las flechas para ordenarlas. Tiene que quedar al menos una.</div>';
+  orden.forEach(function (id, i) {
+    var on = t.campos.indexOf(id) !== -1;
+    h += '<div class="cfg-campo' + (on ? '' : ' off') + '">' +
+           '<input type="checkbox" id="cfgC_' + esc(id) + '"' + (on ? ' checked' : '') + ' onchange="cfgMarcar()">' +
+           '<label class="nom" for="cfgC_' + esc(id) + '">' + esc(cfgEtiqueta(id)) + '</label>' +
+           '<span class="cfg-mover">' +
+             '<button type="button" aria-label="Subir" onclick="cfgMover(' + i + ',-1)"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+             '<button type="button" aria-label="Bajar" onclick="cfgMover(' + i + ',1)"' + (i === orden.length - 1 ? ' disabled' : '') + '>↓</button>' +
+           '</span></div>';
+  });
+  h += '</div>';
+
+  var grupo = CFG.grupos[CFG.tienda] || 'el grupo de la hoja CORREOS';
+  h += '<div class="cfg-dest"><span class="etq">A quién se envía</span>' +
+       '<label><input type="radio" name="cfgDest" value="GRUPO"' + (t.destino !== 'MANUAL' ? ' checked' : '') +
+         ' onchange="cfgMarcar()"><span>Como siempre — <b>' + esc(grupo) + '</b></span></label>' +
+       '<label><input type="radio" name="cfgDest" value="MANUAL"' + (t.destino === 'MANUAL' ? ' checked' : '') +
+         ' onchange="cfgMarcar()"><span>Escribir los correos</span></label>' +
+       '<textarea class="in" id="cfgCorreos" rows="2" placeholder="correo@uno.com, correo@dos.com"' +
+         (t.destino === 'MANUAL' ? '' : ' style="display:none"') + '>' + esc((t.correos || []).join(', ')) + '</textarea>' +
+       '</div>';
+
+  el('cfgCuerpo').innerHTML = h;
+  var sw = el('cfgDiario'); if (sw) sw.addEventListener('change', cfgMarcar);
+  el('cfgMensual').addEventListener('change', cfgMarcar);
+  cfgMarcar();
+}
+
+/** Lee la pantalla y lo guarda en memoria (sin enviar nada). */
+function cfgRecoger() {
+  if (!CFG.datos || !el('cfgMensual')) return;
+  var t = cfgActual(); if (!t) return;
+  var d = el('cfgDiario');
+  t.diario = d ? !!d.checked : t.diario;
+  t.mensual = !!el('cfgMensual').checked;
+  var orden = cfgOrdenCampos(t);
+  CFG.orden[t.tienda] = orden;
+  t.campos = orden.filter(function (id) { var c = el('cfgC_' + id); return c && c.checked; });
+  var r = document.querySelector('input[name="cfgDest"]:checked');
+  t.destino = r ? r.value : 'GRUPO';
+  t.correos = String((el('cfgCorreos') || {}).value || '').split(/[,;\s]+/)
+    .map(function (x) { return x.trim(); }).filter(function (x) { return x; });
+}
+function cfgMarcar() {
+  var ta = el('cfgCorreos');
+  var r = document.querySelector('input[name="cfgDest"]:checked');
+  if (ta) ta.style.display = (r && r.value === 'MANUAL') ? '' : 'none';
+  cfgRecoger();
+  var cambiado = JSON.stringify(CFG.datos) !== CFG.original;
+  el('btnCfgGuardar').disabled = !cambiado;
+  el('btnCfgDeshacer').disabled = !cambiado;
+  document.querySelectorAll('.cfg-campo').forEach(function (fila) {
+    var c = fila.querySelector('input[type=checkbox]');
+    fila.classList.toggle('off', !(c && c.checked));
+  });
+}
+function cfgMover(i, paso) {
+  cfgRecoger();
+  var t = cfgActual(), orden = cfgOrdenCampos(t), j = i + paso;
+  if (j < 0 || j >= orden.length) return;
+  var tmp = orden[i]; orden[i] = orden[j]; orden[j] = tmp;
+  CFG.orden[t.tienda] = orden;                                       // orden completo, para repintar igual
+  var sel = t.campos.slice();
+  t.campos = orden.filter(function (id) { return sel.indexOf(id) !== -1; });
+  cfgPintar();
+}
+
+function cargarCfgInformes() {
+  spin(true);
+  postEmbolsado({ accion: 'informesConfigObtener' }).then(function (r) {
+    spin(false);
+    if (!r || !r.ok) { el('cfgCuerpo').innerHTML = '<div class="ra-vacio">' + esc((r && r.error) || 'No se pudo cargar.') + '</div>'; return; }
+    CFG.datos = r.tiendas; CFG.campos = r.campos; CFG.grupos = r.gruposPorDefecto || {};
+    CFG.orden = {};
+    CFG.original = JSON.stringify(CFG.datos);
+    cfgPintar();
+  });
+}
+el('btnCfgDeshacer').addEventListener('click', function () {
+  CFG.datos = JSON.parse(CFG.original);
+  CFG.orden = {};
+  cfgPintar(); aviso('msgCfg', '');
+});
+el('btnCfgGuardar').addEventListener('click', function () {
+  cfgRecoger();
+  var vacia = CFG.datos.filter(function (t) { return !t.campos.length; })[0];
+  if (vacia) { aviso('msgCfg', 'En ' + vacia.tienda + ' hay que dejar al menos una columna.', 'error'); return; }
+  spin(true);
+  postEmbolsado({ accion: 'informesConfigGuardar', tiendas: CFG.datos }).then(function (r) {
+    spin(false);
+    if (!r || !r.ok) { aviso('msgCfg', (r && r.error) || 'No se pudo guardar.', 'error'); return; }
+    CFG.datos = r.tiendas; CFG.orden = {}; CFG.original = JSON.stringify(CFG.datos);
+    cfgPintar();
+    aviso('msgCfg', 'Guardado.', 'ok');
+  });
+});
+
+if (String(sesion.nivel || '').toLowerCase() === 'admin') { cargar(); cargarLimites(); cargarRA(); cargarCfgInformes(); }
 </script>
 </body>
 </html>
