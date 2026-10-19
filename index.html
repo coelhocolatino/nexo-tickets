@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — index.html (Inicio)
+     v3.11.1 (2026-10-19, ronda 45): botón «Flota» (flota.html) para todos.
      v3.11.0 (2026-10-19, ronda 43): el inicio pasa a ser SOLO BOTONERA. El
      formulario de subir ticket se muda a auto.html (botón «Auto-Asignar»), que
      funciona igual que hasta ahora pero marca el archivo con AUTO al final del
@@ -13,7 +14,7 @@
      Los globos de %DIA e Incidencias los sigue calculando nexo-nav.js: aquí
      solo se copian a los botones, sin pedir nada más al servidor.
      El departamento EMBOLSADO (sin ser ADM) sigue yendo a inicio-embolsado.html. -->
-<html lang="es" data-pagina="index" data-version="v3.11.0">
+<html lang="es" data-pagina="index" data-version="v3.11.1">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -191,6 +192,9 @@ var BOTONES = [
     ok: ES_ADMIN || ES_TRAV },
   { k: 'informe', t: 'Informe', sub: 'Del día y del mes', href: 'informe.html',
     ic: '<path d="M5 20V10M12 20V4M19 20v-7"/>',
+    ok: true },
+  { k: 'flota', t: 'Flota', sub: 'Combustible y mantenimiento', href: 'flota.html',
+    ic: '<path d="M4 20V5a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v15M3 20h12M6 7h5M16 9h3l1.5 2v7a1.5 1.5 0 0 1-3 0v-4h-1.5"/>',
     ok: true },
   { k: 'embolsado', t: 'Embolsado', sub: 'Leer tickets y preparar', href: EMBOLSADO_URL + '?u=' + USR, target: '_top',
     ic: '<path d="M6 8h12l1 12H5zM9 8V6a3 3 0 0 1 6 0v2"/>',

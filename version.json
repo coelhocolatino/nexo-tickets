@@ -1,10 +1,11 @@
 {
-  "index": "v3.11.0",
+  "index": "v3.11.1",
   "auto": "v3.11.0",
   "inicio-embolsado": "v3.10.4",
   "asignar": "v3.11.0",
   "dia": "v3.10.7",
   "incidencias": "v3.10.6",
   "config": "v3.10.11",
-  "reservas": "v3.10.2"
+  "reservas": "v3.10.2",
+  "flota": "v3.10.1"
 }
