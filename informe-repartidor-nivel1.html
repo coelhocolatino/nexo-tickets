@@ -1,11 +1,43 @@
-<title>Informe Repartidor Nexo</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<!DOCTYPE html>
+<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.20">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14171c">
+<meta name="color-scheme" content="dark light">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nexo Tickets">
+<link rel="icon" href="nexo-icon-192.png">
+<link rel="apple-touch-icon" href="nexo-icon-192.png">
+<title>Nexo · Informe del repartidor</title>
+<script>
+/* GUARD DE SESIÓN: igual que en index.html e informe.html. */
+(function(){
+  try{
+    var raw=sessionStorage.getItem('sad_user');
+    if(!raw){window.location.replace('login.html');return;}
+    var u=JSON.parse(raw);
+    if(!u||!u.usuario||!u.token){sessionStorage.removeItem('sad_user');window.location.replace('login.html');}
+  }catch(e){sessionStorage.removeItem('sad_user');window.location.replace('login.html');}
+})();
+</script>
+<style>
+/* reset mínimo: en el Artifact lo pone la plataforma, aquí lo ponemos nosotros */
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-size:14px}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.7/babel.min.js"></script>
 
 <style>
 /* Layout: una columna de bandas apiladas; cabecera fija con los dos filtros,
@@ -107,8 +139,16 @@ table.hm td{width:26px;height:24px;border-radius:4px;text-align:center;font-size
   *{transition-duration:.01ms!important}
 }
 .scrollx{overflow-x:auto}
+.navbtn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;
+  font:inherit;font-size:15px;font-weight:700;border:1px solid var(--ring);border-radius:12px;padding:14px 12px;
+  background:var(--surface-2);color:var(--ink);cursor:pointer;transition:transform .12s ease,background .18s ease}
+.navbtn:hover{background:var(--surface)}
+.navbtn:active{transform:scale(.98)}
+.navbtn.salir{background:rgba(208,59,59,.14);color:var(--crit);border-color:color-mix(in srgb,var(--crit) 40%,transparent)}
 </style>
 
+</head>
+<body>
 <div id="root"></div>
 
 <script>
@@ -328,7 +368,29 @@ const RC = Recharts;
 /* ---------------------------------------------------------------- utilidades */
 const DOW = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 const MON = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-const SNAPSHOT = DATA.snapshot; // último día con datos
+const SNAPSHOT = DATA.snapshot;
+
+/* Sesión de Nexo. Fuera de la app (vista previa) no hay sesión: se enseña el
+   selector de repartidor. Dentro, un USUARIO 1 queda fijado a su usuario y
+   solo el ADM puede cambiar de repartidor. */
+let SESION = null;
+try {
+  SESION = JSON.parse(sessionStorage.getItem("sad_user") || "null");
+} catch (e) {
+  SESION = null;
+}
+const USUARIO = SESION && SESION.usuario ? String(SESION.usuario).toUpperCase().trim() : null;
+const NIVEL_SESION = SESION && SESION.nivel ? String(SESION.nivel).toUpperCase().trim() : "";
+const ES_ADM = NIVEL_SESION === "ADMIN";
+const PUEDE_ELEGIR = ES_ADM || !SESION;
+const REP_INICIAL = ES_ADM ? "*" : USUARIO && DATA.reps.indexOf(USUARIO) >= 0 ? USUARIO : DATA.repOptions[0];
+function cerrarSesion() {
+  try {
+    sessionStorage.removeItem("sad_user");
+    localStorage.removeItem("sad_user");
+  } catch (e) {}
+  window.location.replace("login.html");
+} // último día con datos
 
 const toDate = iso => {
   const [y, m, d] = iso.split("-").map(Number);
@@ -686,7 +748,7 @@ function Tip({
 function App() {
   const T = useTokens();
   const [periodoId, setPeriodoId] = useState("act");
-  const [rep, setRep] = useState("WEXPOSITO");
+  const [rep, setRep] = useState(REP_INICIAL);
   const [vista, setVista] = useState("diario"); // diario | acumulado
   const [compMode, setCompMode] = useState("mio"); // mio | op
   const [drillDay, setDrillDay] = useState(null);
@@ -882,7 +944,7 @@ function App() {
     }
   }, "Nexo \xB7 ", periodo.label, " \xB7 datos al ", fmtDay(SNAPSHOT), " de 2026"))), /*#__PURE__*/React.createElement("div", {
     className: "flex flex-wrap items-center gap-2"
-  }, /*#__PURE__*/React.createElement("label", {
+  }, PUEDE_ELEGIR ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
     className: "sr-only",
     htmlFor: "selRep"
   }, "Repartidor"), /*#__PURE__*/React.createElement("select", {
@@ -892,7 +954,15 @@ function App() {
   }, DATA.repOptions.map(o => /*#__PURE__*/React.createElement("option", {
     key: o,
     value: o
-  }, o === "*" ? "Toda la operación (ADM)" : o))), /*#__PURE__*/React.createElement("label", {
+  }, o === "*" ? "Toda la operación (ADM)" : o)))) : /*#__PURE__*/React.createElement("span", {
+    className: "pill",
+    style: {
+      color: "var(--ink)",
+      padding: "7px 12px"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    "aria-hidden": "true"
+  }, "\uD83D\uDC64"), SESION.nombre || rep), /*#__PURE__*/React.createElement("label", {
     className: "sr-only",
     htmlFor: "selPer"
   }, "Per\xEDodo"), /*#__PURE__*/React.createElement("select", {
@@ -2025,7 +2095,26 @@ function App() {
     }
   }, "Incidencias"), " \u2014 planilla INCIDENCIAS, filtrada por el usuario que la registr\xF3. El registro arranc\xF3 el 10 de octubre, as\xED que el per\xEDodo anterior sale vac\xEDo.")), /*#__PURE__*/React.createElement("p", {
     className: "mt-3"
-  }, "Foto de los datos del ", fmtDay(SNAPSHOT), " de 2026. En Nexo esta misma pantalla leer\xEDa las hojas en vivo y el selector de repartidor solo lo ver\xEDa el ADM."))));
+  }, "Foto de los datos del ", fmtDay(SNAPSHOT), " de 2026. Cuando el backend sirva el objeto DATA, esta misma pantalla leer\xE1 las hojas en vivo."), /*#__PURE__*/React.createElement("p", {
+    className: "mt-1"
+  }, /*#__PURE__*/React.createElement("span", {
+    "data-nexo-version": "Informe"
+  }, "Informe"))), SESION && /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2 mt-6"
+  }, /*#__PURE__*/React.createElement("a", {
+    className: "navbtn",
+    href: "index.html"
+  }, /*#__PURE__*/React.createElement("span", {
+    "aria-hidden": "true"
+  }, "\u2B05\uFE0F"), " Volver"), /*#__PURE__*/React.createElement("button", {
+    className: "navbtn salir",
+    onClick: cerrarSesion
+  }, /*#__PURE__*/React.createElement("span", {
+    "aria-hidden": "true"
+  }, "\uD83D\uDEAA"), " Salir"))));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
 </script>
+<script src="nexo-version.js" defer></script>
+</body>
+</html>
