@@ -165,6 +165,8 @@ table.hm td{width:26px;height:24px;border-radius:4px;text-align:center;font-size
 .hm th.fr:hover{color:var(--ink)}
 .hm th.fr[aria-pressed="true"]{color:var(--brand)}
 .hm td.on{cursor:pointer}
+.mapagrid{display:grid;gap:16px;grid-template-columns:1fr}
+@media (min-width:900px){.mapagrid{grid-template-columns:minmax(0,1fr) 320px}}
 .navbtn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;
   font:inherit;font-size:15px;font-weight:700;border:1px solid var(--ring);border-radius:12px;padding:14px 12px;
   background:var(--surface-2);color:var(--ink);cursor:pointer;transition:transform .12s ease,background .18s ease}
@@ -380,6 +382,607 @@ const DATA = {
     "int": 1,
     "url": "https://drive.google.com/file/d/1I8IjkrL26aEzklEe-QIM2Xj5udhF1Pkw/view",
     "sol": "Se dejó en la puerta y se apuntó el DNI."
+  }],
+  "entregas": [{
+    "f": "2026-10-16",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "008",
+    "tk": "7324",
+    "cli": "ALBINO COSTAS FIGUEROA",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "007",
+    "tk": "9512",
+    "cli": "ANA RAMOS PEREZ",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "004",
+    "tk": "9364",
+    "cli": "CARLOS ALBERTO",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "002",
+    "tk": "781",
+    "cli": "FELICIDAD FERNANDEZ TERREIRO",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "006",
+    "tk": "9216",
+    "cli": "JUAN JOSE FERNANDEZ ROMAN",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "008",
+    "tk": "7357",
+    "cli": "MARIA ADELAIDA RODRIGUEZ FRADE",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "003",
+    "tk": "3579",
+    "cli": "ROXANA CURRAS RODRIGUEZ",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "16-19H",
+    "t": "GRANVIA",
+    "caja": "004",
+    "tk": "9386",
+    "cli": "ADOLFO FERNANDEZ",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "16-19H",
+    "t": "GRANVIA",
+    "caja": "010",
+    "tk": "5759",
+    "cli": "ASUNCION FERNANDEZ LORENZO",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "16-19H",
+    "t": "GRANVIA",
+    "caja": "003",
+    "tk": "3692",
+    "cli": "IRENE GARRIDO VALENZUELA",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "16-19H",
+    "t": "GRANVIA",
+    "caja": "001",
+    "tk": "4434",
+    "cli": "LILIA GUERRERO MALDONADO",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "16-19H",
+    "t": "GRANVIA",
+    "caja": "001",
+    "tk": "4406",
+    "cli": "SERAFIN FERNAND LAGO ALVAREZ",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "19-22H",
+    "t": "GRANVIA",
+    "caja": "011",
+    "tk": "4096",
+    "cli": "ALBA MARIA GONZALEZ RODRIGUEZ",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "19-22H",
+    "t": "GRANVIA",
+    "caja": "002",
+    "tk": "857",
+    "cli": "BORJA BASTERO MORQUILLAS",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "19-22H",
+    "t": "GRANVIA",
+    "caja": "007",
+    "tk": "9595",
+    "cli": "IAGO CASTRO ASENSIO",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "19-22H",
+    "t": "GRANVIA",
+    "caja": "003",
+    "tk": "3760",
+    "cli": "MARIA CONCEPCION DOMINGUEZ COTA",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "19-22H",
+    "t": "GRANVIA",
+    "caja": "001",
+    "tk": "4482",
+    "cli": "MARIA CRISTINA GIMENEZ RODRIGUEZ",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "19-22H",
+    "t": "GRANVIA",
+    "caja": "007",
+    "tk": "9671",
+    "cli": "MARIO JORGE SAETTONE CABALLERO",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-16",
+    "fr": "19-22H",
+    "t": "GRANVIA",
+    "caja": "003",
+    "tk": "3696",
+    "cli": "MATEO LOPEZ ABOY",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-17",
+    "fr": "10-13H",
+    "t": "GRANVIA",
+    "caja": "012",
+    "tk": "7535",
+    "cli": "BEATRIZ PEREIRA FIDALGO",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "15:16"
+  }, {
+    "f": "2026-10-17",
+    "fr": "10-13H",
+    "t": "GRANVIA",
+    "caja": "002",
+    "tk": "944",
+    "cli": "DELFINA MIGUELEZ MEIRINO",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "10:57"
+  }, {
+    "f": "2026-10-17",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "003",
+    "tk": "3321",
+    "cli": "ANTONIA GONZALEZ DE DIOS",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "16:03"
+  }, {
+    "f": "2026-10-17",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "001",
+    "tk": "4712",
+    "cli": "ISABEL MILLAN BERMUDEZ",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "16:03"
+  }, {
+    "f": "2026-10-17",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "002",
+    "tk": "1093",
+    "cli": "JOSE CARLOS MAIMUS DELGADO",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "16:03"
+  }, {
+    "f": "2026-10-17",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "005",
+    "tk": "9464",
+    "cli": "MAR FERNANDEZ FERREIRO",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "16:37"
+  }, {
+    "f": "2026-10-17",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "006",
+    "tk": "9315",
+    "cli": "MARIA NIEVES GARCIA FERNANDEZ",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "16:37"
+  }, {
+    "f": "2026-10-17",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "008",
+    "tk": "7459",
+    "cli": "MARTA PEREZ OLIVEIRA",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "16:02"
+  }, {
+    "f": "2026-10-17",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "008",
+    "tk": "7452",
+    "cli": "PABLO FERNANDEZ SOSA",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "16:02"
+  }, {
+    "f": "2026-10-17",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "005",
+    "tk": "9587",
+    "cli": "XIUPENG WANG",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "16:03"
+  }, {
+    "f": "2026-10-17",
+    "fr": "16-19H",
+    "t": "GRANVIA",
+    "caja": "002",
+    "tk": "1177",
+    "cli": "MARIA DEL CARMEN VIDALES CASTRO",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "16:37"
+  }, {
+    "f": "2026-10-17",
+    "fr": "16-19H",
+    "t": "GRANVIA",
+    "caja": "002",
+    "tk": "1145",
+    "cli": "MARIA DEL CARMEN VIDALES CASTRO",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "16:38"
+  }, {
+    "f": "2026-10-17",
+    "fr": "16-19H",
+    "t": "GRANVIA",
+    "caja": "007",
+    "tk": "9801",
+    "cli": "PAOLA GUEDE CONCHA",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "16:38"
+  }, {
+    "f": "2026-10-17",
+    "fr": "16-19H",
+    "t": "GRANVIA",
+    "caja": "007",
+    "tk": "9816",
+    "cli": "POOL DAVID VALQUI FLORIAN",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "16:38"
+  }, {
+    "f": "2026-10-17",
+    "fr": "16-19H",
+    "t": "GRANVIA",
+    "caja": "009",
+    "tk": "1896",
+    "cli": "ROSA ARANTES ARAUJO",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "16:38"
+  }, {
+    "f": "2026-10-17",
+    "fr": "19-22H",
+    "t": "GRANVIA",
+    "caja": "009",
+    "tk": "1910",
+    "cli": "BLANCA MARTINEZ RUGAMA",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-17",
+    "fr": "19-22H",
+    "t": "TRAVESIA",
+    "caja": "005",
+    "tk": "1477",
+    "cli": "CAROLINA ROJO LAGO",
+    "rep": "",
+    "est": "RESERVADO",
+    "h": ""
+  }, {
+    "f": "2026-10-17",
+    "fr": "19-22H",
+    "t": "GRANVIA",
+    "caja": "007",
+    "tk": "9893",
+    "cli": "DEOLINDA CARIDE CALVAR",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-17",
+    "fr": "19-22H",
+    "t": "GRANVIA",
+    "caja": "002",
+    "tk": "1272",
+    "cli": "ELIAS OPAZO",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "19:16"
+  }, {
+    "f": "2026-10-17",
+    "fr": "19-22H",
+    "t": "GRANVIA",
+    "caja": "007",
+    "tk": "9894",
+    "cli": "JAVIER DIAZ VALCARCE",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-17",
+    "fr": "19-22H",
+    "t": "GRANVIA",
+    "caja": "002",
+    "tk": "1099",
+    "cli": "MANUEL RAMON GREGORIO SOUTINO",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "19:16"
+  }, {
+    "f": "2026-10-17",
+    "fr": "19-22H",
+    "t": "GRANVIA",
+    "caja": "003",
+    "tk": "3829",
+    "cli": "MARIA ALEJANDRA PUCH CASTRO",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "19:16"
+  }, {
+    "f": "2026-10-19",
+    "fr": "10-13H",
+    "t": "GRANVIA",
+    "caja": "009",
+    "tk": "2025",
+    "cli": "ALBERTO LOIS MARTINEZ",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "12:55"
+  }, {
+    "f": "2026-10-19",
+    "fr": "10-13H",
+    "t": "TRAVESIA",
+    "caja": "007",
+    "tk": "8867",
+    "cli": "ANA PIERRAL MONAGAS",
+    "rep": "WEXPOSITO",
+    "est": "ENTREGADO",
+    "h": "12:23"
+  }, {
+    "f": "2026-10-19",
+    "fr": "10-13H",
+    "t": "TRAVESIA",
+    "caja": "003",
+    "tk": "2643",
+    "cli": "CLAUDIA M. A. BEJARANO ITURRIA",
+    "rep": "WEXPOSITO",
+    "est": "ENTREGADO",
+    "h": "12:10"
+  }, {
+    "f": "2026-10-19",
+    "fr": "10-13H",
+    "t": "GRANVIA",
+    "caja": "015",
+    "tk": "6891",
+    "cli": "ISMAEL LORENZO VIEIRA",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "12:01"
+  }, {
+    "f": "2026-10-19",
+    "fr": "10-13H",
+    "t": "GRANVIA",
+    "caja": "010",
+    "tk": "5884",
+    "cli": "MARTA JUNCAL MONTES",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "12:54"
+  }, {
+    "f": "2026-10-19",
+    "fr": "13-16H",
+    "t": "TRAVESIA",
+    "caja": "001",
+    "tk": "5659",
+    "cli": "CASANDRA GABARRE FERNANDEZ",
+    "rep": "WEXPOSITO",
+    "est": "ENTREGADO",
+    "h": "13:09"
+  }, {
+    "f": "2026-10-19",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "011",
+    "tk": "4204",
+    "cli": "LAURA JUAN DOALLO",
+    "rep": "LARAUJO",
+    "est": "ASIGNADO",
+    "h": ""
+  }, {
+    "f": "2026-10-19",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "001",
+    "tk": "5074",
+    "cli": "MANUELA RODRIGUEZ IGLESIAS",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "13:23"
+  }, {
+    "f": "2026-10-19",
+    "fr": "13-16H",
+    "t": "TRAVESIA",
+    "caja": "005",
+    "tk": "1516",
+    "cli": "MARCOS CASTELLI",
+    "rep": "WEXPOSITO",
+    "est": "ENTREGADO",
+    "h": "13:09"
+  }, {
+    "f": "2026-10-19",
+    "fr": "13-16H",
+    "t": "GRANVIA",
+    "caja": "002",
+    "tk": "1399",
+    "cli": "MARIA CARMEN ARES ACUNA",
+    "rep": "LARAUJO",
+    "est": "ENTREGADO",
+    "h": "13:23"
+  }, {
+    "f": "2026-10-19",
+    "fr": "16-19H",
+    "t": "TRAVESIA",
+    "caja": "009",
+    "tk": "6780",
+    "cli": "CONCEPCION COSTAS PEREZ",
+    "rep": "WBEZERRA",
+    "est": "ENTREGADO",
+    "h": "17:22"
+  }, {
+    "f": "2026-10-19",
+    "fr": "16-19H",
+    "t": "TRAVESIA",
+    "caja": "008",
+    "tk": "5804",
+    "cli": "GLORIA GONZALEZ PRELCICH",
+    "rep": "WBEZERRA",
+    "est": "ENTREGADO",
+    "h": "16:54"
+  }, {
+    "f": "2026-10-19",
+    "fr": "16-19H",
+    "t": "TRAVESIA",
+    "caja": "008",
+    "tk": "5685",
+    "cli": "JOSE ANTONIO BARCENA PUGA",
+    "rep": "WBEZERRA",
+    "est": "ENTREGADO",
+    "h": "16:54"
+  }, {
+    "f": "2026-10-19",
+    "fr": "16-19H",
+    "t": "TRAVESIA",
+    "caja": "011",
+    "tk": "6226",
+    "cli": "MARIA CONCEPCION GONZALEZ PONTANILLA",
+    "rep": "WBEZERRA",
+    "est": "ENTREGADO",
+    "h": "17:21"
+  }, {
+    "f": "2026-10-19",
+    "fr": "16-19H",
+    "t": "TRAVESIA",
+    "caja": "005",
+    "tk": "1670",
+    "cli": "MATILDE CRISTIN AMOEDO MASCATO",
+    "rep": "WBEZERRA",
+    "est": "ENTREGADO",
+    "h": "16:54"
+  }, {
+    "f": "2026-10-19",
+    "fr": "19-22H",
+    "t": "TRAVESIA",
+    "caja": "012",
+    "tk": "3796",
+    "cli": "ANA PINTO VAZQUEZ",
+    "rep": "WBEZERRA",
+    "est": "ENTREGADO",
+    "h": "18:58"
+  }, {
+    "f": "2026-10-19",
+    "fr": "19-22H",
+    "t": "TRAVESIA",
+    "caja": "003",
+    "tk": "2791",
+    "cli": "JOSE ALEJANDRO",
+    "rep": "WBEZERRA",
+    "est": "ENTREGADO",
+    "h": "18:57"
+  }, {
+    "f": "2026-10-19",
+    "fr": "19-22H",
+    "t": "TRAVESIA",
+    "caja": "003",
+    "tk": "2705",
+    "cli": "LUZ LOPEZ",
+    "rep": "WBEZERRA",
+    "est": "ENTREGADO",
+    "h": "19:43"
+  }, {
+    "f": "2026-10-19",
+    "fr": "19-22H",
+    "t": "TRAVESIA",
+    "caja": "003",
+    "tk": "2694",
+    "cli": "ZAHARA DAOUD MARQUEZ",
+    "rep": "WBEZERRA",
+    "est": "ENTREGADO",
+    "h": "19:20"
   }]
 };
 const {
@@ -955,29 +1558,44 @@ function App() {
     };
   }, [periodoId, rep, elapsed]);
 
-  /* tarjetas de las entregas de la franja (y del día) elegidos en el mapa */
+  /* Tarjetas del mapa. Primero las de cliente (planilla de reservas); donde no
+     hay cliente grabado, una tarjeta genérica con lo que dice el parte del día. */
   const mapaCards = useMemo(() => {
     if (!mapaSel) return [];
-    const out = [];
+    const dentroSel = (f, fr) => f >= periodo.ini && f <= periodo.fin && fr === mapaSel.franja && (!mapaSel.dia || f === mapaSel.dia);
+    const clientes = DATA.entregas.filter(e => dentroSel(e.f, e.fr) && (rep === "*" || e.rep === rep)).map(e => ({
+      tipo: "cliente",
+      k: "c" + e.f + e.caja + e.tk + e.cli,
+      f: e.f,
+      tienda: e.t,
+      quien: e.rep,
+      cli: e.cli,
+      caja: e.caja,
+      tk: e.tk,
+      est: e.est,
+      h: e.h
+    }));
+    const cubierto = new Set(DATA.entregas.filter(e => dentroSel(e.f, e.fr)).map(e => e.f + "|" + e.t));
+    const genericas = [];
     for (const r of DATA.rows) {
       const [f, ti, ri, fri, p, xp, xr] = r;
-      if (f < periodo.ini || f > periodo.fin) continue;
+      const tienda = DATA.tiendas[ti];
+      if (!dentroSel(f, DATA.franjas[fri])) continue;
       if (rep !== "*" && DATA.reps[ri] !== rep) continue;
-      if (DATA.franjas[fri] !== mapaSel.franja) continue;
-      if (mapaSel.dia && f !== mapaSel.dia) continue;
-      out.push({
-        k: f + ti + ri + fri,
+      if (cubierto.has(f + "|" + tienda)) continue; // ya hay tarjetas de cliente
+      genericas.push({
+        tipo: "parte",
+        k: "g" + f + ti + ri + fri,
         f,
-        tienda: DATA.tiendas[ti],
+        tienda,
         quien: DATA.reps[ri],
-        franja: DATA.franjas[fri],
         p,
         xp,
         xr,
         total: p + xp + xr
       });
     }
-    return out.sort((a, b) => a.f < b.f ? 1 : a.f > b.f ? -1 : a.tienda.localeCompare(b.tienda));
+    return [...clientes, ...genericas].sort((a, b) => a.f < b.f ? 1 : a.f > b.f ? -1 : (a.tienda || "").localeCompare(b.tienda || ""));
   }, [mapaSel, periodoId, rep]);
 
   /* al abrir el mapa, se elige sola la franja con más entregas */
@@ -1940,7 +2558,13 @@ function App() {
     style: {
       color: "var(--ink-3)"
     }
-  }, "Elige una tienda."))) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, "Elige una tienda."))) : /*#__PURE__*/React.createElement("div", {
+    className: "mapagrid"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
     className: "scrollx"
   }, /*#__PURE__*/React.createElement("table", {
     className: "hm"
@@ -2002,10 +2626,9 @@ function App() {
     style: {
       color: "var(--ink-3)"
     }
-  }, "Azul m\xE1s oscuro, m\xE1s entregas. Toca una franja para ver sus entregas, o una celda para un solo d\xEDa."), /*#__PURE__*/React.createElement("div", {
-    className: "mt-4 pt-3",
+  }, "Azul m\xE1s oscuro, m\xE1s entregas. Toca una franja para ver sus entregas, o una celda para un solo d\xEDa.")), /*#__PURE__*/React.createElement("div", {
     style: {
-      borderTop: "1px solid var(--ring)"
+      minWidth: 0
     }
   }, !mapaSel ? /*#__PURE__*/React.createElement("p", {
     className: "text-[13px]",
@@ -2013,31 +2636,67 @@ function App() {
       color: "var(--ink-3)"
     }
   }, "Elige una franja del mapa.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    className: "flex flex-wrap items-center gap-2 mb-3"
+    className: "flex flex-wrap items-center gap-2 mb-2"
   }, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, mapaSel.franja, mapaSel.dia ? " · " + fmtDay(mapaSel.dia) : " · todo el período"), /*#__PURE__*/React.createElement("span", {
-    className: "pill"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "num"
-  }, nf(mapaCards.reduce((a, b) => a + b.total, 0))), " entregas"), mapaSel.dia && /*#__PURE__*/React.createElement("button", {
+  }, mapaSel.franja, mapaSel.dia ? " · " + fmtDay(mapaSel.dia) : " · todo el período"), mapaSel.dia && /*#__PURE__*/React.createElement("button", {
     className: "pill chipf",
     onClick: () => setMapaSel({
       franja: mapaSel.franja,
       dia: null
     })
-  }, "ver toda la franja")), /*#__PURE__*/React.createElement("div", {
-    className: "grid gap-2",
+  }, "toda la franja")), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col gap-2",
     style: {
-      gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))",
-      maxHeight: 320,
-      overflowY: "auto"
+      maxHeight: 430,
+      overflowY: "auto",
+      paddingRight: 4
     }
-  }, mapaCards.map(c => /*#__PURE__*/React.createElement("div", {
+  }, mapaCards.map(c => c.tipo === "cliente" ? /*#__PURE__*/React.createElement("div", {
     key: c.k,
     style: {
       background: "var(--surface-2)",
       border: "1px solid var(--ring)",
+      borderRadius: 10,
+      padding: "9px 11px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline justify-between gap-2"
+  }, /*#__PURE__*/React.createElement("strong", {
+    className: "text-[13px] truncate"
+  }, c.cli), /*#__PURE__*/React.createElement("span", {
+    className: "num text-[12px]",
+    style: {
+      color: "var(--ink-3)",
+      flex: "0 0 auto"
+    }
+  }, fmtDay(c.f))), /*#__PURE__*/React.createElement("div", {
+    className: "text-[12px]",
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, c.tienda, " \xB7 ", DOW[dow(c.f)], c.h ? " · " + c.h : ""), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap gap-1.5 mt-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, "caja ", /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, c.caja)), c.tk && /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, "ticket ", /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, c.tk)), /*#__PURE__*/React.createElement("span", {
+    className: "pill",
+    style: {
+      color: c.est === "ENTREGADO" ? "var(--good)" : c.est === "ASIGNADO" ? "var(--s1)" : "var(--ink-3)"
+    }
+  }, c.est.toLowerCase()), rep === "*" && c.quien && /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, c.quien))) : /*#__PURE__*/React.createElement("div", {
+    key: c.k,
+    style: {
+      background: "var(--surface-2)",
+      border: "1px dashed var(--ring)",
       borderRadius: 10,
       padding: "9px 11px"
     }
@@ -2074,7 +2733,12 @@ function App() {
     className: "num"
   }, c.xp), " XP"), rep === "*" && /*#__PURE__*/React.createElement("span", {
     className: "pill"
-  }, c.quien)))), !mapaCards.length && /*#__PURE__*/React.createElement("p", {
+  }, c.quien)), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] mt-1.5",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, "Del parte del d\xEDa: sin cliente grabado."))), !mapaCards.length && /*#__PURE__*/React.createElement("p", {
     className: "text-[13px]",
     style: {
       color: "var(--ink-3)"
