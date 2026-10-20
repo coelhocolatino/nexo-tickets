@@ -6,11 +6,14 @@
    Después se puede volver a abrir con cualquier enlace/botón que tenga
    el atributo data-nexo-novedades (o llamando a NexoNovedades.abrir()).
    Para una edición nueva: cambiar EDICION y el contenido de NOVEDADES.
+   Ronda 45 (2026-10-20): MÓDULO FLOTA (el repartidor sube el ticket de combustible al repostar)
+     y NUEVO INFORME. El repostaje no lo ve EMBOLSADO (no conducen); las facturas de taller y el
+     panel de la flota son solo para ADM.
    Ronda 31 (2026-10-16): se mantiene el AVISO del Día Club Carrefour; novedades de %DIA (finalizar con/sin incidencia).
    Ronda 28 (2026-10-16): primero un AVISO destacado (Día Club Carrefour) para todos los perfiles; después las novedades de Pedidos asignados y GRANVIA.
    ============================================================= */
 (function () {
-  var EDICION = '2026-10-ronda31';
+  var EDICION = '2026-10-ronda45';
   var TITULO_FECHA = 'Octubre 2026';
 
   function ic(d) { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>'; }
@@ -28,7 +31,11 @@
     deshacer: ic('<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'),
     filtro: ic('<path d="M4 5h16l-6 8v6l-4-2v-4z"/>'),
     reloj: ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
-    imagen: ic('<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l4.5-4.5 3.5 3.5 3-3 5 5"/><circle cx="9" cy="9.5" r="1.4"/>')
+    imagen: ic('<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l4.5-4.5 3.5 3.5 3-3 5 5"/><circle cx="9" cy="9.5" r="1.4"/>'),
+    surtidor: ic('<path d="M4 20V5a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v15M3 20h12M6 7h5M16 9h3l1.5 2v7a1.5 1.5 0 0 1-3 0v-4h-1.5"/>'),
+    llave: ic('<path d="M15 3a4 4 0 0 0-3.4 6.1L4 16.7V20h3.3l7.6-7.6A4 4 0 1 0 15 3z"/><circle cx="16" cy="7" r="1.1"/>'),
+    furgoneta: ic('<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>'),
+    cuenta: ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 12l4-2.5"/><path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2"/>')
   };
 
   /* ---- Contenido (frases cortas y prácticas) ---- */
@@ -37,23 +44,36 @@
       titulo: 'Atención',
       aviso: true,
       items: [
-        [I.campana, 'DÍA CLUB CARREFOUR', 'La próxima semana: martes 20 y miércoles 21 de octubre. Prepárate para un volumen alto de pedidos.']
+        [I.campana, 'DÍA CLUB CARREFOUR', 'Martes 20 y miércoles 21 de octubre: prepárate para un volumen alto de pedidos.']
       ]
     },
-    dia: {
-      titulo: 'Cómo queda %DIA',
+    flota: {
+      titulo: 'Nuevo: módulo Flota',
       items: [
-        [I.ok, 'Dos botones para terminar', 'Cada pedido asignado tiene dos: "Finalizar sin incidencia" y "Finalizar con incidencia".'],
-        [I.foto, 'Siempre computa', 'Los dos piden la foto del ticket y entregan el pedido, así que siempre computa para el repartidor.'],
-        [I.campana, 'Con incidencia', 'Justo después de la foto se abre el registro de la incidencia (tipo, observaciones, fotos, llamadas). Queda abierta en Incidencias para gestionarla después.'],
-        [I.mas, '¿Se te olvidó registrarla?', 'Si sales sin registrarla, te avisa de que el pedido ya está entregado. Durante el día puedes añadirla con el botón "Añadir incidencia" de la tarjeta.'],
-        [I.rayo, 'También en Pedidos asignados', 'En las tarjetas %DIA los botones pasan a "Con incidencia" y "Finalizar", y hacen lo mismo.']
+        [I.furgoneta, 'Botón nuevo en el inicio', 'Se llama "Flota". Es donde se graba cada repostaje de la furgoneta.'],
+        [I.surtidor, 'Al repostar, foto del ticket', 'Siempre que repostes: entra en Flota, saca la foto del ticket de la gasolinera y guárdalo. Una foto por repostaje, el mismo día.'],
+        [I.rayo, 'El ticket se lee solo', 'Saca la fecha, la hora, la matrícula, los litros y el importe. Lo que no se lea claro sale marcado en amarillo para que lo escribas tú.'],
+        [I.cuenta, 'Los km los pones tú', 'Mira el cuentakilómetros y escribe los km que marca. Es lo único que el ticket casi nunca trae, y sin eso no se puede calcular el consumo.'],
+        [I.reloj, '¿Mañana o tarde?', 'Lo pone solo por la hora del ticket, y se puede cambiar con un toque. Si repostas por la mañana ese día todavía no cuenta; si repostas por la tarde, sí.'],
+        [I.panel, 'Lo que sale al guardar', 'Km recorridos desde el último repostaje, litros por cada 100 km, pedidos entregados en ese período y el coste de combustible por pedido.']
       ]
     },
-    gestion: {
-      titulo: 'Incidencias',
+    flotaAdm: {
+      titulo: 'Flota · solo ADM',
       items: [
-        [I.deshacer, 'Pedido %DIA ya entregado', 'Si el pedido %DIA ya se entregó, no se ofrece Restaurar ni Eliminar: solo se gestiona la incidencia. El servidor también lo bloquea, para no deshacer por error una entrega que ya computó.']
+        [I.llave, 'Facturas de taller', 'Foto o PDF de la factura: se lee sola, sale para revisar y se graba en el HISTORIAL. El archivo se guarda en Drive, en la carpeta del trimestre.'],
+        [I.ok, 'Mantenimiento al día', 'Si el trabajo es uno de los items (aceite, pastillas, ITV, correa…), se le actualizan la fecha y los km en ESTADO DE FLOTA y los semáforos se recalculan solos.'],
+        [I.panel, 'Panel de la flota', 'Una tarjeta por furgoneta: km, vencidos y próximos, consumo medio, coste por pedido y gasto de taller del trimestre.']
+      ]
+    },
+    informe: {
+      titulo: 'Nuevo Informe',
+      items: [
+        [I.panel, 'Tus números, no solo el día', 'El botón "Informe" trae pantallas nuevas con todo tu reparto.'],
+        [I.filtro, 'Filtro de período', 'Eliges el período y todo se recalcula: el mes en curso, el anterior o el trozo que quieras mirar.'],
+        [I.mas, 'Pedidos y extras', 'Pedidos P, XR y XP y el total, comparados con el período anterior y con el año pasado.'],
+        [I.rayo, 'Proyección al cierre', 'Con el ritmo que llevas, cuántos pedidos vas a cerrar el mes.'],
+        [I.imagen, 'Por tienda, día y franja', 'El reparto por tienda en %, el total de cada día y el detalle día > tienda > franja.']
       ]
     }
   };
@@ -66,8 +86,9 @@
     return 'repartidor';
   }
   function secciones(p) {
-    if (p === 'repartidor') return ['aviso', 'dia'];
-    return ['aviso', 'dia', 'gestion'];   // ADM y Embolsado gestionan las incidencias
+    if (p === 'repartidor') return ['aviso', 'flota', 'informe'];
+    if (p === 'embolsado') return ['aviso', 'informe'];                 // no conducen: el repostaje no les toca
+    return ['aviso', 'flota', 'flotaAdm', 'informe'];                   // ADM lo ve todo
   }
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
