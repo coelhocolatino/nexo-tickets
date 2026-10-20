@@ -23,7 +23,7 @@
      XR y XP se marcan en la propia tarjeta. «Asignar a mi ruta» ya NO salta a index.html: se queda aquí y pasa
      a la pestaña de la ruta. Al repartidor no se le pide ninguna foto.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.11.0">
+<html lang="es" data-pagina="asignar" data-version="v3.11.1">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -1143,6 +1143,27 @@ function pintarLote(id) {
   });
 }
 
+/* RONDA 46 (20/10/2026) — vuelve el campo «Fecha del ticket».
+   En el rediseño de la ronda 43 se perdió, pero el servidor lo sigue exigiendo
+   (resolverTicketLote: «Falta la fecha del ticket»), así que un ticket MANUAL —o
+   cualquiera cuya fecha no leyera el OCR— no se podía grabar ni asignar.
+   Es la fecha de EMISIÓN del pedido: sin ella iría al informe del día equivocado. */
+/** La fecha del ticket viene como "16/10/2026"; el <input type="date"> necesita "2026-10-16". */
+function fechaTicketForm(v) {
+  var s = String(v == null ? '' : v).trim();
+  if (!s) return '';
+  var iso = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
+  var d, m, a;
+  if (iso) { a = iso[1]; m = iso[2]; d = iso[3]; }
+  else {
+    var x = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/.exec(s);
+    if (!x) return '';
+    d = x[1]; m = x[2]; a = x[3]; if (a.length === 2) a = '20' + a;
+  }
+  if (!(Number(m) >= 1 && Number(m) <= 12 && Number(d) >= 1 && Number(d) <= 31)) return '';
+  return a + '-' + ('0' + m).slice(-2) + '-' + ('0' + d).slice(-2);
+}
+
 function pendientesRevision(L) {
   return (L.items || []).filter(function (x) { return x.estado === 'REVISAR' || x.estado === 'DUPLICADO'; }).length;
 }
@@ -1170,6 +1191,10 @@ function itemHTML(id, i, it) {
         '<div><label>Caja *</label><input class="oblig" inputmode="numeric" maxlength="3" id="' + p + 'caja" value="' + esc(it.caja || '') + '"></div>' +
         '<div><label>Ticket *</label><input class="oblig" inputmode="numeric" id="' + p + 'ticket" value="' + esc(it.ticket || '') + '"></div>' +
       '</div>' +
+      /* Ronda 46: la fecha del PROPIO TICKET (la impresa arriba) es la fecha de emisión del
+         pedido y el servidor la exige. En un ticket manual no hay OCR: se escribe a mano. */
+      '<label>Fecha del ticket * <span style="font-weight:500;color:var(--nx-suave)">(la impresa arriba — es la fecha de emisión)</span></label>' +
+      '<input class="oblig" type="date" id="' + p + 'fechaTicket" value="' + esc(it.fechaTicketForm || fechaTicketForm(d.fecha)) + '">' +
       '<label>Nombre</label><input id="' + p + 'nombre" value="' + esc(d.nombre || '') + '">' +
       '<label>Dirección</label><input id="' + p + 'direccion" value="' + esc(d.direccion || '') + '">' +
       '<div class="g">' +
@@ -1222,7 +1247,9 @@ function leerForm(id, i) {
   var fnc = String(v('fnc') || '').split('/');
   return {
     fecha: v('fecha'), caja: v('caja'), ticket: v('ticket'), manual: v('manual'),
+    fechaTicket: v('fechaTicket'),   // ronda 46
     datos: { nombre: v('nombre'), direccion: v('direccion'), telefono: v('telefono'), n_cajas: v('n_cajas'),
+             fecha: v('fechaTicket'),
              frios: (fnc[0] || '').trim(), nevera: (fnc[1] || '').trim(), congelados: (fnc[2] || '').trim() }
   };
 }
@@ -1230,15 +1257,21 @@ function leerForm(id, i) {
 async function resolver(id, i, saltar) {
   var L = LOTES[id], it = L.items[i], f = leerForm(id, i);
   if (!f.fecha || !f.caja || !f.ticket) { alert('Fecha de entrega, caja y ticket son obligatorios.'); return; }
+  // Ronda 46: sin la fecha del ticket el pedido acabaría en el informe del día equivocado.
+  if (!f.fechaTicket) { alert('Falta la fecha del ticket (la impresa arriba). Es la fecha de emisión del pedido y es obligatoria.'); return; }
+  // Lo escrito se recuerda aunque la tarjeta se repinte o falle el guardado.
+  it.fechaForm = f.fecha; it.fechaTicketForm = f.fechaTicket; it.caja = f.caja; it.ticket = f.ticket;
   var datos = Object.assign({}, it.datos || {}, f.datos);
+  it.datos = datos;
   spin(true);
   var r = await api('resolverTicketLote', {
     fotoId: L.res.fotoId, box: it.box || '', fecha: f.fecha, franja: L.res.franja || L.lote.franja,
-    caja: f.caja, ticket: f.ticket, datos: datos, repartidor: L.lote.repartidor, tienda: L.lote.tienda,
+    caja: f.caja, ticket: f.ticket, fechaTicket: f.fechaTicket, datos: datos,
+    repartidor: L.lote.repartidor, tienda: L.lote.tienda,
     asignar: L.lote.asignar !== false, saltar: !!saltar, manual: !!f.manual
   });
   spin(false);
-  if (!r.ok) { alert(r.error || 'No se pudo guardar.'); return; }
+  if (!r.ok) { alert(r.error || 'No se pudo guardar.'); pintarLote(id); return; }
   it.estado = r.estado; it.mensaje = r.mensaje; it.caja = r.caja; it.ticket = r.ticket;
   it.nombre = r.nombre; it.direccion = r.direccion; it.manual = !!f.manual; it.datos = datos;
   pintarLote(id);
