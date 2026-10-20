@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — index.html (Inicio)
-     v3.11.2 (2026-10-20, ronda 45): botón «Flota» (flota.html) para todos y novedades
-     de la ronda 45 (nexo-novedades.js?v=2).
+     v3.11.1 (2026-10-19, ronda 45): botón «Flota» (flota.html) para todos.
      v3.11.0 (2026-10-19, ronda 43): el inicio pasa a ser SOLO BOTONERA. El
      formulario de subir ticket se muda a auto.html (botón «Auto-Asignar»), que
      funciona igual que hasta ahora pero marca el archivo con AUTO al final del
@@ -31,7 +30,7 @@
 <link rel="stylesheet" href="nexo-tema.css?v=28">
 <script src="nexo-version.js?v=1"></script>
 <script src="nexo-nav.js?v=2"></script>
-<script src="nexo-novedades.js?v=2"></script>
+<script src="nexo-novedades.js?v=1"></script>
 
 <style>
 .botonera { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
@@ -191,7 +190,7 @@ var BOTONES = [
   { k: 'reservas', t: 'Reservas', sub: 'Franjas y cupos', href: 'reservas.html?u=' + USR,
     ic: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
     ok: ES_ADMIN || ES_TRAV },
-  { k: 'informe', t: 'Informe', sub: 'Del día y del mes', href: 'informe.html',
+  { k: 'informe', t: 'Informe', sub: 'Tus pedidos del período', href: 'informe-repartidor-nivel1.html',
     ic: '<path d="M5 20V10M12 20V4M19 20v-7"/>',
     ok: true },
   { k: 'flota', t: 'Flota', sub: 'Combustible y mantenimiento', href: 'flota.html',

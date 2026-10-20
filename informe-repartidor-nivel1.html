@@ -1743,25 +1743,6 @@ function App() {
       gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))"
     }
   }, /*#__PURE__*/React.createElement(Tile, {
-    label: "Pedidos (P)",
-    value: agg.p,
-    unit: "pedidos",
-    foot: "Media de " + (agg.p / Math.max(1, elapsed)).toFixed(1).replace(".", ",") + " al día"
-  }), /*#__PURE__*/React.createElement(Tile, {
-    label: "XR + XP (dobles)",
-    value: agg.xr + agg.xp,
-    unit: "entregas"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex gap-2 mt-2"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "pill"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "num"
-  }, nf(agg.xr)), " XR"), /*#__PURE__*/React.createElement("span", {
-    className: "pill"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "num"
-  }, nf(agg.xp)), " XP"))), /*#__PURE__*/React.createElement(Tile, {
     label: "Total",
     value: agg.total,
     unit: "entregas",
@@ -1787,6 +1768,25 @@ function App() {
       color: "var(--ink)"
     }
   }, Math.round(nivelAgua), "%"), " de la proyección"))), /*#__PURE__*/React.createElement(Tile, {
+    label: "Pedidos (P)",
+    value: agg.p,
+    unit: "pedidos",
+    foot: "Media de " + (agg.p / Math.max(1, elapsed)).toFixed(1).replace(".", ",") + " al día"
+  }), /*#__PURE__*/React.createElement(Tile, {
+    label: "XR + XP (dobles)",
+    value: agg.xr + agg.xp,
+    unit: "entregas"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2 mt-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, nf(agg.xr)), " XR"), /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, nf(agg.xp)), " XP"))), /*#__PURE__*/React.createElement(Tile, {
     label: periodo.closed ? "Cierre real" : "Proyección a cierre",
     value: periodo.closed ? agg.total : Math.round(proj.total),
     unit: "entregas",
