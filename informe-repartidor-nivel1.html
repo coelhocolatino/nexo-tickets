@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.20">
+<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.21">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1019,6 +1019,35 @@ function cerrarSesion() {
     localStorage.removeItem("sad_user");
   } catch (e) {}
   window.location.replace("login.html");
+}
+
+/* Permisos de lectura (ronda 45). Un nivel 2 puede abrir los repartidores que el
+   ADM le haya marcado en Config. Se preguntan al backend de Embolsado; si no se
+   puede, el usuario se queda viendo solo lo suyo, que es el fallo seguro. */
+var EMBOLSADO_URL = "https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoDisEn4qrGWh0tEGfGHn4NXoEqP1ShODyIWQ1bzYyWfcuz_Pqh/exec";
+var PROXY = "https://sad-proxy.colatino-ventas-enlinea.workers.dev/";
+function pedirPermisos() {
+  if (!SESION || !USUARIO) return Promise.resolve(null);
+  return fetch(PROXY + "?url=" + encodeURIComponent(EMBOLSADO_URL), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      accion: "informeRepartidorPermisos",
+      usuario: SESION.usuario
+    })
+  }).then(function (r) {
+    return r.text();
+  }).then(function (t) {
+    try {
+      return JSON.parse(t);
+    } catch (e) {
+      return null;
+    }
+  }).catch(function () {
+    return null;
+  });
 } // último día con datos
 
 const toDate = iso => {
@@ -1424,6 +1453,18 @@ function Tip({
 /* ---------------------------------------------------------------- aplicación */
 function App() {
   const T = useTokens();
+  /* Lo que el ADM haya autorizado a este usuario, además de sí mismo. */
+  const [autorizados, setAutorizados] = useState(null);
+  useEffect(() => {
+    let vivo = true;
+    pedirPermisos().then(r => {
+      if (!vivo || !r || !r.ok) return;
+      setAutorizados((r.ve || []).filter(u => DATA.reps.indexOf(u) >= 0));
+    });
+    return () => {
+      vivo = false;
+    };
+  }, []);
   const [periodoId, setPeriodoId] = useState("act");
   const [rep, setRep] = useState(REP_INICIAL);
   const [vista, setVista] = useState("diario"); // diario | acumulado
@@ -1436,6 +1477,16 @@ function App() {
   const [incResp, setIncResp] = useState(null);
   const [clubUp, setClubUp] = useState(null);
   const [clubDate, setClubDate] = useState(DATA.clubDefault);
+
+  /* Qué repartidores puede abrir: él mismo más los autorizados. Fuera de la app
+     (vista previa) se dejan todos, para poder revisar la pantalla. */
+  const opciones = useMemo(() => {
+    if (!SESION) return DATA.repOptions;
+    if (ES_ADM) return DATA.repOptions;
+    const mios = [USUARIO].concat(autorizados || []);
+    return DATA.repOptions.filter(o => o !== "*" && mios.indexOf(o) >= 0);
+  }, [autorizados]);
+  const puedeElegir = PUEDE_ELEGIR || opciones.length > 1;
   const VE_OPERACION = PUEDE_ELEGIR; // ADM (o vista previa fuera de la app)
   const periodo = DATA.periodos.find(p => p.id === periodoId);
   const prevPeriodo = DATA.periodos.find(p => p.id === periodo.prev) || periodo;
@@ -1681,14 +1732,14 @@ function App() {
     }
   }, "Nexo \xB7 ", periodo.label, " \xB7 datos al ", fmtDay(SNAPSHOT), " de 2026"))), /*#__PURE__*/React.createElement("div", {
     className: "flex flex-wrap items-center gap-2"
-  }, PUEDE_ELEGIR ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
+  }, puedeElegir ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
     className: "sr-only",
     htmlFor: "selRep"
   }, "Repartidor"), /*#__PURE__*/React.createElement("select", {
     id: "selRep",
     value: rep,
     onChange: e => setRep(e.target.value)
-  }, DATA.repOptions.map(o => /*#__PURE__*/React.createElement("option", {
+  }, opciones.map(o => /*#__PURE__*/React.createElement("option", {
     key: o,
     value: o
   }, o === "*" ? "Toda la operación (ADM)" : o)))) : /*#__PURE__*/React.createElement("span", {
@@ -1733,7 +1784,17 @@ function App() {
     style: {
       color: "var(--ink-3)"
     }
-  }, "un nivel 1 solo ve sus propios datos")), /*#__PURE__*/React.createElement(SectionHead, {
+  }, "un nivel 1 solo ve sus propios datos"), SESION && !ES_ADM && autorizados && autorizados.length > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "pill",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, "autorizado tambi\xE9n a ", autorizados.join(", ")), SESION && !ES_ADM && rep !== USUARIO && /*#__PURE__*/React.createElement("span", {
+    className: "pill",
+    style: {
+      color: "var(--s4)"
+    }
+  }, "viendo a ", rep)), /*#__PURE__*/React.createElement(SectionHead, {
     n: "Resumen del per\xEDodo",
     title: "Pedidos, dobles y total",
     sub: "Del " + fmtDay(periodo.ini) + " al " + fmtDay(periodo.fin) + ". Un XR o un XP cuenta como entrega aparte: el total es P + XR + XP."
@@ -2039,7 +2100,7 @@ function App() {
       style: {
         color: "var(--ink-3)"
       }
-    }, before === 0 ? "De antes del " + fmtDay(DATA.cover.ini) + " todavía no hay detalle por ticket cargado, así que este período no tiene con qué compararse." : mio ? "El año anterior no se guardaba el reparto por repartidor: para comparar con 2025 cambia a Operación." : "En 2025 solo se anotaba TRAVESIA (" + nf(yearFull) + " en todo el período), así que el salto incluye las tiendas que se añadieron después."));
+    }, before === 0 ? "De antes del " + fmtDay(DATA.cover.ini) + " todavía no hay detalle por ticket cargado, así que este período no tiene con qué compararse." : mio ? VE_OPERACION ? "El año anterior no se guardaba el reparto por repartidor: para comparar con 2025 cambia a Operación." : "El año anterior no se guardaba el reparto por repartidor, así que no hay con qué comparar 2025." : "En 2025 solo se anotaba TRAVESIA (" + nf(yearFull) + " en todo el período), así que el salto incluye las tiendas que se añadieron después."));
   })()), /*#__PURE__*/React.createElement(Card, {
     className: "p-4 enter",
     style: {

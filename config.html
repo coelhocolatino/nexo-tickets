@@ -19,7 +19,7 @@
      guardarReservaAuto, borrarReservaAuto; disparador generarReservasAuto).
      Se mantienen: Pedidos diarios emitidos (NEXO SCRIPT, PEDIDOS_TOTALES; GRANVIA en su
      columna) y Límites por franja (Módulo Embolsado, hoja LIMITES). -->
-<html lang="es" data-pagina="config" data-version="v3.10.11">
+<html lang="es" data-pagina="config" data-version="v3.10.12">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -146,6 +146,12 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
 .cfg-bloque>.cfg-tit{font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--nx-azul,#17407A);margin:0 0 6px}
 .cfg-bloque .sw-fila{padding-left:0;padding-right:0}
 .cfg-bloque .cfg-dest{margin-top:8px;padding-top:6px;border-top:1px dashed var(--nx-borde,#DCE3EC)}
+/* Ronda 45: informe del repartidor */
+.cfg-fila2{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.cfg-fila2>div{flex:1 1 150px;min-width:0}
+.cfg-fila2 select{width:100%}
+.cfg-fila2 select:disabled{opacity:.45;cursor:default}
+.cfg-campo .nx-nivel{margin-left:6px}
 </style>
 </head>
 <body class="nx">
@@ -237,7 +243,28 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
     <div class="msg" id="msgCfg"></div>
   </section>
 
-  <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.11</div>
+  <!-- Informe del repartidor (Ronda 45) -->
+  <section class="sec">
+    <h2>Informe del repartidor</h2>
+    <p class="nota">Quién recibe su informe en PDF, cada cuánto, a qué hora y a qué correo. Y a qué
+      repartidores puede abrir un nivel&nbsp;2. Se guarda en la hoja INFORME_REPARTIDOR de DATABASE.</p>
+
+    <div class="cfg-fila2" style="margin-top:0">
+      <div style="flex:1 1 100%"><span class="etq">Repartidor</span>
+        <select class="in" id="ircSel" onchange="ircElegir(this.value)"></select>
+      </div>
+    </div>
+
+    <div id="ircCuerpo"><div class="ra-vacio">Cargando…</div></div>
+
+    <div class="fila-btn">
+      <button class="btn-s" id="btnIrcDeshacer" type="button" disabled>Deshacer</button>
+      <button class="btn-p" id="btnIrcGuardar" type="button" disabled>Guardar</button>
+    </div>
+    <div class="msg" id="msgIrc"></div>
+  </section>
+
+  <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.12</div>
 </main>
 <script>
 /* Ronda 27: secciones plegables (solo se abre una) + sección de teléfonos útiles. */
@@ -253,6 +280,11 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
       if (typeof CFG === 'undefined' || !CFG.datos) return 'Diario y mensual por tienda';
       var on = CFG.datos.filter(function (t) { return t.diario || t.mensual; }).length;
       return on + ' de ' + CFG.datos.length + ' tiendas con envío automático';
+    },
+    'Informe del repartidor': function () {
+      if (typeof IRC === 'undefined' || !IRC.datos.length) return 'PDF por repartidor';
+      var on = IRC.datos.filter(function (r) { return r.activo; }).length;
+      return on + ' de ' + IRC.datos.length + ' repartidores con envío automático';
     }
   };
   var CHEV = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
@@ -754,7 +786,164 @@ el('btnCfgGuardar').addEventListener('click', function () {
   });
 });
 
-if (String(sesion.nivel || '').toLowerCase() === 'admin') { cargar(); cargarLimites(); cargarRA(); cargarCfgInformes(); }
+if (String(sesion.nivel || '').toLowerCase() === 'admin') { cargar(); cargarLimites(); cargarRA(); cargarCfgInformes(); ircCargar(); }
+else el('ircCuerpo').innerHTML = '<div class="ra-vacio">Solo el ADM.</div>';
+/* ================= INFORME DEL REPARTIDOR (Ronda 45) =================
+   Por repartidor: si se le envía su informe en PDF, cada cuánto, a qué hora
+   y a qué correo. Y, si es nivel 2, a qué otros repartidores puede abrir.
+   Se guarda en la hoja INFORME_REPARTIDOR de DATABASE (InformeRepartidor.gs). */
+var IRC = { datos: [], dias: [], horas: [], nivelPerm: 'usuario 2', actual: '', original: '' };
+
+function ircUno(u) {
+  for (var i = 0; i < IRC.datos.length; i++) if (IRC.datos[i].usuario === u) return IRC.datos[i];
+  return null;
+}
+function ircElegir(u) { ircRecoger(); IRC.actual = u; ircPintar(); }
+
+/** Lee los controles de la pantalla al objeto, para no perder lo tocado al cambiar. */
+function ircRecoger() {
+  var r = ircUno(IRC.actual); if (!r || !el('ircSw')) return;
+  r.activo = el('ircSw').checked;
+  var f = document.querySelector('input[name="ircFrec"]:checked');
+  if (f) r.frecuencia = f.value;
+  if (el('ircDia')) r.dia = Number(el('ircDia').value) + 1;
+  if (el('ircHora')) r.hora = el('ircHora').value;
+  var d = document.querySelector('input[name="ircDest"]:checked');
+  if (d) r.destino = d.value;
+  if (el('ircCorreos')) r.correos = el('ircCorreos').value.split(/[,;\s]+/).filter(Boolean);
+  var ve = [];
+  document.querySelectorAll('[data-ircve]').forEach(function (c) {
+    if (c.checked) ve.push(c.getAttribute('data-ircve'));
+  });
+  if (document.querySelector('[data-ircve]')) r.ve = ve;
+}
+function ircMarcar() {
+  ircRecoger();
+  var hay = JSON.stringify(IRC.datos) !== IRC.original;
+  el('btnIrcGuardar').disabled = !hay;
+  el('btnIrcDeshacer').disabled = !hay;
+  aviso('msgIrc', '');
+  var res = document.querySelectorAll('.acc .acc-res');
+  if (res.length) { try { el('ircSel'); } catch (e) {} }
+}
+
+function ircPintar() {
+  var r = ircUno(IRC.actual);
+  if (!r) { el('ircCuerpo').innerHTML = '<div class="ra-vacio">Sin repartidores de alta.</div>'; return; }
+  var h = '';
+
+  h += '<div class="cfg-bloque"><div class="cfg-tit">Envío automático del PDF</div>';
+  h += '<label class="sw-fila" for="ircSw"><span><b>Enviarle su informe en PDF</b>' +
+       '<span class="nota" style="display:block;margin-top:2px">El PDF lleva el día anterior y, ' +
+       'detrás, el período en curso con la proyección.</span></span>' +
+       '<input type="checkbox" id="ircSw"' + (r.activo ? ' checked' : '') + ' onchange="ircConmutar(this)"></label>';
+
+  h += '<div id="ircAjustes"' + (r.activo ? '' : ' hidden') + '>';
+
+  h += '<div class="cfg-dest"><span class="etq">Cada cuánto</span>' +
+       '<label><input type="radio" name="ircFrec" value="DIARIO"' + (r.frecuencia !== 'SEMANAL' ? ' checked' : '') +
+         ' onchange="ircFrec(this)"><span>Diario &mdash; todos los días</span></label>' +
+       '<label><input type="radio" name="ircFrec" value="SEMANAL"' + (r.frecuencia === 'SEMANAL' ? ' checked' : '') +
+         ' onchange="ircFrec(this)"><span>Semanal &mdash; con los 7 días anteriores</span></label></div>';
+
+  h += '<div class="cfg-fila2">' +
+       '<div><span class="etq">Día de envío</span><select class="in" id="ircDia"' +
+         (r.frecuencia === 'SEMANAL' ? '' : ' disabled') + ' onchange="ircMarcar()">' +
+         IRC.dias.map(function (d, i) {
+           return '<option value="' + i + '"' + (i === (r.dia - 1) ? ' selected' : '') + '>' + esc(d) + '</option>';
+         }).join('') + '</select></div>' +
+       '<div><span class="etq">Hora</span><select class="in" id="ircHora" onchange="ircMarcar()">' +
+         IRC.horas.map(function (x) {
+           return '<option' + (x === r.hora ? ' selected' : '') + '>' + esc(x) + '</option>';
+         }).join('') + '</select></div></div>';
+
+  h += '<div class="cfg-dest"><span class="etq">A quién se envía</span>';
+  if (r.correo) {
+    h += '<label><input type="radio" name="ircDest" value="SUYO"' + (r.destino !== 'OTROS' ? ' checked' : '') +
+         ' onchange="ircDest(this)"><span>Su correo &mdash; <b>' + esc(r.correo) + '</b></span></label>';
+  } else {
+    h += '<div class="cfg-aviso">' + esc(r.usuario) + ' no tiene CORREO en la hoja USUARIOS. ' +
+         'Hay que escribir los correos a mano o rellenar la hoja.</div>';
+  }
+  var otros = (r.destino === 'OTROS' || !r.correo);
+  h += '<label><input type="radio" name="ircDest" value="OTROS"' + (otros ? ' checked' : '') +
+         ' onchange="ircDest(this)"><span>Escribir los correos</span></label>' +
+       '<textarea class="in" id="ircCorreos" rows="2" placeholder="correo@uno.com, correo@dos.com"' +
+         (otros ? '' : ' style="display:none"') + ' oninput="ircMarcar()">' +
+         esc((r.correos || []).join(', ')) + '</textarea></div>';
+
+  h += '</div></div>';
+
+  h += '<div class="cfg-bloque"><div class="cfg-tit">Repartidores que puede ver</div>';
+  if (String(r.nivel || '').toLowerCase() !== IRC.nivelPerm) {
+    h += '<div class="cfg-aviso">' + esc(r.usuario) + ' es <b>' + esc(r.nivel || 'sin nivel') +
+         '</b>: solo ve sus propios datos. Este bloque es para los de nivel 2.</div>';
+  } else {
+    h += '<div class="cfg-aviso">Marca a quién más puede abrir en el informe. Ve de ellos lo mismo ' +
+         'que vería el ADM: pedidos, tiendas, franjas, clientes, incidencias y conducción.</div>';
+    IRC.datos.forEach(function (o) {
+      if (o.usuario === r.usuario) return;
+      var on = (r.ve || []).indexOf(o.usuario) !== -1;
+      h += '<div class="cfg-campo' + (on ? '' : ' off') + '">' +
+             '<input type="checkbox" id="ircVe_' + esc(o.usuario) + '" data-ircve="' + esc(o.usuario) + '"' +
+               (on ? ' checked' : '') + ' onchange="ircVer(this)">' +
+             '<label class="nom" for="ircVe_' + esc(o.usuario) + '">' + esc(o.usuario) +
+               '<span class="nx-nivel">' + esc(o.nivel || '') + '</span></label>' +
+           '</div>';
+    });
+  }
+  h += '</div>';
+
+  el('ircCuerpo').innerHTML = h;
+}
+
+function ircConmutar(c) {
+  var a = el('ircAjustes'); if (a) a.hidden = !c.checked;
+  ircMarcar();
+}
+function ircFrec(x) { if (el('ircDia')) el('ircDia').disabled = (x.value !== 'SEMANAL'); ircMarcar(); }
+function ircDest(x) { if (el('ircCorreos')) el('ircCorreos').style.display = (x.value === 'OTROS' ? '' : 'none'); ircMarcar(); }
+function ircVer(c) { c.parentNode.classList.toggle('off', !c.checked); ircMarcar(); }
+
+function ircCargar() {
+  postEmbolsado({ accion: 'informeRepartidorConfigObtener' }).then(function (r) {
+    if (!r || !r.ok) {
+      el('ircCuerpo').innerHTML = '<div class="ra-vacio">' + esc((r && r.error) || 'No se pudo leer.') + '</div>';
+      return;
+    }
+    IRC.datos = r.repartidores || [];
+    IRC.dias = r.dias || [];
+    IRC.horas = r.horas || [];
+    IRC.nivelPerm = r.nivelConPermisos || 'usuario 2';
+    IRC.original = JSON.stringify(IRC.datos);
+    IRC.actual = IRC.datos.length ? IRC.datos[0].usuario : '';
+    el('ircSel').innerHTML = IRC.datos.map(function (o) {
+      return '<option value="' + esc(o.usuario) + '">' + esc(o.usuario) +
+             ' &mdash; ' + esc(o.nivel || '') + (o.tienda ? ' &mdash; ' + esc(o.tienda) : '') + '</option>';
+    }).join('');
+    ircPintar();
+  });
+}
+
+el('btnIrcGuardar').addEventListener('click', function () {
+  ircRecoger();
+  spin(true);
+  postEmbolsado({ accion: 'informeRepartidorConfigGuardar', repartidores: IRC.datos }).then(function (r) {
+    spin(false);
+    if (!r || !r.ok) { aviso('msgIrc', (r && r.error) || 'No se pudo guardar.', 'err'); return; }
+    IRC.original = JSON.stringify(IRC.datos);
+    el('btnIrcGuardar').disabled = true; el('btnIrcDeshacer').disabled = true;
+    aviso('msgIrc', 'Guardado.', 'ok');
+  });
+});
+el('btnIrcDeshacer').addEventListener('click', function () {
+  IRC.datos = JSON.parse(IRC.original);
+  el('btnIrcGuardar').disabled = true; el('btnIrcDeshacer').disabled = true;
+  aviso('msgIrc', '');
+  ircPintar();
+});
+
+
 </script>
 </body>
 </html>
