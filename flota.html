@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — flota.html (Flota: combustible y mantenimiento)
+     v3.10.2 (2026-10-20, ronda 45): foto a 1600 px y botón «Rellenar a mano»
+     para cuando la lectura del ticket se corta (error 524 del proxy).
      v3.10.1 (2026-10-19, ronda 45). Módulo NUEVO.
        · REPARTIDOR: saca la foto del ticket de la gasolinera, el sistema lee
          fecha, hora, matrícula, km, importe y litros, le pregunta lo que no
@@ -11,7 +13,7 @@
          con el estado de cada furgoneta.
      Backend: proyecto Apps Script "NEXO FLOTA" (Flota.gs), por el proxy de
      Cloudflare, igual que el resto de las páginas. -->
-<html lang="es" data-pagina="flota" data-version="v3.10.1">
+<html lang="es" data-pagina="flota" data-version="v3.10.2">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -41,19 +43,19 @@
 .fl-campo { display:flex; flex-direction:column; gap:4px; }
 .fl-campo label { font-size:12px; font-weight:800; color:var(--nx-suave); }
 .fl-campo input, .fl-campo select, .fl-campo textarea {
-  width:100%; box-sizing:border-box; padding:11px 12px; border:1.5px solid var(--nx-borde, #DCE3EC); border-radius:12px;
-  background:var(--nx-fondo-campo, #fff); color:var(--nx-tinta); font-family:inherit; font-size:16px; font-weight:700; }
-.fl-campo.pedir input, .fl-campo.pedir select { border-color:var(--nx-ambar); background:#FFF9EC; }
+  width:100%; box-sizing:border-box; padding:11px 12px; border:1.5px solid var(--nx-linea, #DCE3EC); border-radius:12px;
+  background:var(--nx-campo, #fff); color:var(--nx-tinta); font-family:inherit; font-size:16px; font-weight:700; }
+.fl-campo.pedir input, .fl-campo.pedir select { border-color:var(--nx-ambar); background:var(--nx-ambar-fondo, #FFF9EC); }
 .fl-campo.pedir label::after { content:' · pregunta'; color:var(--nx-ambar); }
 .fl-foto { display:flex; gap:10px; }
 .fl-foto .nx-btn { flex:1; }
-.fl-seg { display:flex; gap:0; border-radius:12px; overflow:hidden; border:1.5px solid var(--nx-borde, #DCE3EC); }
-.fl-seg button { flex:1; padding:11px 6px; border:0; background:#fff; color:var(--nx-suave); font-family:inherit; font-size:14px; font-weight:800; cursor:pointer; }
+.fl-seg { display:flex; gap:0; border-radius:12px; overflow:hidden; border:1.5px solid var(--nx-linea, #DCE3EC); }
+.fl-seg button { flex:1; padding:11px 6px; border:0; background:var(--nx-campo, #fff); color:var(--nx-suave); font-family:inherit; font-size:14px; font-weight:800; cursor:pointer; }
 .fl-seg button.on { background:var(--nx-azul); color:#fff; }
 .fl-avisos { display:flex; flex-direction:column; gap:6px; }
-.fl-aviso { padding:9px 11px; border-radius:10px; background:#FFF9EC; color:#7A5300; font-size:13px; font-weight:700; line-height:1.35; }
-.fl-aviso.rojo { background:#FDECEC; color:#8E1B1B; }
-.fl-ok { padding:11px; border-radius:12px; background:#ECF7EF; color:#15692E; font-size:14px; font-weight:800; }
+.fl-aviso { padding:9px 11px; border-radius:10px; background:var(--nx-ambar-fondo, #FFF9EC); color:var(--nx-ambar-tinta, #7A5300); font-size:13px; font-weight:700; line-height:1.35; }
+.fl-aviso.rojo { background:var(--nx-rojo-fondo, #FDECEC); color:var(--nx-rojo, #8E1B1B); }
+.fl-ok { padding:11px; border-radius:12px; background:var(--nx-verde-fondo, #ECF7EF); color:var(--nx-verde-tinta, #15692E); font-size:14px; font-weight:800; }
 .fl-kpis { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
 .fl-kpi { background:var(--nx-azul-fondo); border-radius:12px; padding:10px; text-align:center; }
 .fl-kpi b { display:block; font-size:17px; }
@@ -62,15 +64,15 @@
 .fl-item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border-radius:12px; background:var(--nx-azul-fondo); font-size:13px; font-weight:700; }
 .fl-item .der { text-align:right; color:var(--nx-suave); font-size:12px; white-space:nowrap; }
 .fl-chip { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px; font-size:12px; font-weight:800; }
-.fl-chip.rojo { background:#FDECEC; color:#8E1B1B; }
-.fl-chip.ambar { background:#FFF4DC; color:#7A5300; }
-.fl-chip.verde { background:#ECF7EF; color:#15692E; }
-.fl-chip.gris { background:#EEF2F7; color:#5A6B82; }
+.fl-chip.rojo { background:var(--nx-rojo-fondo, #FDECEC); color:var(--nx-rojo, #8E1B1B); }
+.fl-chip.ambar { background:var(--nx-ambar-fondo, #FFF4DC); color:var(--nx-ambar-tinta, #7A5300); }
+.fl-chip.verde { background:var(--nx-verde-fondo, #ECF7EF); color:var(--nx-verde-tinta, #15692E); }
+.fl-chip.gris { background:var(--nx-chip, #EEF2F7); color:var(--nx-suave, #5A6B82); }
 .fl-veh { display:flex; flex-direction:column; gap:10px; }
 .fl-veh .cab { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
 .fl-veh .cab b { font-size:16px; }
 .fl-lineas { display:flex; flex-direction:column; gap:10px; }
-.fl-linea { border:1.5px solid var(--nx-borde, #DCE3EC); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:8px; }
+.fl-linea { border:1.5px solid var(--nx-linea, #DCE3EC); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:8px; }
 .fl-linea .fila { display:grid; grid-template-columns:1fr 92px; gap:8px; }
 .fl-linea .marca { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:800; color:var(--nx-suave); }
 .fl-linea input[type=checkbox] { width:20px; height:20px; }
@@ -130,10 +132,11 @@
       <div class="fl-sub">Saca la foto del ticket de la gasolinera. Se leen fecha, hora, matrícula, km, importe y litros; lo que no se pueda leer te lo pregunto.</div>
       <div class="fl-foto">
         <button type="button" class="nx-btn" onclick="document.getElementById('fotoCam').click()">📷 Sacar foto</button>
-        <button type="button" class="nx-btn secundario" onclick="document.getElementById('fotoFile').click()">📁 Subir foto</button>
+        <button type="button" class="nx-btn suave" onclick="document.getElementById('fotoFile').click()">📁 Subir foto</button>
       </div>
       <input type="file" id="fotoCam" accept="image/*" capture="environment" class="oculto">
       <input type="file" id="fotoFile" accept="image/*" class="oculto">
+      <button type="button" class="nx-btn texto" id="btnManual">✍️ Rellenar a mano, sin foto</button>
       <div class="fl-avisos" id="combAvisos"></div>
     </div>
 
@@ -162,7 +165,7 @@
         <div class="fl-kpi"><b id="k_l100">—</b><span>L/100 km</span></div>
         <div class="fl-kpi"><b id="k_precio">—</b><span>€/litro</span></div>
       </div>
-      <button type="button" class="nx-btn principal" id="btnGuardarComb">Guardar repostaje</button>
+      <button type="button" class="nx-btn tinta grande" id="btnGuardarComb">Guardar repostaje</button>
     </div>
 
     <div class="fl-card oculto" id="combResultado"></div>
@@ -180,7 +183,7 @@
       <div class="fl-sub">Foto o PDF de la factura. Se lee, la revisas y se graba en HISTORIAL; el archivo se guarda en Drive dentro de la carpeta del trimestre.</div>
       <div class="fl-foto">
         <button type="button" class="nx-btn" onclick="document.getElementById('factCam').click()">📷 Sacar foto</button>
-        <button type="button" class="nx-btn secundario" onclick="document.getElementById('factFile').click()">📁 Foto o PDF</button>
+        <button type="button" class="nx-btn suave" onclick="document.getElementById('factFile').click()">📁 Foto o PDF</button>
       </div>
       <input type="file" id="factCam" accept="image/*" capture="environment" class="oculto">
       <input type="file" id="factFile" accept="image/*,application/pdf" class="oculto">
@@ -201,7 +204,7 @@
       <div class="fl-tit">Trabajos <span class="fl-sub">marca «actualizar estado» para poner al día ESTADO DE FLOTA</span></div>
       <div class="fl-lineas" id="factLineas"></div>
       <button type="button" class="nx-btn texto" id="btnAddLinea">+ Añadir trabajo</button>
-      <button type="button" class="nx-btn principal" id="btnGuardarFact">Guardar en HISTORIAL</button>
+      <button type="button" class="nx-btn tinta grande" id="btnGuardarFact">Guardar en HISTORIAL</button>
     </div>
 
     <div class="fl-card oculto" id="factResultado"></div>
@@ -225,7 +228,7 @@
    CONFIGURACIÓN — PEGA AQUÍ LA URL /exec DE "NEXO FLOTA"
    (Implementar -> Nueva implementación -> Aplicación web)
 ============================================================ */
-var FLOTA_URL = 'https://script.google.com/macros/s/AKfycbxSb-9FihUAkXTtUeK4uUvPffu0BcvKSalUvFZHzcdfPCMzV-UpGM30_YkzUUyxapVv-w/exec';
+var FLOTA_URL = 'PEGA_AQUI_LA_URL_DEL_SCRIPT_NEXO_FLOTA';
 var PROXY_BASE = 'https://sad-proxy.colatino-ventas-enlinea.workers.dev/';
 
 var sesion = {};
@@ -341,13 +344,13 @@ function prepararFoto(file) {
           else if (o === 8) x1.transform(0, -1, 1, 0, 0, visH);
           x1.drawImage(img, 0, 0); x1.restore();
 
-          var MAX = 2000, k = Math.min(MAX / Math.max(visW, visH), 1);
+          var MAX = 1600, k = Math.min(MAX / Math.max(visW, visH), 1);   // ronda 45: 2000 px tardaba de más y el proxy cortaba (524)
           var c2 = document.createElement('canvas');
           c2.width = Math.round(visW * k); c2.height = Math.round(visH * k);
           var x2 = c2.getContext('2d');
           x2.fillStyle = '#fff'; x2.fillRect(0, 0, c2.width, c2.height);
           x2.drawImage(c1, 0, 0, c2.width, c2.height);
-          resolve(c2.toDataURL('image/jpeg', 0.85));
+          resolve(c2.toDataURL('image/jpeg', 0.8));
         } catch (err) { reject(err); }
       };
       img.src = dataURL;
@@ -439,7 +442,14 @@ function leerTicket(file) {
     return postFlota({ accion: 'flotaLeerCombustible', imagenBase64: dataURL, matricula: document.getElementById('c_mat').value || '' });
   }).then(function (r) {
     hideSpinner();
-    if (!r || !r.ok) { setMsg((r && r.error) || 'No se pudo leer el ticket', 'var(--nx-rojo)'); return; }
+    if (!r || !r.ok) {
+      var err = String((r && r.error) || 'No se pudo leer el ticket');
+      if (/524|timeout|tard[óo]|inesperada/i.test(err)) {
+        setMsg('La lectura del ticket tardó demasiado y se cortó. Apúntalo a mano aquí debajo.', 'var(--nx-ambar)');
+        abrirManual('La lectura automática no respondió a tiempo. Copia los datos del ticket a mano; la foto puede haberse guardado igualmente en Drive.');
+      } else setMsg(err, 'var(--nx-rojo)');
+      return;
+    }
     combFileId = r.fileId || '';
     var d = r.datos || {};
     document.getElementById('combForm').classList.remove('oculto');
@@ -465,6 +475,29 @@ function leerTicket(file) {
     setMsg('Error con la foto: ' + (e && e.message ? e.message : e), 'var(--nx-rojo)');
   });
 }
+
+/** Salida de emergencia: formulario vacío, sin foto (si la lectura falla o no hay cobertura). */
+function abrirManual(aviso) {
+  combFileId = '';
+  var ahora = new Date();
+  document.getElementById('combForm').classList.remove('oculto');
+  document.getElementById('combModelo').textContent = 'a mano, sin foto';
+  document.getElementById('c_fecha').value = (INICIO && INICIO.hoy) || '';
+  document.getElementById('c_hora').value = ('0' + ahora.getHours()).slice(-2) + ':' + ('0' + ahora.getMinutes()).slice(-2);
+  ponTurno(ahora.getHours() < 14 ? 'MAÑANA' : 'TARDE');
+  ['c_km', 'c_imp', 'c_lit', 'c_notas'].forEach(function (id) { document.getElementById(id).value = ''; });
+  document.getElementById('c_cond').value = (INICIO && INICIO.conductor) || '';
+  if (INICIO && INICIO.sugerida) pintarSelectVeh('c_mat', INICIO.sugerida);
+  var sel = document.getElementById('c_mat').value;
+  var v = VEHICULOS.filter(function (x) { return x.matricula === sel; })[0];
+  document.getElementById('c_kmant').value = (v && v.kmActual) ? kms(v.kmActual) : '—';
+  marcarPedir({ fecha: 'c_fecha_w', hora: 'c_hora_w', matricula: 'c_mat_w', km: 'c_km_w', importe: 'c_imp_w', litros: 'c_lit_w' },
+              ['matricula', 'km', 'importe', 'litros']);
+  pintarAvisos('combAvisos', [aviso || 'Rellénalo mirando el ticket. Queda grabado igual, pero sin el enlace a la foto.']);
+  recalcularComb();
+  document.getElementById('combForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+document.getElementById('btnManual').addEventListener('click', function () { clearMsg(); abrirManual(); });
 
 function ponTurno(v) {
   combTurno = (String(v || '').toUpperCase().indexOf('MA') === 0) ? 'MAÑANA' : 'TARDE';
@@ -695,8 +728,8 @@ function cargarPanel() {
     var t = r.totales || {};
     document.getElementById('panelTotales').innerHTML =
       '<div class="fl-kpi"><b style="color:var(--nx-rojo)">' + (t.vencidos || 0) + '</b><span>vencidos</span></div>' +
-      '<div class="fl-kpi"><b style="color:#B07400">' + (t.proximos || 0) + '</b><span>próximos</span></div>' +
-      '<div class="fl-kpi"><b style="color:#15692E">' + (t.ok || 0) + '</b><span>en regla</span></div>' +
+      '<div class="fl-kpi"><b style="color:var(--nx-ambar)">' + (t.proximos || 0) + '</b><span>próximos</span></div>' +
+      '<div class="fl-kpi"><b style="color:var(--nx-verde)">' + (t.ok || 0) + '</b><span>en regla</span></div>' +
       '<div class="fl-kpi"><b>' + (t.faltan || 0) + '</b><span>sin datos</span></div>' +
       '<div class="fl-kpi"><b>' + eur(t.gasto90) + '</b><span>combustible 90 d</span></div>' +
       '<div class="fl-kpi"><b>' + eur(t.costeTrimestre) + '</b><span>taller trimestre</span></div>';
