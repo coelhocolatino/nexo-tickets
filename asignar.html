@@ -23,7 +23,7 @@
      XR y XP se marcan en la propia tarjeta. «Asignar a mi ruta» ya NO salta a index.html: se queda aquí y pasa
      a la pestaña de la ruta. Al repartidor no se le pide ninguna foto.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.11.1">
+<html lang="es" data-pagina="asignar" data-version="v3.11.2">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -671,7 +671,14 @@ function cardHTML(o, conCheck, conAcc, ord) {
       '<label class="marca' + (dd.xr ? ' on' : '') + '"><input type="checkbox" id="xr_' + sid + '"' + (dd.xr ? ' checked' : '') + ' onchange="guardarDatoEntrega(\'' + esc(o.id) + '\',\'xr\',this.checked)">XR</label>' +
       '<label class="marca' + (dd.xp ? ' on' : '') + '"><input type="checkbox" id="xp_' + sid + '"' + (dd.xp ? ' checked' : '') + ' onchange="guardarDatoEntrega(\'' + esc(o.id) + '\',\'xp\',this.checked)">XP</label>' +
       '</div>';
-    h += '<div class="acciones">' + cam + '<button class="b-inc" onclick="abrirIncidencia(\'' + esc(o.id) + '\')">Incidencia</button><button class="b-ent" onclick="entregado(\'' + esc(o.id) + '\')">' + IC_OK + 'Entregar y subir</button></div>';
+    /* Ronda 47 (puntos 3.3 / 4.2 / 7.3): los dos botones de %DIA.
+       El pedido SIEMPRE se finaliza (se sube su ticket y cuenta como entrega);
+       con «Finalizar con incidencia» se abre después el registro de la
+       incidencia. Es la única vía por la que un repartidor informa una
+       incidencia: desde la tarjeta del pedido. */
+    h += '<div class="acciones">' + cam +
+      '<button class="b-inc" onclick="finalizarConIncidencia(\'' + esc(o.id) + '\')">Finalizar con incidencia</button>' +
+      '<button class="b-ent" onclick="finalizarSinIncidencia(\'' + esc(o.id) + '\')">' + IC_OK + 'Finalizar sin incidencia</button></div>';
   }
   else h += '<div class="acciones solo-cam">' + cam + '</div>';
   // 6.1 — ADM: pasar el pedido a otro repartidor
@@ -880,6 +887,17 @@ var cobroId = null;
 function buscarPedidoRuta(id) {
   return ruta.concat((rutaAdm && rutaAdm.ruta) || []).filter(function (x) { return x.id === id; })[0] || null;
 }
+/* ══════════════════════════════════════════════════════════════════════════
+   RONDA 47 · FINALIZAR SIN / CON INCIDENCIA  (puntos 3.3, 4.2 y 7.3)
+   Igual que en %DIA. Las dos opciones ENTREGAN el pedido y suben su ticket:
+   el repartidor llegó al cliente, así que la entrega se computa. La diferencia
+   es que «con incidencia» abre el registro de la incidencia justo después,
+   ya con el pedido entregado.
+   ══════════════════════════════════════════════════════════════════════════ */
+var _incTrasEntrega = null;
+function finalizarSinIncidencia(id) { _incTrasEntrega = null; entregado(id); }
+function finalizarConIncidencia(id) { _incTrasEntrega = id;   entregado(id); }
+
 function entregado(id) {
   var o = buscarPedidoRuta(id);
   if (o && o.cobro) {
@@ -913,7 +931,13 @@ function cobroNo() {
    bajarla: el servidor la coge de Drive. Si no se puede archivar, el pedido
    se queda en la ruta para volver a intentarlo. */
 async function confirmarEntrega(id, cobrado, importe, sinCobrar) {
-  if (!cobrado && !sinCobrar && !confirm('¿Confirmas que el pedido ha sido ENTREGADO?\n\nSe sube el ticket con la foto del embolsado.')) return;
+  var conInc = (_incTrasEntrega === id);   // ronda 47
+  if (!cobrado && !sinCobrar && !confirm(conInc
+        ? '¿Finalizar este pedido CON incidencia?\n\nSe sube el ticket y, acto seguido, se abre el registro de la incidencia.'
+        : '¿Confirmas que el pedido ha sido ENTREGADO?\n\nSe sube el ticket con la foto del embolsado.')) {
+    _incTrasEntrega = null;
+    return;
+  }
   var o = buscarPedidoRuta(id) || {};
   var d = datosDeEntrega(id);
   spin(true);
@@ -930,7 +954,8 @@ async function confirmarEntrega(id, cobrado, importe, sinCobrar) {
   });
   spin(false);
   if (!r.ok) {
-    msg(r.error + (r.reintentable ? ' El pedido sigue en tu ruta: vuelve a darle a Entregar.' : ''), 'err');
+    _incTrasEntrega = null;
+    msg(r.error + (r.reintentable ? ' El pedido sigue en tu ruta: vuelve a darle a Finalizar.' : ''), 'err');
     return;
   }
   var extra = (d.km ? ' · ' + d.km + ' km' : '') + (d.xr ? ' · XR' : '') + (d.xp ? ' · XP' : '');
@@ -940,6 +965,10 @@ async function confirmarEntrega(id, cobrado, importe, sinCobrar) {
   delete datosEntrega[id];
   // Se refleja al instante (sin esperar a la hoja) y después se confirma con el servidor.
   if (o && o.id) { o.entregaEstado = 'ENTREGADO'; o.entregaTs = hoyDMA() + ' ' + new Date().toTimeString().slice(0, 8); guardarCache(); actualizarPestanas(); pintar(); }
+  // Ronda 47: «Finalizar con incidencia» → el pedido ya está entregado y ahora
+  // se registra la incidencia (el servidor la admite sobre un pedido que acabas
+  // de entregar tú mismo — ver registrarIncidencia en Embolsado.gs).
+  if (_incTrasEntrega === id) { _incTrasEntrega = null; abrirIncidencia(id); }
   cargar(false);
 }
 
@@ -1052,7 +1081,12 @@ async function enviarIncidencia() {
   var r = await api('registrarIncidencia', { id: incId, tipo: incTipo, observaciones: obs, intentos: incIntentos, fotos: incFotos });
   spin(false);
   if (!r.ok) { alert(r.error); return; }
-  clearInterval(incTimer); cerrar('mInc'); msg('Incidencia registrada. Se ha avisado a Embolsado y ADM.', 'ok'); cargar(false);
+  clearInterval(incTimer); cerrar('mInc');
+  // Ronda 47: si el pedido se finalizó con incidencia, sigue contando como entregado.
+  msg(r.sigueEntregado
+    ? 'Incidencia registrada. El pedido se queda ENTREGADO y cuenta como entrega. Se ha avisado a Embolsado y ADM.'
+    : 'Incidencia registrada. Se ha avisado a Embolsado y ADM.', 'ok');
+  cargar(false);
 }
 
 /* =====================================================================
@@ -1127,8 +1161,18 @@ function pintarLote(id) {
   } else {
     var n = L.items.filter(function (x) { return x.estado === 'ASIGNADO' || x.estado === 'GRABADO'; }).length;
     var rev = pendientesRevision(L);
-    h += '<div class="lote-res">' + L.items.filter(function (x) { return x.estado !== 'DESCARTADO'; }).length + ' ticket(s) · ' +
+    var leidos = L.items.filter(function (x) { return x.estado !== 'DESCARTADO'; }).length;
+    h += '<div class="lote-res">' + leidos + ' ticket(s) · ' +
          n + ' listo(s)' + (rev ? ' · <b>' + rev + ' por revisar</b>' : '') + '</div>';
+    /* Ronda 47: si el repartidor dijo que la hoja tenía N tickets y el OCR ha
+       leído otra cantidad, se canta aquí. Antes el desglose podía quedarse
+       corto (o de más) sin que nadie se enterara. */
+    if (l.esperados > 0 && leidos !== l.esperados) {
+      h += '<div class="lote-res" style="color:var(--nx-rojo);font-weight:800">⚠️ Has indicado ' + l.esperados +
+           ' ticket(s) en la foto y se han leído ' + leidos + '. ' +
+           (leidos < l.esperados ? 'Usa «Añadir un ticket que falta» para los que falten.' : 'Descarta los que estén de más.') +
+           '</div>';
+    }
     if (L.aviso) h += '<div class="lote-res">' + esc(L.aviso) + '</div>';
     L.items.forEach(function (it, i) { h += itemHTML(id, i, it); });
     h += '<button class="b-add" onclick="anadirTicket(\'' + esc(id) + '\')">Añadir un ticket que falta</button>';

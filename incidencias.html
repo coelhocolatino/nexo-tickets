@@ -21,7 +21,7 @@
        cuánto ha tardado y, si no lee nada, lo dice claramente.
      Requiere Embolsado.js de la ronda 24 (finalizarIncidencia, anadirFotosIncidencia,
      panelIncidencias). -->
-<html lang="es" data-pagina="incidencias" data-version="v3.10.6">
+<html lang="es" data-pagina="incidencias" data-version="v3.10.7">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -197,8 +197,15 @@ body.nx { padding-bottom:40px; }
       <button class="btn-sec" id="btnPanel" style="display:none" onclick="verPanel(true)">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 20V11M12 20V5M18 20v-6"/></svg>Panel</button>
     </div>
-    <button class="btn-informar" onclick="abrirNueva()">
+    <!-- Ronda 47 (punto 7.2): el repartidor NO informa incidencias desde aquí.
+         Las informa desde la tarjeta del pedido, con «Finalizar con incidencia».
+         Este botón se oculta para él en cargar(). -->
+    <button class="btn-informar" id="btnInformar" style="display:none" onclick="abrirNueva()">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Informar incidencia</button>
+    <div class="aviso-push" id="avisoRepartidor" style="display:none">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+      <span>Para informar una incidencia, hazlo desde el propio pedido en <b>Pedidos asignados</b>, con el botón «Finalizar con incidencia».</span>
+    </div>
     <div class="aviso-push" id="avisoPush" style="display:none">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
       <span id="avisoPushTxt"></span>
@@ -215,7 +222,7 @@ body.nx { padding-bottom:40px; }
   <!-- ===== Panel (ADM y Embolsado) ===== -->
   <section id="panel">
     <div class="top-tit">
-      <h1 class="nx-titulo">Panel de incidencias</h1>
+      <h1 class="nx-titulo" id="panelTit">Panel de incidencias</h1>
       <button class="btn-sec" onclick="verPanel(false)">Lista</button>
     </div>
     <div class="nx-pestanas" role="tablist">
@@ -438,7 +445,13 @@ async function cargar() {
   USUARIOS = r.usuarios || [];
   NOMBRES = {}; USUARIOS.forEach(function (u) { NOMBRES[u.usuario] = u.nombre; });
   el('titulo').textContent = soloPropias ? 'Mis incidencias' : 'Incidencias';
-  el('btnPanel').style.display = r.verPanel ? 'inline-flex' : 'none';
+  /* Ronda 47 (punto 7.2): el repartidor solo ve y consulta. Informar una
+     incidencia se hace desde la tarjeta del pedido («Finalizar con
+     incidencia»), no desde aquí. Y lo primero que ve es SU panel. */
+  el('btnInformar').style.display = soloPropias ? 'none' : 'flex';
+  el('avisoRepartidor').style.display = soloPropias ? 'flex' : 'none';
+  el('btnPanel').style.display = 'inline-flex';      // ahora todos tienen panel
+  if (soloPropias && !_panelInicial) { _panelInicial = true; verPanel(true); }
   var ab = datos.filter(function (i) { return (i['ESTADO'] || 'ABIERTA') === 'ABIERTA'; }).length;
   if (abiertasPrev !== null && ab > abiertasPrev) pitido();
   abiertasPrev = ab;
@@ -627,6 +640,7 @@ async function enviarFotosExtra() {
 
 /* ================= PANEL ================= */
 var PER = { tipo: 'mes', anio: new Date().getFullYear(), mes: new Date().getMonth() + 1 };
+var _panelInicial = false;   // ronda 47: el repartidor entra directo en su panel, una sola vez
 var MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 function verPanel(on) {
   el('vLista').style.display = on ? 'none' : 'flex';
@@ -655,10 +669,17 @@ async function cargarPanel() {
     '<div class="tile"><i style="background:var(--nx-lampara)"></i><b>' + (t.pendientes || 0) + '</b><span>Pendientes</span></div>' +
     '<div class="tile"><i style="background:#22C55E"></i><b>' + (t.solucionadas || 0) + '</b><span>Solucionadas</span></div>' +
     '<div class="tile oscuro"><i style="background:#8A9BB4"></i><b>' + (t.total || 0) + '</b><span>Total del ' + (PER.tipo === 'anio' ? 'año' : 'mes') + '</span></div></div>';
-  h += rankHTML('Repartidores con más incidencias', r.repartidores, '');
-  h += rankHTML('Motivos más frecuentes', r.motivos, 'azul');
-  h += rankHTML('Responsables', r.responsables, '');
-  if ((r.usuariosResponsables || []).length) h += rankHTML('Usuarios responsables', r.usuariosResponsables, 'azul');
+  /* Ronda 47: el panel del repartidor es solo el suyo — sus totales y sus
+     motivos. Los rankings de quién acumula incidencias y de responsables son
+     de gestión y no se le enseñan. */
+  var misSolo = !!r.soloPropias;
+  el('panelTit').textContent = misSolo ? 'Mis incidencias · panel' : 'Panel de incidencias';
+  if (!misSolo) h += rankHTML('Repartidores con más incidencias', r.repartidores, '');
+  h += rankHTML(misSolo ? 'Mis motivos más frecuentes' : 'Motivos más frecuentes', r.motivos, 'azul');
+  if (!misSolo) {
+    h += rankHTML('Responsables', r.responsables, '');
+    if ((r.usuariosResponsables || []).length) h += rankHTML('Usuarios responsables', r.usuariosResponsables, 'azul');
+  }
   el('panelCuerpo').innerHTML = '<div style="display:flex;flex-direction:column;gap:12px">' + h + '</div>';
 }
 function rankHTML(titulo, lista, cls) {

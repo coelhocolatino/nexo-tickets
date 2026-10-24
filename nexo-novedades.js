@@ -6,14 +6,15 @@
    Después se puede volver a abrir con cualquier enlace/botón que tenga
    el atributo data-nexo-novedades (o llamando a NexoNovedades.abrir()).
    Para una edición nueva: cambiar EDICION y el contenido de NOVEDADES.
-   Ronda 45 (2026-10-20): MÓDULO FLOTA (el repartidor sube el ticket de combustible al repostar)
-     y NUEVO INFORME. El repostaje no lo ve EMBOLSADO (no conducen); las facturas de taller y el
-     panel de la flota son solo para ADM.
-   Ronda 31 (2026-10-16): se mantiene el AVISO del Día Club Carrefour; novedades de %DIA (finalizar con/sin incidencia).
-   Ronda 28 (2026-10-16): primero un AVISO destacado (Día Club Carrefour) para todos los perfiles; después las novedades de Pedidos asignados y GRANVIA.
+   Ronda 47 (2026-10-24): GRANVIA deja de contar los pedidos dos veces (la foto del lote ya no se
+     archiva como ticket); «Finalizar sin / con incidencia» en Pedidos asignados; el repartidor
+     informa las incidencias desde el pedido y tiene su propio panel; aviso de versión nueva de la
+     app. Se retira el aviso del Día Club Carrefour del 20 y 21 de octubre (ya pasó).
+   Ronda 45 (2026-10-20): MÓDULO FLOTA y NUEVO INFORME (ya visto; se retira de esta edición).
+   Ronda 31 (2026-10-16): %DIA, finalizar con/sin incidencia.
    ============================================================= */
 (function () {
-  var EDICION = '2026-10-ronda45';
+  var EDICION = '2026-10-ronda47';
   var TITULO_FECHA = 'Octubre 2026';
 
   function ic(d) { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>'; }
@@ -44,36 +45,56 @@
       titulo: 'Atención',
       aviso: true,
       items: [
-        [I.campana, 'DÍA CLUB CARREFOUR', 'Martes 20 y miércoles 21 de octubre: prepárate para un volumen alto de pedidos.']
+        [I.campana, 'GRANVIA: LOS PEDIDOS SE CUENTAN AL ENTREGAR', 'La foto de la hoja con varios tickets ya NO cuenta pedidos. Cada pedido cuenta cuando lo entregas, uno a uno. Antes se contaba dos veces.']
       ]
     },
-    flota: {
-      titulo: 'Nuevo: módulo Flota',
+    granvia: {
+      titulo: 'GRANVIA · la foto de los tickets',
       items: [
-        [I.furgoneta, 'Botón nuevo en el inicio', 'Se llama "Flota". Es donde se graba cada repostaje de la furgoneta.'],
-        [I.surtidor, 'Al repostar, foto del ticket', 'Siempre que repostes: entra en Flota, saca la foto del ticket de la gasolinera y guárdalo. Una foto por repostaje, el mismo día.'],
-        [I.rayo, 'El ticket se lee solo', 'Saca la fecha, la hora, la matrícula, los litros y el importe. Lo que no se lea claro sale marcado en amarillo para que lo escribas tú.'],
-        [I.cuenta, 'Los km los pones tú', 'Mira el cuentakilómetros y escribe los km que marca. Es lo único que el ticket casi nunca trae, y sin eso no se puede calcular el consumo.'],
-        [I.reloj, '¿Mañana o tarde?', 'Lo pone solo por la hora del ticket, y se puede cambiar con un toque. Si repostas por la mañana ese día todavía no cuenta; si repostas por la tarde, sí.'],
-        [I.panel, 'Lo que sale al guardar', 'Km recorridos desde el último repostaje, litros por cada 100 km, pedidos entregados en ese período y el coste de combustible por pedido.']
+        [I.foto, 'Sacas la foto igual que siempre', 'Auto-Asignar, foto de la hoja con los tickets. La diferencia es que esa foto ya no se archiva como ticket: pasa directa a "Pedidos asignados" para repartirla.'],
+        [I.mas, 'El número de "Pedidos (P)" es solo un aviso', 'Pon cuántos tickets hay en la foto. Ya no suma pedidos: sirve para avisarte si se leen más o menos de los que dijiste.'],
+        [I.ok, 'Si el desglose no cuadra, te lo dice', 'Si dijiste 7 y se leen 5, sale en rojo y puedes añadir los que falten con "Añadir un ticket que falta".'],
+        [I.rayo, 'Sin internet, igual', 'La foto se queda guardada en el móvil y los tickets se leen solos cuando vuelva la red. No se pierde nada.']
       ]
     },
-    flotaAdm: {
-      titulo: 'Flota · solo ADM',
+    finalizar: {
+      titulo: 'Pedidos asignados · dos botones',
       items: [
-        [I.llave, 'Facturas de taller', 'Foto o PDF de la factura: se lee sola, sale para revisar y se graba en el HISTORIAL. El archivo se guarda en Drive, en la carpeta del trimestre.'],
-        [I.ok, 'Mantenimiento al día', 'Si el trabajo es uno de los items (aceite, pastillas, ITV, correa…), se le actualizan la fecha y los km en ESTADO DE FLOTA y los semáforos se recalculan solos.'],
-        [I.panel, 'Panel de la flota', 'Una tarjeta por furgoneta: km, vencidos y próximos, consumo medio, coste por pedido y gasto de taller del trimestre.']
+        [I.ok, 'Finalizar sin incidencia', 'Lo de siempre: el pedido se entrega y se sube su ticket.'],
+        [I.campana, 'Finalizar con incidencia', 'El pedido se entrega igual (cuenta como entrega) y justo después se abre el registro de la incidencia. Igual que en %DIA.'],
+        [I.mano, 'Llegaste al cliente, se computa', 'Aunque haya incidencia, si llegaste al cliente la entrega cuenta para ti. La incidencia queda apuntada para gestionarla después.']
       ]
     },
-    informe: {
-      titulo: 'Nuevo Informe',
+    incidencias: {
+      titulo: 'Incidencias',
       items: [
-        [I.panel, 'Tus números, no solo el día', 'El botón "Informe" trae pantallas nuevas con todo tu reparto.'],
-        [I.filtro, 'Filtro de período', 'Eliges el período y todo se recalcula: el mes en curso, el anterior o el trozo que quieras mirar.'],
-        [I.mas, 'Pedidos y extras', 'Pedidos P, XR y XP y el total, comparados con el período anterior y con el año pasado.'],
-        [I.rayo, 'Proyección al cierre', 'Con el ritmo que llevas, cuántos pedidos vas a cerrar el mes.'],
-        [I.imagen, 'Por tienda, día y franja', 'El reparto por tienda en %, el total de cada día y el detalle día > tienda > franja.']
+        [I.mano, 'Se informan desde el pedido', 'Ya no se informa desde el botón de Incidencias: se hace desde la tarjeta del pedido, con "Finalizar con incidencia".'],
+        [I.panel, 'Tienes tu propio panel', 'Al entrar en Incidencias lo primero que ves es tu panel: cuántas tienes pendientes, cuántas resueltas y por qué motivos.'],
+        [I.filtro, 'Y la lista, para consultar', 'Desde el panel pasas a la lista con el botón "Lista" y ves el detalle de tus incidencias.']
+      ]
+    },
+    incidenciasGestion: {
+      titulo: 'Incidencias',
+      items: [
+        [I.mano, 'Tú sigues informando desde aquí', 'El botón "Informar incidencia" de la página de Incidencias se queda para ADM y Embolsado, igual que siempre.'],
+        [I.campana, 'Los repartidores, desde el pedido', 'Ellos ya no informan desde esa página: lo hacen en la tarjeta del pedido, al finalizarlo. Así cada incidencia queda pegada a su pedido y a su entrega.'],
+        [I.panel, 'Cada repartidor ve su panel', 'Al entrar en Incidencias le sale su propio panel, solo con sus números. Los rankings de repartidores y responsables siguen siendo vuestros.']
+      ]
+    },
+    adm: {
+      titulo: 'Solo ADM',
+      items: [
+        [I.deshacer, '%DIA queda limpio', 'Un pedido con la incidencia ya finalizada desaparece de "Cerrados". Antes se quedaba ahí para siempre (el caso de MARIA DEL MAR del 16/10).'],
+        [I.surtidor, 'Combustible sin #ERROR!', 'El enlace al ticket de la hoja COMBUSTIBLE ya no da error: se graba como enlace, no como fórmula, así que no depende del idioma de la planilla.'],
+        [I.campana, 'Las incidencias directas son tuyas', 'Informar una incidencia desde la página de Incidencias queda para ADM y Embolsado. Los repartidores lo hacen desde el pedido.']
+      ]
+    },
+    actualizar: {
+      titulo: 'La app se actualiza sola',
+      items: [
+        [I.rayo, 'Aviso de versión nueva', 'Cuando haya una versión nueva, sale un aviso abajo. Pulsa "Actualizar ahora" y se ponen al día TODAS las páginas y módulos de tu móvil de golpe.'],
+        [I.reloj, 'O "Más tarde"', 'Si estás en medio de un reparto, pulsa "Más tarde" y no te vuelve a molestar hasta la próxima vez que abras la app.'],
+        [I.panel, 'La versión, en el login', 'En la pantalla de entrada se ve abajo qué versión de Nexo tiene este móvil. Si está atrasada, lo dice y se actualiza con un toque.']
       ]
     }
   };
@@ -86,9 +107,9 @@
     return 'repartidor';
   }
   function secciones(p) {
-    if (p === 'repartidor') return ['aviso', 'flota', 'informe'];
-    if (p === 'embolsado') return ['aviso', 'informe'];                 // no conducen: el repostaje no les toca
-    return ['aviso', 'flota', 'flotaAdm', 'informe'];                   // ADM lo ve todo
+    if (p === 'repartidor') return ['aviso', 'granvia', 'finalizar', 'incidencias', 'actualizar'];
+    if (p === 'embolsado')  return ['aviso', 'incidenciasGestion', 'actualizar'];   // no reparten: lo de entregar no les toca
+    return ['aviso', 'granvia', 'finalizar', 'incidenciasGestion', 'adm', 'actualizar'];   // ADM lo ve todo
   }
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 

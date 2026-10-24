@@ -186,7 +186,53 @@ input::placeholder { color:#7A879A; font-weight:600; }
 
 </div><!-- /card -->
 </main>
-<footer class="nx-version">Nexo v3.0</footer>
+<footer class="nx-version" id="nxVer">Nexo</footer>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   RONDA 47 (punto 8) — VERSIÓN GENERAL EN LA PÁGINA DE LOGIN
+   Aquí se ve de un vistazo qué versión de Nexo tiene este móvil. El número
+   sale de version.json (clave "app"), siempre leído de la red, así que es el
+   que hay de verdad, no el que quedó en la caché. Si el móvil está atrasado,
+   se avisa al momento y con un toque se pone todo al día (misma limpieza de
+   caché que hace nexo-version.js).
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  var pie = document.getElementById('nxVer');
+  if (!pie || !window.fetch) return;
+  var CLAVE_APP = 'nexo_app_version';
+  fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (v) {
+      var app = v && v.app ? String(v.app) : '';
+      if (!app) return;
+      var mia = null;
+      try { mia = localStorage.getItem(CLAVE_APP); } catch (e) {}
+      if (mia && mia !== app) {
+        pie.innerHTML = 'Nexo ' + mia + ' · <b>hay ' + app + '</b> — ' +
+          '<a href="#" id="nxVerUp" style="color:inherit;text-decoration:underline">actualizar</a>';
+        var a = document.getElementById('nxVerUp');
+        if (a) a.onclick = function (ev) {
+          ev.preventDefault();
+          pie.textContent = 'Actualizando Nexo…';
+          try { localStorage.setItem(CLAVE_APP, app); } catch (e) {}
+          var t = [];
+          if (window.caches && caches.keys) t.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
+          if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+            t.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+              return Promise.all(rs.map(function (r) { return r.update().catch(function () {}); }));
+            }));
+          }
+          Promise.all(t).catch(function () {}).then(function () { location.replace(location.pathname + '?v=' + app); });
+        };
+      } else {
+        pie.textContent = 'Nexo ' + app;
+        try { if (!mia) localStorage.setItem(CLAVE_APP, app); } catch (e) {}
+      }
+    })
+    .catch(function () { /* sin conexión: se queda «Nexo» a secas */ });
+})();
+</script>
 
 <script>
 /* ════════════════════════════════════════════════════════════

@@ -63,7 +63,7 @@
      v3.10.2 (2026-10-09): ventana "Qué novedades hay" (nexo-novedades.js), una vez por usuario;
      se vuelve a abrir con el enlace de abajo.
 -->
-<html lang="es" data-pagina="auto" data-version="v3.11.0">
+<html lang="es" data-pagina="auto" data-version="v3.11.1">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -1218,6 +1218,37 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
   try { loteId = await prepararLoteGranvia(foto, datosForm); }
   catch (lErr) { console.warn('[Nexo] Lote GRANVIA:', lErr); loteId = null; }
 
+  /* ══════════════════════════════════════════════════════════════════════════
+     RONDA 47 — GRANVIA: LA FOTO DEL LOTE YA NO SE ARCHIVA COMO TICKET
+     ──────────────────────────────────────────────────────────────────────────
+     Qué pasaba (el bug del doble recuento):
+       1) aquí se subía la hoja entera a NEXO SCRIPT con el nº de pedidos que
+          se escribía a mano  ->  GRANVIA_…_7P_…_AUTO.jpg  =  7 pedidos.
+       2) después, en «Pedidos asignados», esa misma hoja se desglosaba y cada
+          ticket se archivaba solo al ENTREGARLO  ->  7 archivos de 1P  =  7
+          pedidos más.
+     Resultado: los 7 pedidos de GRANVIA se contaban DOS veces (7 + 7 = 14).
+     Y cuando el desglose no llegaba a hacerse, quedaba solo la foto «_AUTO»
+     con el total y ningún ticket desglosado.
+
+     Regla acordada: en GRANVIA los pedidos se desglosan y se cuentan SOLO al
+     entregarlos (es entonces cuando se sube la foto de cada ticket).
+     Así que aquí la hoja NO se manda a NEXO SCRIPT: se guarda en el móvil y se
+     pasa a «Pedidos asignados», que es quien la sube a Drive (procesarFotoMultiple)
+     y la reparte en un pedido por ticket. Sin internet también vale: la foto
+     queda en el móvil y los tickets se leen solos al volver la red.
+     ══════════════════════════════════════════════════════════════════════════ */
+  if (loteId) {
+    hideSpinner();
+    _submitting = false;
+    setMsg(navigator.onLine
+      ? '✅ Foto guardada — ahora se leen los tickets uno a uno en «Pedidos asignados»'
+      : '📥 Sin conexión — foto guardada en el móvil. Los tickets se leerán solos al volver la red', '#9dffb0');
+    resetFormulario();
+    location.href = 'asignar.html?lote=' + encodeURIComponent(loteId);
+    return;
+  }
+
   try {
     // Preparar foto
     let fotoOpt;
@@ -1302,11 +1333,8 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
     _submitting = false;
   }
 
-  // GRANVIA: con red se pasa directamente a "Pedidos asignados", donde se leen los tickets.
-  // Sin red (o con error definitivo) la foto queda guardada y se lee al abrir esa página con conexión.
-  if (loteId && !errorDefinitivo && navigator.onLine) {
-    location.href = 'asignar.html?lote=' + encodeURIComponent(loteId);
-  }
+  // Ronda 47: GRANVIA ya no llega hasta aquí — sale antes, nada más guardar la
+  // foto del lote (ver el bloque «LA FOTO DEL LOTE YA NO SE ARCHIVA COMO TICKET»).
 });
 
 /* ============================================================
@@ -1346,7 +1374,12 @@ async function prepararLoteGranvia(foto, v) {
   const lote = {
     id: 'L' + Date.now(), ts: Date.now(), imagen: dataUrl,
     fecha: v.fecha, tienda: v.tienda, franja: v.franja, repartidor: v.repartidor,
-    usuario: (sesion && sesion.usuario) || '', asignar: true
+    usuario: (sesion && sesion.usuario) || '', asignar: true,
+    /* Ronda 47: el nº que se escribe en «Pedidos (P)» ya NO cuenta pedidos (en
+       GRANVIA se cuentan al entregar). Viaja solo como AVISO: cuántos tickets
+       dice el repartidor que hay en la hoja. Si el OCR lee otra cantidad,
+       «Pedidos asignados» lo canta en rojo en vez de callarse. */
+    esperados: parseInt(String(v.pedidos || '').replace(/[^\d]/g, ''), 10) || 0
   };
   await guardarLote(lote);
   return lote.id;
@@ -1362,6 +1395,21 @@ const asigHint   = document.getElementById('asigHint');
 function esTravesia(v) { return /trav[eé]s[ií]a/i.test(String(v || '')); }
 function actualizarBtnAsignar() {
   btnAsignar.style.display = (esTravesia(tiendaSel.value) || esGranvia(tiendaSel.value)) ? 'block' : 'none';
+  avisarPedidosGranvia();
+}
+/* Ronda 47: en GRANVIA el nº de «Pedidos (P)» ya no cuenta nada — los pedidos se
+   cuentan de uno en uno al entregarlos. Aquí solo sirve para avisar si el OCR
+   lee más o menos tickets de los que dice el repartidor. Se explica en pantalla
+   para que nadie piense que esta foto ya suma los pedidos del día. */
+function avisarPedidosGranvia() {
+  var h = document.getElementById('asigHint');
+  if (!h) return;
+  if (esGranvia(tiendaSel.value)) {
+    h.innerHTML = 'ℹ️ En GRANVIA esto es solo <b>cuántos tickets hay en la foto</b>. Los pedidos se cuentan al entregar cada uno.';
+    h.style.display = 'block';
+  } else if (/cuántos tickets hay en la foto/.test(h.innerHTML)) {
+    h.innerHTML = ''; h.style.display = 'none';
+  }
 }
 tiendaSel.addEventListener('change', actualizarBtnAsignar);
 (function () {
