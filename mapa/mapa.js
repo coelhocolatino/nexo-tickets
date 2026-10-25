@@ -7,7 +7,7 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const arr = (v) => (Array.isArray(v) ? v : []);
   const VISTAS = ["mapa", "arquitectura", "flujos", "pantallas", "datos"];
-  const RAMAS = ["--c1", "--c2", "--c3", "--c4", "--c5", "--c6"];
+  const RAMAS = ["--rama-1", "--rama-2", "--rama-3", "--rama-4", "--rama-5", "--rama-6"];
 
   let D = {};
   let compPorId = {};
@@ -107,9 +107,9 @@
     };
   }
   function nodoHTML(n, nivel, rama) {
-    const etiqueta = `<span class="node">${esc(n.t)}${n.d ? ` <small>· ${esc(n.d)}</small>` : ""}</span>`;
-    const estilo = rama ? ` style="--branch: var(${rama})"` : "";
-    const cls = nivel === 0 ? "root" : nivel === 1 ? "rama" : "";
+    const etiqueta = `<span class="mp-nodo">${esc(n.t)}${n.d ? ` <small>· ${esc(n.d)}</small>` : ""}</span>`;
+    const estilo = rama ? ` style="--rama: var(${rama})"` : "";
+    const cls = nivel === 0 ? "mp-raiz" : nivel === 1 ? "mp-rama" : "";
     if (!n.hijos || !n.hijos.length) return `<li class="${cls}" data-txt="${esc((n.t + " " + (n.d || "")).toLowerCase())}"${estilo}>${etiqueta}</li>`;
     const hijos = n.hijos.map((h, i) => nodoHTML(h, nivel + 1, rama || RAMAS[i % RAMAS.length])).join("");
     return `<li class="${cls}" data-txt="${esc(n.t.toLowerCase())}"${estilo}><details${nivel < 1 ? " open" : ""}><summary>${etiqueta}</summary><ul>${hijos}</ul></details></li>`;
@@ -137,14 +137,24 @@
     arr(a.conexiones).forEach((x) => {
       if (compPorId[x.desde] && compPorId[x.hacia]) src += `  ${x.desde} -->|${limpio(x.etiqueta) || " "}| ${x.hacia}\n`;
     });
-    const oscuro = matchMedia("(prefers-color-scheme: dark)").matches;
-    mermaid.initialize({ startOnLoad: false, theme: oscuro ? "dark" : "default", securityLevel: "strict" });
+    // Colores y letra del tema Nexo (nexo-tema.css)
+    const css = getComputedStyle(document.documentElement);
+    const t = (n) => css.getPropertyValue(n).trim();
+    mermaid.initialize({
+      startOnLoad: false, securityLevel: "strict", theme: "base",
+      themeVariables: {
+        fontFamily: t("--nx-texto"), fontSize: "14px",
+        primaryColor: t("--nx-azul-fondo"), primaryTextColor: t("--nx-tinta"), primaryBorderColor: t("--nx-azul"),
+        lineColor: t("--nx-suave"), clusterBkg: t("--nx-campo"), clusterBorder: t("--nx-linea"),
+        edgeLabelBackground: t("--nx-superficie"), tertiaryColor: t("--nx-campo"),
+      },
+    });
     try {
       const { svg } = await mermaid.render("arq-svg", src);
       $("#arq-diagrama").innerHTML = `<div class="mermaid">${svg}</div>`;
       diagramaHecho = true;
     } catch (e) {
-      $("#arq-diagrama").innerHTML = `<p class="vacio">No se pudo dibujar el diagrama con los datos actuales.</p>`;
+      $("#arq-diagrama").innerHTML = `<p class="mp-vacio">No se pudo dibujar el diagrama con los datos actuales.</p>`;
     }
   }
   function flujosDe(id) {
@@ -153,11 +163,11 @@
   function pintarArquitectura() {
     $("#componentes").innerHTML = arr(D.arquitectura?.componentes).map((c) => {
       const usos = flujosDe(c.id);
-      return `<button class="panel comp" data-id="${esc(c.id)}" aria-pressed="false" data-txt="${esc((c.nombre + " " + c.descripcion).toLowerCase())}">
-        <span class="capa">${esc(c.capa)}</span><b>${esc(c.nombre)}</b><p>${esc(c.descripcion)}</p>
-        <span class="usos">${usos.length ? `En ${usos.length} flujo${usos.length > 1 ? "s" : ""} →` : "Sin flujos asociados"}</span></button>`;
+      return `<button class="nx-tarjeta mp-comp" data-id="${esc(c.id)}" aria-pressed="false" data-txt="${esc((c.nombre + " " + c.descripcion).toLowerCase())}">
+        <span class="mp-capa">${esc(c.capa)}</span><b>${esc(c.nombre)}</b><p>${esc(c.descripcion)}</p>
+        <span class="mp-usos">${usos.length ? `En ${usos.length} flujo${usos.length > 1 ? "s" : ""} →` : "Sin flujos asociados"}</span></button>`;
     }).join("");
-    document.querySelectorAll(".comp").forEach((b) => b.addEventListener("click", () => {
+    document.querySelectorAll(".mp-comp").forEach((b) => b.addEventListener("click", () => {
       filtroComp = b.dataset.id;
       pintarFiltroComp();
       pintarListaFlujos();
@@ -169,9 +179,9 @@
   function pintarFiltroComp() {
     const usados = [...new Set(arr(D.flujos?.flujos).flatMap((f) => arr(f.pasos).flatMap((p) => arr(p.componentes))))].filter((id) => compPorId[id]);
     $("#filtro-comp").innerHTML =
-      `<button class="chip" data-id="" aria-pressed="${!filtroComp}">Todos</button>` +
-      usados.map((id) => `<button class="chip" data-id="${esc(id)}" aria-pressed="${filtroComp === id}">${esc(compPorId[id].nombre)}</button>`).join("");
-    $("#filtro-comp").querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => {
+      `<button data-id="" aria-pressed="${!filtroComp}">Todos</button>` +
+      usados.map((id) => `<button data-id="${esc(id)}" aria-pressed="${filtroComp === id}">${esc(compPorId[id].nombre)}</button>`).join("");
+    $("#filtro-comp").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
       filtroComp = b.dataset.id || null;
       pintarFiltroComp();
       pintarListaFlujos();
@@ -182,7 +192,7 @@
     if (!lista.find((f) => f.id === flujoActual)) flujoActual = lista[0]?.id || null;
     $("#lista-flujos").innerHTML = lista.length
       ? lista.map((f) => `<li data-txt="${esc((f.titulo + " " + f.resumen + " " + arr(f.pasos).map((p) => p.texto).join(" ")).toLowerCase())}"><button data-id="${esc(f.id)}" aria-current="${f.id === flujoActual}"><b>${esc(f.titulo)}</b><small>${arr(f.pasos).length} pasos</small></button></li>`).join("")
-      : `<li class="vacio">Ningún flujo usa este componente.</li>`;
+      : `<li class="mp-vacio">Ningún flujo usa este componente.</li>`;
     $("#lista-flujos").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
       flujoActual = b.dataset.id;
       pintarListaFlujos();
@@ -192,18 +202,18 @@
   function pintarDetalleFlujo() {
     clearInterval(timer);
     const f = arr(D.flujos?.flujos).find((x) => x.id === flujoActual);
-    if (!f) { $("#detalle-flujo").innerHTML = `<p class="vacio">Elige un flujo.</p>`; return; }
+    if (!f) { $("#detalle-flujo").innerHTML = `<p class="mp-vacio">Elige un flujo.</p>`; return; }
     $("#detalle-flujo").innerHTML = `
       <h3>${esc(f.titulo)}</h3>
-      <p class="muted">${esc(f.resumen)}</p>
-      <div class="player">
-        <button class="btn" id="reproducir">▶ Recorrer paso a paso</button>
-        <button class="btn" id="anterior" aria-label="Paso anterior">←</button>
-        <button class="btn" id="siguiente" aria-label="Paso siguiente">→</button>
-        <span class="muted" id="paso-n"></span>
+      <p class="nx-nota">${esc(f.resumen)}</p>
+      <div class="mp-reproductor">
+        <button class="nx-btn tinta" id="reproducir">▶ Recorrer paso a paso</button>
+        <button class="nx-btn suave" id="anterior" aria-label="Paso anterior">←</button>
+        <button class="nx-btn suave" id="siguiente" aria-label="Paso siguiente">→</button>
+        <span class="nx-nota" id="paso-n"></span>
       </div>
-      <ol class="steps">${arr(f.pasos).map((p) => `<li><p>${esc(p.texto)}</p><div class="tags">${arr(p.componentes).map((id) => `<span class="tag">${esc(compPorId[id]?.nombre || id)}</span>`).join("")}</div></li>`).join("")}</ol>`;
-    const pasos = [...document.querySelectorAll("#detalle-flujo .steps li")];
+      <ol class="mp-pasos">${arr(f.pasos).map((p) => `<li><p>${esc(p.texto)}</p><div class="mp-etiquetas">${arr(p.componentes).map((id) => `<span class="nx-chip">${esc(compPorId[id]?.nombre || id)}</span>`).join("")}</div></li>`).join("")}</ol>`;
+    const pasos = [...document.querySelectorAll("#detalle-flujo .mp-pasos li")];
     let i = -1;
     const ir = (n) => {
       i = Math.max(0, Math.min(pasos.length - 1, n));
@@ -230,37 +240,37 @@
       "<thead><tr><th>Nivel</th><th>Fecha</th><th>Repartidor</th><th>Franjas</th><th>Para quién</th></tr></thead><tbody>" +
       arr(g.roles).map((r) => `<tr><td>${esc(r.nivel)}</td><td>${esc(r.fecha)}</td><td>${esc(r.repartidor)}</td><td>${esc(r.franjas)}</td><td>${esc(r.uso)}</td></tr>`).join("") +
       "</tbody>";
-    $("#permisos").innerHTML = arr(g.permisos).map((p) => `<span class="tag" title="${esc(p.descripcion)}">${esc(p.nombre)}</span>`).join("");
+    $("#permisos").innerHTML = arr(g.permisos).map((p) => `<span class="nx-chip" title="${esc(p.descripcion)}">${esc(p.nombre)}</span>`).join("");
     const pantallas = arr(D.arquitectura?.pantallas);
     const modulos = [...new Set(pantallas.map((p) => p.modulo).filter(Boolean))];
     const pintarChips = () => {
       $("#filtro-modulo").innerHTML =
-        `<button class="chip" data-m="" aria-pressed="${!filtroModulo}">Todas</button>` +
-        modulos.map((m) => `<button class="chip" data-m="${esc(m)}" aria-pressed="${filtroModulo === m}">${esc(m)}</button>`).join("");
-      $("#filtro-modulo").querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => {
+        `<button data-m="" aria-pressed="${!filtroModulo}">Todas</button>` +
+        modulos.map((m) => `<button data-m="${esc(m)}" aria-pressed="${filtroModulo === m}">${esc(m)}</button>`).join("");
+      $("#filtro-modulo").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
         filtroModulo = b.dataset.m || null;
         pintarChips();
-        document.querySelectorAll("#pantallas .card").forEach((c) => (c.hidden = !!filtroModulo && c.dataset.m !== filtroModulo));
+        document.querySelectorAll("#pantallas .nx-tarjeta").forEach((c) => (c.hidden = !!filtroModulo && c.dataset.m !== filtroModulo));
         aplicarBusqueda();
       }));
     };
     pintarChips();
     $("#pantallas").innerHTML = pantallas.map((p) => `
-      <div class="panel card" data-m="${esc(p.modulo)}" data-txt="${esc((p.archivo + " " + p.nombre + " " + p.descripcion).toLowerCase())}">
-        <span class="mod">${esc(p.modulo)}</span><h3>${esc(p.archivo)}</h3><p>${esc(p.descripcion)}</p></div>`).join("");
+      <div class="nx-tarjeta" data-m="${esc(p.modulo)}" data-txt="${esc((p.archivo + " " + p.nombre + " " + p.descripcion).toLowerCase())}">
+        <span class="mp-mod">${esc(p.modulo)}</span><h3>${esc(p.archivo)}</h3><p>${esc(p.descripcion)}</p></div>`).join("");
   }
 
   // ---------- Datos ----------
   function pintarDatos() {
     const d = D.datos || {};
     $("#hojas").innerHTML = arr(d.hojas).map((h) => `
-      <div class="panel card" data-txt="${esc((h.nombre + " " + h.descripcion + " " + arr(h.columnas).join(" ")).toLowerCase())}">
+      <div class="nx-tarjeta" data-txt="${esc((h.nombre + " " + h.descripcion + " " + arr(h.columnas).join(" ")).toLowerCase())}">
         <h3>${esc(h.nombre)}</h3><p>${esc(h.descripcion)}</p>
-        ${arr(h.columnas).length ? `<span class="cols">${arr(h.columnas).map(esc).join(" · ")}</span>` : ""}</div>`).join("");
+        ${arr(h.columnas).length ? `<span class="mp-cols">${arr(h.columnas).map(esc).join(" · ")}</span>` : ""}</div>`).join("");
     $("#drive").innerHTML = arr(d.drive).map((x) => `
-      <div class="panel card" data-txt="${esc((x.nombre + " " + x.descripcion).toLowerCase())}"><h3>${esc(x.nombre)}</h3><p>${esc(x.descripcion)}</p></div>`).join("");
+      <div class="nx-tarjeta" data-txt="${esc((x.nombre + " " + x.descripcion).toLowerCase())}"><h3>${esc(x.nombre)}</h3><p>${esc(x.descripcion)}</p></div>`).join("");
     $("#autos").innerHTML = arr(d.automatizaciones).map((x) => `
-      <div class="panel card" data-txt="${esc((x.nombre + " " + x.descripcion).toLowerCase())}"><span class="mod">${esc(x.frecuencia)}</span><h3>${esc(x.nombre)}</h3><p>${esc(x.descripcion)}</p></div>`).join("");
+      <div class="nx-tarjeta" data-txt="${esc((x.nombre + " " + x.descripcion).toLowerCase())}"><span class="mp-mod">${esc(x.frecuencia)}</span><h3>${esc(x.nombre)}</h3><p>${esc(x.descripcion)}</p></div>`).join("");
   }
 
   // ---------- Búsqueda ----------
@@ -270,14 +280,14 @@
     document.querySelectorAll("#mind li").forEach((li) => li.classList.remove("hit"));
     if (q) {
       document.querySelectorAll("#mind li[data-txt]").forEach((li) => {
-        if (li.dataset.txt.includes(q) && !li.classList.contains("root")) {
+        if (li.dataset.txt.includes(q) && !li.classList.contains("mp-raiz")) {
           li.classList.add("hit"); n++;
           let p = li.parentElement.closest("details");
           while (p) { p.open = true; p = p.parentElement.closest("details"); }
         }
       });
     }
-    document.querySelectorAll(".card[data-txt], .comp[data-txt], #lista-flujos li[data-txt]").forEach((el) => {
+    document.querySelectorAll(".mp-tarjetas .nx-tarjeta[data-txt], .mp-comp[data-txt], #lista-flujos li[data-txt]").forEach((el) => {
       const porModulo = el.closest("#pantallas") && filtroModulo && el.dataset.m !== filtroModulo;
       const coincide = !q || el.dataset.txt.includes(q);
       el.hidden = porModulo || !coincide;
