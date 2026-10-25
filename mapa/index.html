@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mapa de NexoApp</title>
+<meta name="description" content="Mapa mental, arquitectura y flujos de NexoApp, generados desde NotebookLM.">
+<link rel="icon" href="../nexo-icon-192.png">
+<link rel="stylesheet" href="mapa.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="../index.html" title="Volver a la app">
+      <img src="../nexo-icon-192.png" alt="" width="36" height="36">
+      <span><b>NexoApp</b><small>Mapa de funcionamiento</small></span>
+    </a>
+    <div class="status" id="estado" aria-live="polite">Cargando datos…</div>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Secciones">
+    <button role="tab" id="tab-mapa" data-vista="mapa">Mapa mental</button>
+    <button role="tab" id="tab-arquitectura" data-vista="arquitectura">Arquitectura</button>
+    <button role="tab" id="tab-flujos" data-vista="flujos">Flujos</button>
+    <button role="tab" id="tab-pantallas" data-vista="pantallas">Pantallas y roles</button>
+    <button role="tab" id="tab-datos" data-vista="datos">Datos</button>
+  </nav>
+</header>
+
+<main class="wrap">
+  <div class="search">
+    <input id="buscar" type="search" placeholder="Buscar pantalla, hoja, columna, flujo…" autocomplete="off" aria-label="Buscar">
+    <span id="buscar-n" class="muted"></span>
+  </div>
+
+  <p class="resumen" id="resumen"></p>
+
+  <section id="vista-mapa" class="vista" role="tabpanel" aria-labelledby="tab-mapa">
+    <div class="bar">
+      <h2>Mapa mental</h2>
+      <div class="actions">
+        <button class="btn" id="abrir-todo">Abrir todo</button>
+        <button class="btn" id="cerrar-todo">Cerrar todo</button>
+      </div>
+    </div>
+    <div class="mind" id="mind"></div>
+  </section>
+
+  <section id="vista-arquitectura" class="vista" role="tabpanel" aria-labelledby="tab-arquitectura" hidden>
+    <div class="bar"><h2>Arquitectura</h2><span class="muted">Toca un componente para ver en qué flujos participa.</span></div>
+    <div class="panel diagram" id="arq-diagrama"></div>
+    <div class="comp-grid" id="componentes"></div>
+  </section>
+
+  <section id="vista-flujos" class="vista" role="tabpanel" aria-labelledby="tab-flujos" hidden>
+    <div class="bar"><h2>Flujos paso a paso</h2></div>
+    <div class="chips" id="filtro-comp" aria-label="Filtrar por componente"></div>
+    <div class="flows">
+      <ol class="flow-list" id="lista-flujos"></ol>
+      <article class="flow-detail panel" id="detalle-flujo"></article>
+    </div>
+  </section>
+
+  <section id="vista-pantallas" class="vista" role="tabpanel" aria-labelledby="tab-pantallas" hidden>
+    <div class="bar"><h2>Niveles de usuario</h2></div>
+    <div class="tablebox"><table id="tabla-roles"></table></div>
+    <div class="chips" id="permisos"></div>
+    <div class="bar"><h2>Pantallas</h2></div>
+    <div class="chips" id="filtro-modulo" aria-label="Filtrar por módulo"></div>
+    <div class="cards" id="pantallas"></div>
+  </section>
+
+  <section id="vista-datos" class="vista" role="tabpanel" aria-labelledby="tab-datos" hidden>
+    <div class="bar"><h2>Hojas de Google Sheets</h2></div>
+    <div class="cards" id="hojas"></div>
+    <div class="bar"><h2>Google Drive</h2></div>
+    <div class="cards" id="drive"></div>
+    <div class="bar"><h2>Automatizaciones</h2></div>
+    <div class="cards" id="autos"></div>
+  </section>
+</main>
+
+<footer class="wrap foot" id="pie"></footer>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<script src="mapa.js"></script>
+</body>
+</html>

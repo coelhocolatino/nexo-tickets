@@ -66,6 +66,8 @@ self.addEventListener("fetch", (event) => {
     url.includes("google-analytics") ||
     url.includes("fonts.googleapis.com") ||
     url.includes("fonts.gstatic.com") ||
+    url.includes("/mapa/") ||  // Mapa de NexoApp: siempre datos frescos
+    url.includes("cdn.jsdelivr.net") ||
     url.startsWith("chrome-extension://") ||
     req.method !== "GET"
   ) {
