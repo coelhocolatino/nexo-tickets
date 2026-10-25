@@ -1,17 +1,25 @@
 // ==============================
 // Nexo · SAD Tickets - Service Worker v5
 // ==============================
-const CACHE_NAME = "nexo-tickets-v26";
+const CACHE_NAME = "nexo-tickets-v53";   // ronda 47: GRANVIA deja de contar los pedidos dos veces (la foto del lote ya no se archiva como ticket); «Finalizar sin / con incidencia» en Pedidos asignados; el repartidor informa las incidencias desde el pedido y tiene su propio panel; aviso de versión nueva de la app con la versión general en el login; ronda 46: vuelve el campo «Fecha del ticket» al revisar un ticket manual en Asignar; ronda 44: informe del repartidor (informe-repartidor-nivel1.html); ronda 43: entregar es subir el ticket (KM/XR/XP en la tarjeta, sin 2ª foto); ronda 41: Config → Informes automáticos (el informe diario y el mensual se encienden, se configuran y se envían por separado, por tienda); ronda 36: anotación F1-5 / C1-ARC de GRANVIA y fecha del ticket obligatoria; ronda 34: cobro confirmado con importe + incidencia automática, símbolo de incidencias del cliente en Reparto; ronda 33: se retira el Informe de Productividad; el informe diario deja de bloquear la app (candado corto + escritura por lotes) y reintento automático; ronda 31: finalizar con/sin incidencia (%DIA); ronda 29b: botón Fotos; ronda 29: selector de tienda del ADM en Reparto, límites por tienda en Config; ronda 28: asignar.html guardado para abrir SIN internet (GRANVIA), lotes de fotos; ronda 27: avisos en la barra, teléfonos útiles, Config plegable; ronda 26: accesibilidad; ronda 25: barra de iconos + cola; ronda 24: diseño nuevo + version.json + dia + avisos push + incidencias
 
 const ASSETS = [
   "./",
   "./login.html",
   "./index.html",
+  "./auto.html",
   "./inicio-embolsado.html",
   "./manifest.json",
   "./nexo-icon-192.png",
   "./nexo-icon-512.png",
   "./nexo-logo-full.png",
+  "./nexo-logo-oficial.png",
+  "./nexo-tema.css",
+  "./nexo-version.js",
+  "./nexo-foto.js",
+  "./nexo-nav.js",
+  "./nexo-telefonos.js",
+  "./nexo-novedades.js",
   "./nexo-rabbit-192.png",
   "./nexo-rabbit-512.png",
   "./nexo-wordmark.png",
@@ -22,6 +30,7 @@ const ASSETS = [
   "./boton_dia.png",
   "./dia.html",
   "./incidencias.html",
+  "./asignar.html",        // ronda 28: GRANVIA no tiene internet: la página debe abrir sin red
   "./boton_reservas.png",
   "./boton_informe.png"
 ];
@@ -66,8 +75,9 @@ self.addEventListener("fetch", (event) => {
     url.includes("google-analytics") ||
     url.includes("fonts.googleapis.com") ||
     url.includes("fonts.gstatic.com") ||
-    url.includes("/mapa/") ||  // Mapa de NexoApp: siempre datos frescos
-    url.includes("cdn.jsdelivr.net") ||
+    url.includes("version.json") ||          // ronda 24: la versión se lee siempre de la red
+    url.includes("/mapa/") ||                // Mapa de NexoApp: siempre datos frescos
+    url.includes("cdn.jsdelivr.net/npm/mermaid") ||
     url.startsWith("chrome-extension://") ||
     req.method !== "GET"
   ) {
@@ -75,7 +85,8 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(
-    caches.match(req).then((cached) => {
+    // Las páginas se buscan sin el ?parámetro (asignar.html?lote=… debe abrir sin red).
+    caches.match(req, req.mode === 'navigate' ? { ignoreSearch: true } : undefined).then((cached) => {
       if (cached) {
         // Update background
         fetch(req).then((response) => {
@@ -114,8 +125,33 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
-// Avisos %DIA: al tocar la notificación se abre la página de pedidos %DIA
+// Ronda 24 (2026-10-09): avisos push. Llegan aunque la app esté cerrada.
+// El aviso trae { titulo, cuerpo, url, tag } (lo envía NEXO DIA a través de sad-proxy /push).
+self.addEventListener("push", (event) => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch (e) { d = { cuerpo: event.data ? event.data.text() : "" }; }
+  event.waitUntil(self.registration.showNotification(d.titulo || "Nexo", {
+    body: d.cuerpo || "",
+    icon: "nexo-icon-192.png",
+    badge: "nexo-icon-192.png",
+    tag: d.tag || "nexo",
+    renotify: true,
+    vibrate: [300, 120, 300, 120, 300],
+    data: { url: d.url || "./dia.html" }
+  }));
+});
+
+// Al tocar el aviso: abre (o enfoca) la página del pedido.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  event.waitUntil(self.clients.openWindow("./dia.html"));
+  const destino = new URL((event.notification.data && event.notification.data.url) || "./dia.html", self.registration.scope).href;
+  event.waitUntil((async () => {
+    const lista = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const c of lista) {
+      if (c.url.indexOf(self.registration.scope) === 0 && "navigate" in c) {
+        try { await c.focus(); return await c.navigate(destino); } catch (e) {}
+      }
+    }
+    return self.clients.openWindow(destino);
+  })());
 });

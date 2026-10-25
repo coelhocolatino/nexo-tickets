@@ -1,0 +1,2576 @@
+<!DOCTYPE html>
+<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.24">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14171c">
+<meta name="color-scheme" content="dark light">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nexo Tickets">
+<link rel="icon" href="nexo-icon-192.png">
+<link rel="apple-touch-icon" href="nexo-icon-192.png">
+<title>Nexo · Informe del repartidor</title>
+<script>
+/* GUARD DE SESIÓN: igual que en index.html e informe.html. */
+(function(){
+  try{
+    var raw=sessionStorage.getItem('sad_user');
+    if(!raw){window.location.replace('login.html');return;}
+    var u=JSON.parse(raw);
+    if(!u||!u.usuario||!u.token){sessionStorage.removeItem('sad_user');window.location.replace('login.html');}
+  }catch(e){sessionStorage.removeItem('sad_user');window.location.replace('login.html');}
+})();
+</script>
+<style>
+/* reset mínimo: en el Artifact lo pone la plataforma, aquí lo ponemos nosotros */
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-size:14px}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.min.js"></script>
+
+<style>
+/* Layout: una columna de bandas apiladas; cabecera fija con los dos filtros,
+   luego KPIs, curva del período, comparativas, desglose y paneles de apoyo.
+   Dark-first: el panel de control del reparto se mira de noche y en furgoneta. */
+:root{
+  color-scheme: dark;
+  --plane:#0d1014;        /* fondo de página */
+  --surface:#14171c;      /* superficie de tarjeta y de gráfico */
+  --surface-2:#1b1f26;    /* superficie elevada / filas */
+  --ink:#eef1f5;          /* tinta primaria */
+  --ink-2:#a8b1bd;        /* tinta secundaria */
+  --ink-3:#7c8694;        /* ejes y etiquetas */
+  --grid:#242932;         /* rejilla hairline */
+  --axis:#333a45;
+  --ring:rgba(255,255,255,.10);
+  --brand:#3987e5;        /* azul Nexo */
+  --brand-soft:rgba(57,135,229,.14);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300;
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b;
+  --seq-1:#184f95; --seq-2:#256abf; --seq-3:#3987e5; --seq-4:#6da7ec; --seq-5:#9ec5f4;
+  --proj:#55606e;         /* trama de proyección */
+  --water:#2f7fd6;        /* el acuario del total */
+  --font-display:"Barlow Condensed","Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    color-scheme: light;
+    --plane:#f4f5f7; --surface:#fbfbfc; --surface-2:#f1f3f6;
+    --ink:#101419; --ink-2:#4e5663; --ink-3:#767f8c;
+    --grid:#e4e7ec; --axis:#c6ccd4; --ring:rgba(16,20,25,.12);
+    --brand:#2a78d6; --brand-soft:rgba(42,120,214,.10);
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300;
+    --seq-1:#9ec5f4; --seq-2:#6da7ec; --seq-3:#3987e5; --seq-4:#256abf; --seq-5:#184f95;
+    --proj:#aab2bd; --water:#7fc0f0;
+  }
+}
+:root[data-theme="light"]{
+  color-scheme: light;
+  --plane:#f4f5f7; --surface:#fbfbfc; --surface-2:#f1f3f6;
+  --ink:#101419; --ink-2:#4e5663; --ink-3:#767f8c;
+  --grid:#e4e7ec; --axis:#c6ccd4; --ring:rgba(16,20,25,.12);
+  --brand:#2a78d6; --brand-soft:rgba(42,120,214,.10);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300;
+  --seq-1:#9ec5f4; --seq-2:#6da7ec; --seq-3:#3987e5; --seq-4:#256abf; --seq-5:#184f95;
+  --proj:#aab2bd; --water:#7fc0f0;
+}
+
+body{background:var(--plane);color:var(--ink);font-family:var(--font-body);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--plane)}
+
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:14px}
+.flat{background:transparent;border:0}
+.num{font-variant-numeric:tabular-nums}
+.disp{font-family:var(--font-display);letter-spacing:.01em}
+.eyebrow{font-family:var(--font-display);text-transform:uppercase;letter-spacing:.12em;font-weight:600;color:var(--ink-3);font-size:11px}
+h1,h2,h3{text-wrap:balance;margin:0}
+
+/* --- controles --- */
+.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--ring);border-radius:10px;padding:3px;gap:2px}
+.seg button{font:inherit;font-size:12.5px;font-weight:600;color:var(--ink-2);background:transparent;border:0;border-radius:7px;padding:5px 11px;cursor:pointer;transition:background .18s ease,color .18s ease}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--brand);color:#fff}
+select,input[type=range]{font:inherit;accent-color:var(--brand)}
+select{background:var(--surface-2);color:var(--ink);border:1px solid var(--ring);border-radius:10px;padding:7px 10px;font-size:13px;font-weight:600;max-width:100%}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:6px}
+
+/* --- tiles --- */
+.tile{position:relative;overflow:hidden;transition:transform .22s cubic-bezier(.2,.7,.3,1),border-color .22s ease,box-shadow .22s ease}
+.tile:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--brand) 45%,var(--ring));box-shadow:0 10px 28px -16px rgba(0,0,0,.55)}
+.tile .bigno{font-family:var(--font-display);font-weight:700;line-height:.92;font-size:clamp(38px,7vw,58px)}
+.tile .rail{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--brand);opacity:.0;transition:opacity .22s ease}
+.tile:hover .rail{opacity:.9}
+
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:999px;border:1px solid var(--ring);background:var(--surface-2);color:var(--ink-2)}
+.pill.up{color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,transparent)}
+.pill.down{color:var(--crit);border-color:color-mix(in srgb,var(--crit) 40%,transparent)}
+.pill.demo{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+
+/* barras del desglose */
+.drillrow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;width:100%;text-align:left;font:inherit;background:transparent;border:0;border-radius:8px;padding:6px 8px;cursor:pointer;color:var(--ink-2);transition:background .16s ease,color .16s ease}
+.drillrow:hover{background:var(--surface-2);color:var(--ink)}
+.drillrow[aria-pressed="true"]{background:var(--brand-soft);color:var(--ink)}
+.drillrow .bar{position:relative;height:6px;border-radius:3px;background:var(--grid);margin-top:5px;overflow:hidden}
+.drillrow .bar i{position:absolute;inset:0 auto 0 0;background:var(--brand);border-radius:3px;transition:width .45s cubic-bezier(.2,.7,.3,1)}
+
+table.hm{border-collapse:separate;border-spacing:2px}
+table.hm th{font:600 11px/1 var(--font-display);text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);padding:2px 4px;white-space:nowrap}
+table.hm td{width:26px;height:24px;border-radius:4px;text-align:center;font-size:11px;font-weight:600;color:var(--ink);background:var(--surface-2)}
+
+.enter{animation:rise .55s cubic-bezier(.2,.7,.3,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.recharts-text{font-family:var(--font-body)}
+.recharts-surface{overflow:visible}
+@media (prefers-reduced-motion:reduce){
+  .enter{animation:none}
+  .tile:hover{transform:none}
+  .water .drift{animation:none}
+  *{transition-duration:.01ms!important}
+}
+.scrollx{overflow-x:auto}
+
+/* el acuario del cuadro Total: el agua sube con la proyección y ondea */
+.water{position:absolute;inset:0;pointer-events:none;color:var(--water)}
+.water svg{width:100%;height:100%;display:block}
+.water .lvl{transform-box:view-box;transform-origin:0 0;transition:transform 1.5s cubic-bezier(.2,.7,.3,1)}
+.water .drift{transform-box:view-box;transform-origin:0 0;animation:drift 9s linear infinite;
+  transition:animation-duration .3s ease}
+.water .drift.b{animation-duration:6.2s;animation-direction:reverse}
+.tile:hover .water .drift{animation-duration:3.2s}
+.tile:hover .water .drift.b{animation-duration:2.3s}
+@keyframes drift{from{transform:translateX(0)}to{transform:translateX(-200px)}}
+.tilebody{position:relative;z-index:1}
+
+/* filas y chips que filtran */
+.filtro{font:inherit;background:transparent;border:0;padding:0;text-align:left;width:100%;cursor:pointer;
+  border-radius:8px;transition:background .16s ease}
+.filtro:hover{background:var(--surface-2)}
+.filtro[aria-pressed="true"]{background:var(--brand-soft)}
+.chipf{cursor:pointer;font:inherit;transition:border-color .16s ease,background .16s ease}
+.chipf[aria-pressed="true"]{border-color:var(--brand);background:var(--brand-soft)}
+.hm td.sel{outline:2px solid var(--brand);outline-offset:-2px}
+.hm th.fr{cursor:pointer;border-radius:4px}
+.hm th.fr:hover{color:var(--ink)}
+.hm th.fr[aria-pressed="true"]{color:var(--brand)}
+.hm td.on{cursor:pointer}
+.mapagrid{display:grid;gap:16px;grid-template-columns:1fr}
+@media (min-width:900px){.mapagrid{grid-template-columns:minmax(0,1fr) 320px}}
+.navbtn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;
+  font:inherit;font-size:15px;font-weight:700;border:1px solid var(--ring);border-radius:12px;padding:14px 12px;
+  background:var(--surface-2);color:var(--ink);cursor:pointer;transition:transform .12s ease,background .18s ease}
+.navbtn:hover{background:var(--surface)}
+.navbtn:active{transform:scale(.98)}
+.navbtn.salir{background:rgba(208,59,59,.14);color:var(--crit);border-color:color-mix(in srgb,var(--crit) 40%,transparent)}
+</style>
+
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/* ═══════════════════════════════════════════════════════════════════════════
+   RONDA 49 (punto 2.1) — LOS DATOS YA NO VAN DENTRO DEL ARCHIVO
+   ───────────────────────────────────────────────────────────────────────────
+   Antes aquí había un objeto DATA de 45 KB con una foto del 19/10. El informe
+   nunca se actualizaba, y además esos 45 KB se descargaban en cada visita.
+
+   Ahora los datos los sirve el backend (InformeDatos.gs del módulo Embolsado),
+   que los reconstruye solo cada 3 horas a partir de las 11h y los deja
+   preparados. Aquí:
+     1) se mira la copia que este móvil ya tenga guardada;
+     2) se pregunta al servidor SOLO la marca de hora (unos bytes);
+     3) si no ha cambiado, se usa la copia del móvil y NO se descarga nada;
+     4) si ha cambiado, se descarga el objeto y se guarda para la próxima.
+   Abrir el informe diez veces en una tarde gasta una sola descarga.
+   ═══════════════════════════════════════════════════════════════════════════ */
+var DATA = {
+  snapshot: '', generado: '', cover: { ini: '', fin: '' },
+  tiendas: [], reps: [], franjas: [], rows: [], periodos: [],
+  yearDaily: { y25: [] }, clubDefault: '', repOptions: ['*'], niveles: {},
+  conduccion: { periodo: '', filas: [] }, incidencias: [], entregas: []
+};
+
+function arrancarInforme() {
+
+const {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback
+} = React;
+const RC = Recharts;
+
+/* ---------------------------------------------------------------- utilidades */
+const DOW = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+const MON = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const SNAPSHOT = DATA.snapshot;
+
+/* Sesión de Nexo. Fuera de la app (vista previa) no hay sesión: se enseña el
+   selector de repartidor. Dentro, un USUARIO 1 queda fijado a su usuario y
+   solo el ADM puede cambiar de repartidor. */
+let SESION = null;
+try {
+  SESION = JSON.parse(sessionStorage.getItem("sad_user") || "null");
+} catch (e) {
+  SESION = null;
+}
+const USUARIO = SESION && SESION.usuario ? String(SESION.usuario).toUpperCase().trim() : null;
+const NIVEL_SESION = SESION && SESION.nivel ? String(SESION.nivel).toUpperCase().trim() : "";
+const ES_ADM = NIVEL_SESION === "ADMIN";
+const PUEDE_ELEGIR = ES_ADM || !SESION;
+const REP_INICIAL = ES_ADM ? "*" : USUARIO && DATA.reps.indexOf(USUARIO) >= 0 ? USUARIO : DATA.repOptions[0];
+function cerrarSesion() {
+  try {
+    sessionStorage.removeItem("sad_user");
+    localStorage.removeItem("sad_user");
+  } catch (e) {}
+  window.location.replace("login.html");
+}
+
+/* Permisos de lectura (ronda 45). Un nivel 2 puede abrir los repartidores que el
+   ADM le haya marcado en Config. Se preguntan al backend de Embolsado; si no se
+   puede, el usuario se queda viendo solo lo suyo, que es el fallo seguro. */
+var EMBOLSADO_URL = "https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoDisEn4qrGWh0tEGfGHn4NXoEqP1ShODyIWQ1bzYyWfcuz_Pqh/exec";
+var PROXY = "https://sad-proxy.colatino-ventas-enlinea.workers.dev/";
+/* RONDA 50 — el ADM informa los días de Club Carrefour del período. */
+function guardarClub(periodoIni, fechas) {
+  if (!SESION || !USUARIO) return Promise.resolve({ ok: false, error: "sin sesión" });
+  return fetch(PROXY + "?url=" + encodeURIComponent(EMBOLSADO_URL), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      accion: "informeClubGuardar",
+      usuario: SESION.usuario,
+      periodo: periodoIni,
+      fechas: fechas || []
+    })
+  }).then(function (r) { return r.text(); }).then(function (t) {
+    try { return JSON.parse(t); } catch (e) { return { ok: false, error: "respuesta ilegible" }; }
+  }).catch(function () { return { ok: false, error: "sin conexión" }; });
+}
+
+function pedirPermisos() {
+  if (!SESION || !USUARIO) return Promise.resolve(null);
+  return fetch(PROXY + "?url=" + encodeURIComponent(EMBOLSADO_URL), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      accion: "informeRepartidorPermisos",
+      usuario: SESION.usuario
+    })
+  }).then(function (r) {
+    return r.text();
+  }).then(function (t) {
+    try {
+      return JSON.parse(t);
+    } catch (e) {
+      return null;
+    }
+  }).catch(function () {
+    return null;
+  });
+} // último día con datos
+
+const toDate = iso => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+};
+const addDays = (iso, n) => {
+  const d = toDate(iso);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+const diffDays = (a, b) => Math.round((toDate(b) - toDate(a)) / 86400000);
+const dow = iso => toDate(iso).getUTCDay();
+const fmtDay = iso => {
+  const d = toDate(iso);
+  return d.getUTCDate() + " " + MON[d.getUTCMonth()];
+};
+const fmtShort = iso => {
+  const d = toDate(iso);
+  return d.getUTCDate() + "/" + (d.getUTCMonth() + 1);
+};
+const nf = n => new Intl.NumberFormat("es-ES").format(Math.round(n));
+const pct = (n, dec = 1) => (n > 0 ? "+" : "") + n.toFixed(dec).replace(".", ",") + "%";
+const median = a => {
+  if (!a.length) return 0;
+  const s = [...a].sort((x, y) => x - y);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+
+/* días de un período, ambos extremos incluidos */
+function daysOf(p) {
+  const out = [];
+  for (let i = 0; i <= diffDays(p.ini, p.fin); i++) out.push(addDays(p.ini, i));
+  return out;
+}
+
+/* lee los colores del tema para pasarlos a Recharts (necesita strings, no var()) */
+const TOKENS = ["ink", "ink-2", "ink-3", "grid", "axis", "surface", "surface-2", "brand", "proj", "s1", "s2", "s3", "s4", "s5", "s6", "good", "warn", "serious", "crit", "seq-1", "seq-2", "seq-3", "seq-4", "seq-5"];
+function useTokens() {
+  const read = () => {
+    const cs = getComputedStyle(document.documentElement);
+    const o = {};
+    TOKENS.forEach(t => o[t] = cs.getPropertyValue("--" + t).trim());
+    return o;
+  };
+  const [t, setT] = useState(read);
+  useEffect(() => {
+    const upd = () => setT(read());
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    mq.addEventListener("change", upd);
+    const mo = new MutationObserver(upd);
+    mo.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme", "style", "class"]
+    });
+    const id = setTimeout(upd, 60); // por si las fuentes/CSS llegan tarde
+    return () => {
+      mq.removeEventListener("change", upd);
+      mo.disconnect();
+      clearTimeout(id);
+    };
+  }, []);
+  return t;
+}
+
+/* número animado */
+function useCountUp(value, ms = 750) {
+  const [v, setV] = useState(value);
+  const from = useRef(value);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setV(value);
+      from.current = value;
+      return;
+    }
+    const a = from.current,
+      b = value,
+      t0 = performance.now();
+    let raf;
+    const tick = t => {
+      const k = Math.min(1, (t - t0) / ms);
+      const e = 1 - Math.pow(1 - k, 3);
+      setV(a + (b - a) * e);
+      if (k < 1) raf = requestAnimationFrame(tick);else from.current = b;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value, ms]);
+  return v;
+}
+
+/* ------------------------------------------------------------------ agregado */
+/* filas: [fecha, tiendaIdx, repIdx, franjaIdx, p, xp, xr] */
+function aggregate(periodo, rep) {
+  const {
+    ini,
+    fin
+  } = periodo;
+  const byDay = new Map(),
+    byTienda = new Map(),
+    nest = new Map(),
+    byFranja = new Map();
+  let p = 0,
+    xp = 0,
+    xr = 0;
+  for (const r of DATA.rows) {
+    /* RONDA 50 — el 8º campo dice a qué período pertenece el pedido con el
+       corte de SU tienda (26→25 en Carrefour, 25→24 en las DIA; sale de la
+       hoja TIENDAS de DATABASE). Se filtra por él, no por el rango de fechas,
+       así los totales son los de facturar. Si el dato no viene (copia vieja
+       guardada en el móvil), se cae al filtro por fechas de siempre. */
+    const [f, ti, ri, fri, rp, rxp, rxr, rper] = r;
+    if (rper ? rper !== periodo.id : (f < ini || f > fin)) continue;
+    if (rep !== "*" && DATA.reps[ri] !== rep) continue;
+    const tot = rp + rxp + rxr;
+    p += rp;
+    xp += rxp;
+    xr += rxr;
+    byDay.set(f, (byDay.get(f) || 0) + tot);
+    const tn = DATA.tiendas[ti];
+    byTienda.set(tn, (byTienda.get(tn) || 0) + tot);
+    const fn = DATA.franjas[fri];
+    byFranja.set(fn, (byFranja.get(fn) || 0) + tot);
+    if (!nest.has(f)) nest.set(f, new Map());
+    const nd = nest.get(f);
+    if (!nd.has(tn)) nd.set(tn, new Map());
+    nd.get(tn).set(fn, (nd.get(tn).get(fn) || 0) + tot);
+  }
+  return {
+    p,
+    xp,
+    xr,
+    total: p + xp + xr,
+    byDay,
+    byTienda,
+    byFranja,
+    nest
+  };
+}
+
+/* acumulado por día-de-período, hasta n días */
+function cumulative(byDay, ini, n) {
+  const out = [];
+  let acc = 0;
+  for (let i = 0; i < n; i++) {
+    const f = addDays(ini, i);
+    acc += byDay.get(f) || 0;
+    out.push({
+      d: i + 1,
+      fecha: f,
+      acc,
+      dia: byDay.get(f) || 0
+    });
+  }
+  return out;
+}
+
+/* proyección: mediana por día de la semana (período actual + anterior) y un día Club */
+function project(agg, prevAgg, prevPeriodo, periodo, elapsed, clubDates, clubUp) {
+  const all = daysOf(periodo);
+  const pool = {};
+  for (let k = 0; k < 7; k++) pool[k] = [];
+  all.slice(0, elapsed).forEach(f => pool[dow(f)].push(agg.byDay.get(f) || 0));
+  if (prevAgg.total > 0 && prevPeriodo) daysOf(prevPeriodo).forEach(f => pool[dow(f)].push(prevAgg.byDay.get(f) || 0));
+  const med = {};
+  for (let k = 0; k < 7; k++) med[k] = median(pool[k]);
+  const rest = all.slice(elapsed).map(f => {
+    const base = med[dow(f)];
+    const club = (clubDates || []).indexOf(f) !== -1;   // ronda 50: 1 o 2 días
+    return {
+      fecha: f,
+      base,
+      valor: base * (club ? 1 + clubUp : 1),
+      club
+    };
+  });
+  const extra = rest.reduce((s, r) => s + r.valor, 0);
+  return {
+    med,
+    rest,
+    extra,
+    total: agg.total + extra,
+    observado: agg.total
+  };
+}
+
+/* subida medida de un día Club: mejor día lun-jue del período anterior frente a su mediana */
+function clubUplift(prev, prevPeriodo) {
+  const days = daysOf(prevPeriodo).filter(f => dow(f) >= 1 && dow(f) <= 4);
+  const vals = days.map(f => prev.byDay.get(f) || 0).filter(v => v > 0).sort((a, b) => b - a);
+  if (vals.length < 4) return .35;
+  const m = median(vals);
+  const alto = vals[1]; // el segundo mejor, no el pico suelto
+  if (!m) return .35;
+  return Math.min(.6, Math.max(.1, alto / m - 1));
+}
+
+/* -------------------------------------------------------------------- piezas */
+function Card({
+  children,
+  className = "",
+  style,
+  as: As = "section"
+}) {
+  return /*#__PURE__*/React.createElement(As, {
+    className: "card " + className,
+    style: style
+  }, children);
+}
+function SectionHead({
+  n,
+  title,
+  sub,
+  right
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-end justify-between gap-3 mb-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "eyebrow"
+  }, n), /*#__PURE__*/React.createElement("h2", {
+    className: "disp text-[21px] font-bold leading-tight"
+  }, title), sub && /*#__PURE__*/React.createElement("p", {
+    className: "text-[13px] mt-0.5",
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, sub)), right);
+}
+function Seg({
+  value,
+  onChange,
+  options,
+  label
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "seg",
+    role: "group",
+    "aria-label": label
+  }, options.map(o => /*#__PURE__*/React.createElement("button", {
+    key: o.v,
+    "aria-pressed": value === o.v,
+    onClick: () => onChange(o.v)
+  }, o.l)));
+}
+function Delta({
+  now,
+  before,
+  label
+}) {
+  if (before === 0) return /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, label, ": sin base");
+  const d = (now - before) / before * 100;
+  const cls = d >= 0 ? "up" : "down";
+  return /*#__PURE__*/React.createElement("span", {
+    className: "pill " + cls,
+    title: label
+  }, /*#__PURE__*/React.createElement("span", {
+    "aria-hidden": "true"
+  }, d >= 0 ? "▲" : "▼"), /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, pct(d)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--ink-3)",
+      fontWeight: 600
+    }
+  }, label));
+}
+/* Dos olas desfasadas, con la línea de flotación a la altura del porcentaje. */
+const OLA = "M-200 0 q50 -5 100 0 t100 0 t100 0 t100 0 t100 0 t100 0 L400 140 L-200 140 Z";
+function Agua({
+  pct
+}) {
+  const [alto, setAlto] = useState(0); // arranca vacío y sube al cargar
+  useEffect(() => {
+    const id = setTimeout(() => setAlto(pct), 120);
+    return () => clearTimeout(id);
+  }, [pct]);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "water",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("svg", {
+    viewBox: "0 0 200 100",
+    preserveAspectRatio: "none"
+  }, /*#__PURE__*/React.createElement("g", {
+    className: "lvl",
+    style: {
+      transform: "translateY(" + (100 - alto) + "px)"
+    }
+  }, /*#__PURE__*/React.createElement("g", {
+    transform: "translate(0,3)"
+  }, /*#__PURE__*/React.createElement("g", {
+    className: "drift b",
+    opacity: ".3"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: OLA,
+    fill: "currentColor"
+  }))), /*#__PURE__*/React.createElement("g", {
+    transform: "translate(70,0)"
+  }, /*#__PURE__*/React.createElement("g", {
+    className: "drift",
+    opacity: ".52"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: OLA,
+    fill: "currentColor"
+  }))))));
+}
+function Tile({
+  label,
+  value,
+  unit,
+  foot,
+  children,
+  accent,
+  agua
+}) {
+  const v = useCountUp(value);
+  return /*#__PURE__*/React.createElement(Card, {
+    className: "tile p-4",
+    style: accent ? {
+      borderColor: "color-mix(in srgb," + accent + " 35%, var(--ring))"
+    } : undefined
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "rail",
+    style: accent ? {
+      background: accent
+    } : undefined
+  }), agua && /*#__PURE__*/React.createElement(Agua, {
+    pct: agua.pct
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "tilebody"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "eyebrow"
+  }, label), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-end gap-2 mt-1"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bigno num",
+    style: accent ? {
+      color: accent
+    } : undefined
+  }, nf(v)), unit && /*#__PURE__*/React.createElement("div", {
+    className: "disp text-[13px] font-semibold pb-2",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, unit)), children, foot && /*#__PURE__*/React.createElement("div", {
+    className: "text-[12px] mt-2 leading-snug",
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, foot)));
+}
+
+/* tooltip propio: mismo tipo y tinta que el resto de la página */
+function Tip({
+  active,
+  payload,
+  label,
+  suffix = ""
+}) {
+  if (!active || !payload || !payload.length) return null;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "var(--surface)",
+      border: "1px solid var(--ring)",
+      borderRadius: 10,
+      padding: "8px 10px",
+      boxShadow: "0 12px 32px -18px rgba(0,0,0,.7)",
+      minWidth: 140
+    }
+  }, label != null && label !== "" && (() => {
+    const p0 = payload[0] && payload[0].payload;
+    const dia = p0 && p0.dia && p0.dia !== label ? " · " + p0.dia : "";
+    return /*#__PURE__*/React.createElement("div", {
+      className: "eyebrow",
+      style: {
+        marginBottom: 4
+      }
+    }, label, dia, suffix);
+  })(), payload.filter(p => p.value != null).map((p, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    className: "flex items-center gap-2 text-[12.5px]",
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 9,
+      height: 9,
+      borderRadius: 2,
+      background: p.color || p.fill,
+      display: "inline-block",
+      flex: "0 0 auto"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "flex-1"
+  }, p.name), /*#__PURE__*/React.createElement("strong", {
+    className: "num",
+    style: {
+      color: "var(--ink)"
+    }
+  }, nf(p.value)))));
+}
+
+/* ---------------------------------------------------------------- aplicación */
+function App() {
+  const T = useTokens();
+  /* Lo que el ADM haya autorizado a este usuario, además de sí mismo. */
+  const [autorizados, setAutorizados] = useState(null);
+  useEffect(() => {
+    let vivo = true;
+    pedirPermisos().then(r => {
+      if (!vivo || !r || !r.ok) return;
+      setAutorizados((r.ve || []).filter(u => DATA.reps.indexOf(u) >= 0));
+    });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+  const [periodoId, setPeriodoId] = useState("act");
+  const [rep, setRep] = useState(REP_INICIAL);
+  const [vista, setVista] = useState("diario"); // diario | acumulado
+  const [compMode, setCompMode] = useState("mio"); // mio | op
+  const [drillDay, setDrillDay] = useState(null);
+  const [drillTienda, setDrillTienda] = useState(null);
+  const [desglose, setDesglose] = useState("arbol"); // arbol | mapa
+  const [mapaSel, setMapaSel] = useState(null); // {franja, dia|null}
+  const [incTipo, setIncTipo] = useState(null);
+  const [incResp, setIncResp] = useState(null);
+  const [clubUp, setClubUp] = useState(null);
+  /* RONDA 50 — el Club Carrefour no tiene fecha fija y pueden ser 1 o 2 días
+     al mes, así que lo informa el ADM y se guarda en el servidor. */
+  const [clubDates, setClubDates] = useState(() => {
+    const l = DATA.clubFechas || (DATA.clubDefault ? [DATA.clubDefault] : []);
+    return Array.isArray(l) ? l.slice(0, 2) : [];
+  });
+  const [clubMsg, setClubMsg] = useState("");
+  const clubKey = clubDates.join(",");
+
+  /* Qué repartidores puede abrir: él mismo más los autorizados. Fuera de la app
+     (vista previa) se dejan todos, para poder revisar la pantalla. */
+  const opciones = useMemo(() => {
+    if (!SESION) return DATA.repOptions;
+    if (ES_ADM) return DATA.repOptions;
+    const mios = [USUARIO].concat(autorizados || []);
+    return DATA.repOptions.filter(o => o !== "*" && mios.indexOf(o) >= 0);
+  }, [autorizados]);
+  const puedeElegir = PUEDE_ELEGIR || opciones.length > 1;
+  const VE_OPERACION = PUEDE_ELEGIR; // ADM (o vista previa fuera de la app)
+  const periodo = DATA.periodos.find(p => p.id === periodoId);
+  const prevPeriodo = DATA.periodos.find(p => p.id === periodo.prev) || periodo;
+  const yearPeriodo = DATA.periodos.find(p => p.id === periodo.year);
+  const agg = useMemo(() => aggregate(periodo, rep), [periodoId, rep]);
+  const prev = useMemo(() => aggregate(prevPeriodo, rep), [periodo.prev, rep]);
+  const aggOp = useMemo(() => aggregate(periodo, "*"), [periodoId]);
+  const prevOp = useMemo(() => aggregate(prevPeriodo, "*"), [periodo.prev]);
+  const nDays = daysOf(periodo).length;
+  const elapsed = periodo.closed ? nDays : Math.min(nDays, diffDays(periodo.ini, SNAPSHOT) + 1);
+  const upliftAuto = useMemo(() => clubUplift(prev, prevPeriodo), [periodo.prev, rep]);
+  const uplift = clubUp == null ? upliftAuto : clubUp;
+  const proj = useMemo(() => project(agg, prev, prevPeriodo, periodo, elapsed, clubDates, uplift), [periodoId, rep, elapsed, clubKey, uplift]);
+
+  /* comparación contra los MISMOS días del período anterior / del año anterior */
+  const sameDaysPrev = useMemo(() => cumulative(prev.byDay, prevPeriodo.ini, elapsed), [periodo.prev, rep, elapsed]);
+  const prevSame = sameDaysPrev.length ? sameDaysPrev[sameDaysPrev.length - 1].acc : 0;
+  const curCum = useMemo(() => cumulative(agg.byDay, periodo.ini, elapsed), [periodoId, rep, elapsed]);
+  const curTotal = curCum.length ? curCum[curCum.length - 1].acc : 0;
+  const yearDaily = yearPeriodo ? DATA.yearDaily[yearPeriodo.id] || [] : [];
+  const yearSame = yearDaily.slice(0, elapsed).reduce((a, b) => a + b, 0);
+  const yearFull = yearDaily.reduce((a, b) => a + b, 0);
+  const opCum = useMemo(() => cumulative(aggOp.byDay, periodo.ini, elapsed), [periodoId, elapsed]);
+  const opTotal = opCum.length ? opCum[opCum.length - 1].acc : 0;
+  const opPrevSame = cumulative(prevOp.byDay, prevPeriodo.ini, elapsed).slice(-1)[0]?.acc || 0;
+
+  /* serie principal */
+  const serieDiaria = useMemo(() => {
+    const all = daysOf(periodo);
+    const projMap = new Map(proj.rest.map(r => [r.fecha, r.valor]));
+    return all.map((f, i) => ({
+      fecha: f,
+      etiqueta: fmtShort(f),
+      dia: DOW[dow(f)],
+      real: i < elapsed ? agg.byDay.get(f) || 0 : null,
+      prevista: i < elapsed ? null : Math.round(projMap.get(f) || 0),
+      club: clubDates.indexOf(f) !== -1
+    }));
+  }, [periodoId, rep, elapsed, clubKey, uplift]);
+  const serieAcum = useMemo(() => {
+    const all = daysOf(periodo);
+    const prevC = cumulative(prev.byDay, prevPeriodo.ini, nDays);
+    let acc = 0,
+      accProj = 0;
+    const projMap = new Map(proj.rest.map(r => [r.fecha, r.valor]));
+    return all.map((f, i) => {
+      const real = i < elapsed ? acc += agg.byDay.get(f) || 0 : null;
+      if (i === elapsed - 1) accProj = acc;
+      if (i >= elapsed) accProj += projMap.get(f) || 0;
+      return {
+        etiqueta: fmtShort(f),
+        fecha: f,
+        actual: real,
+        proyeccion: i >= elapsed - 1 ? Math.round(i < elapsed ? acc : accProj) : null,
+        anterior: prevC[i] ? prevC[i].acc : null,
+        anio: yearDaily.length ? yearDaily.slice(0, i + 1).reduce((a, b) => a + b, 0) : null
+      };
+    });
+  }, [periodoId, rep, elapsed, clubKey, uplift]);
+
+  /* % por tienda: top 6 + otras */
+  const tiendas = useMemo(() => {
+    const arr = [...agg.byTienda.entries()].sort((a, b) => b[1] - a[1]);
+    const top = arr.slice(0, 6),
+      restoArr = arr.slice(6);
+    const resto = restoArr.reduce((s, x) => s + x[1], 0);
+    const out = top.map(([n, v]) => ({
+      name: n,
+      value: v
+    }));
+    if (resto > 0) out.push({
+      name: "Otras (" + restoArr.length + ")",
+      value: resto
+    });
+    return out;
+  }, [periodoId, rep]);
+  const tiendaTotal = tiendas.reduce((s, x) => s + x.value, 0) || 1;
+
+  /* desglose día > tienda > franja */
+  const diasConDatos = useMemo(() => daysOf(periodo).slice(0, elapsed).filter(f => (agg.byDay.get(f) || 0) > 0).reverse(), [periodoId, rep, elapsed]);
+  useEffect(() => {
+    setDrillDay(diasConDatos[0] || null);
+    setDrillTienda(null);
+  }, [periodoId, rep]);
+  const nivelTiendas = useMemo(() => {
+    if (!drillDay || !agg.nest.has(drillDay)) return [];
+    return [...agg.nest.get(drillDay).entries()].map(([n, m]) => [n, [...m.values()].reduce((a, b) => a + b, 0)]).sort((a, b) => b[1] - a[1]);
+  }, [drillDay, periodoId, rep]);
+  useEffect(() => {
+    setDrillTienda(nivelTiendas[0]?.[0] || null);
+  }, [drillDay, periodoId, rep]);
+  const nivelFranjas = useMemo(() => {
+    if (!drillDay || !drillTienda) return [];
+    const m = agg.nest.get(drillDay)?.get(drillTienda);
+    return m ? [...m.entries()].sort((a, b) => DATA.franjas.indexOf(a[0]) - DATA.franjas.indexOf(b[0])) : [];
+  }, [drillDay, drillTienda, periodoId, rep]);
+
+  /* mapa de franjas: franja × día */
+  const mapa = useMemo(() => {
+    const dias = daysOf(periodo).slice(0, elapsed);
+    const franjas = DATA.franjas.filter(fr => [...agg.nest.values()].some(d => [...d.values()].some(m => m.has(fr))));
+    const cell = (fr, f) => {
+      let s = 0;
+      const d = agg.nest.get(f);
+      if (!d) return 0;
+      d.forEach(m => {
+        s += m.get(fr) || 0;
+      });
+      return s;
+    };
+    const rows = franjas.map(fr => ({
+      franja: fr,
+      vals: dias.map(f => cell(fr, f))
+    }));
+    const max = Math.max(1, ...rows.flatMap(r => r.vals));
+    return {
+      dias,
+      rows,
+      max
+    };
+  }, [periodoId, rep, elapsed]);
+
+  /* Tarjetas del mapa. Primero las de cliente (planilla de reservas); donde no
+     hay cliente grabado, una tarjeta genérica con lo que dice el parte del día. */
+  const mapaCards = useMemo(() => {
+    if (!mapaSel) return [];
+    const dentroSel = (f, fr) => f >= periodo.ini && f <= periodo.fin && fr === mapaSel.franja && (!mapaSel.dia || f === mapaSel.dia);
+    const clientes = DATA.entregas.filter(e => dentroSel(e.f, e.fr) && (rep === "*" || e.rep === rep)).map(e => ({
+      tipo: "cliente",
+      k: "c" + e.f + e.caja + e.tk + e.cli,
+      f: e.f,
+      tienda: e.t,
+      quien: e.rep,
+      cli: e.cli,
+      caja: e.caja,
+      tk: e.tk,
+      est: e.est,
+      h: e.h
+    }));
+    const cubierto = new Set(DATA.entregas.filter(e => dentroSel(e.f, e.fr)).map(e => e.f + "|" + e.t));
+    const genericas = [];
+    for (const r of DATA.rows) {
+      const [f, ti, ri, fri, p, xp, xr] = r;
+      const tienda = DATA.tiendas[ti];
+      if (!dentroSel(f, DATA.franjas[fri])) continue;
+      if (rep !== "*" && DATA.reps[ri] !== rep) continue;
+      if (cubierto.has(f + "|" + tienda)) continue; // ya hay tarjetas de cliente
+      genericas.push({
+        tipo: "parte",
+        k: "g" + f + ti + ri + fri,
+        f,
+        tienda,
+        quien: DATA.reps[ri],
+        p,
+        xp,
+        xr,
+        total: p + xp + xr
+      });
+    }
+    return [...clientes, ...genericas].sort((a, b) => a.f < b.f ? 1 : a.f > b.f ? -1 : (a.tienda || "").localeCompare(b.tienda || ""));
+  }, [mapaSel, periodoId, rep]);
+
+  /* al abrir el mapa, se elige sola la franja con más entregas */
+  useEffect(() => {
+    setMapaSel(null);
+    setIncTipo(null);
+    setIncResp(null);
+  }, [periodoId, rep]);
+  useEffect(() => {
+    if (desglose !== "mapa" || mapaSel || !mapa.rows.length) return;
+    const mejor = [...mapa.rows].sort((a, b) => b.vals.reduce((x, y) => x + y, 0) - a.vals.reduce((x, y) => x + y, 0))[0];
+    if (mejor) setMapaSel({
+      franja: mejor.franja,
+      dia: null
+    });
+  }, [desglose, periodoId, rep, mapaSel]);
+  const serieSemana = useMemo(() => [1, 2, 3, 4, 5, 6, 0].map(k => ({
+    dia: DOW[k],
+    media: Math.round(proj.med[k] || 0),
+    k
+  })), [periodoId, rep, elapsed]);
+  const nivelAgua = periodo.closed ? 100 : Math.max(2, Math.min(100, proj.total ? agg.total / proj.total * 100 : 0));
+  const seriesCol = [T.s1, T.s2, T.s3, T.s4, T.s5, T.s6, T["ink-3"]];
+  const axis = {
+    stroke: T.axis,
+    tick: {
+      fill: T["ink-3"],
+      fontSize: 11
+    },
+    tickLine: false
+  };
+  const anim = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 900;
+  const nivel = DATA.niveles[rep] || "—";
+  const esNivel1 = nivel === "USUARIO 1";
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("header", {
+    style: {
+      position: "sticky",
+      top: "env(safe-area-inset-top,0px)",
+      zIndex: 30,
+      background: "color-mix(in srgb, var(--plane) 88%, transparent)",
+      backdropFilter: "blur(10px)",
+      borderBottom: "1px solid var(--ring)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "wrap",
+    style: {
+      paddingBlock: "12px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-center gap-x-4 gap-y-3 justify-between"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3 min-w-0"
+  }, /*#__PURE__*/React.createElement("svg", {
+    width: "34",
+    height: "34",
+    viewBox: "0 0 34 34",
+    "aria-hidden": "true",
+    style: {
+      flex: "0 0 auto"
+    }
+  }, /*#__PURE__*/React.createElement("rect", {
+    x: "1",
+    y: "1",
+    width: "32",
+    height: "32",
+    rx: "9",
+    fill: "var(--brand)"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: "M10 24V10l14 14V10",
+    fill: "none",
+    stroke: "#fff",
+    strokeWidth: "3.1",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "min-w-0"
+  }, /*#__PURE__*/React.createElement("h1", {
+    className: "disp text-[19px] font-bold leading-none"
+  }, "Informe de repartidor"), /*#__PURE__*/React.createElement("p", {
+    className: "text-[12px] mt-1",
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, "Nexo \xB7 ", periodo.label, " \xB7 datos al ", fmtDay(SNAPSHOT), " de 2026"))), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-center gap-2"
+  }, puedeElegir ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
+    className: "sr-only",
+    htmlFor: "selRep"
+  }, "Repartidor"), /*#__PURE__*/React.createElement("select", {
+    id: "selRep",
+    value: rep,
+    onChange: e => setRep(e.target.value)
+  }, opciones.map(o => /*#__PURE__*/React.createElement("option", {
+    key: o,
+    value: o
+  }, o === "*" ? "Toda la operación (ADM)" : o)))) : /*#__PURE__*/React.createElement("span", {
+    className: "pill",
+    style: {
+      color: "var(--ink)",
+      padding: "7px 12px"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    "aria-hidden": "true"
+  }, "\uD83D\uDC64"), SESION.nombre || rep), /*#__PURE__*/React.createElement("label", {
+    className: "sr-only",
+    htmlFor: "selPer"
+  }, "Per\xEDodo"), /*#__PURE__*/React.createElement("select", {
+    id: "selPer",
+    value: periodoId,
+    onChange: e => setPeriodoId(e.target.value)
+  }, DATA.periodos.filter(p => p.selectable).map(p => /*#__PURE__*/React.createElement("option", {
+    key: p.id,
+    value: p.id
+  }, p.label))))))), /*#__PURE__*/React.createElement("main", {
+    className: "wrap",
+    style: {
+      paddingBlock: "20px 44px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-center gap-2 mb-5 enter",
+    style: {
+      animationDelay: "20ms"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pill",
+    style: {
+      color: "var(--ink)"
+    }
+  }, rep === "*" ? "Vista ADM" : rep, " \xB7 ", rep === "*" ? "todos los repartidores" : nivel.toLowerCase()), /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, periodo.closed ? "período cerrado" : "día " + elapsed + " de " + nDays), /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, (DATA.cortesDias && DATA.cortesDias.length > 1
+        ? "cortes " + DATA.cortesDias.slice().sort(function (a, b) { return b - a; })
+            .map(function (d) { return d + " \u2192 " + (d - 1); }).join(" y ")
+        : "corte " + ((DATA.cortesDias && DATA.cortesDias[0]) || 26) + " \u2192 " +
+          (((DATA.cortesDias && DATA.cortesDias[0]) || 26) - 1))), esNivel1 && /*#__PURE__*/React.createElement("span", {
+    className: "pill",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, "un nivel 1 solo ve sus propios datos"), SESION && !ES_ADM && autorizados && autorizados.length > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "pill",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, "autorizado tambi\xE9n a ", autorizados.join(", ")), SESION && !ES_ADM && rep !== USUARIO && /*#__PURE__*/React.createElement("span", {
+    className: "pill",
+    style: {
+      color: "var(--s4)"
+    }
+  }, "viendo a ", rep)), /*#__PURE__*/React.createElement(SectionHead, {
+    n: "Resumen del per\xEDodo",
+    title: "Pedidos, dobles y total",
+    sub: "Del " + fmtDay(periodo.ini) + " al " + fmtDay(periodo.fin) + ". Un XR o un XP cuenta como entrega aparte: el total es P + XR + XP."
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "grid gap-3 mb-8",
+    style: {
+      gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))"
+    }
+  }, /*#__PURE__*/React.createElement(Tile, {
+    label: "Total",
+    value: agg.total,
+    unit: "entregas",
+    accent: "var(--good)",
+    agua: {
+      pct: nivelAgua
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap gap-2 mt-2"
+  }, /*#__PURE__*/React.createElement(Delta, {
+    now: curTotal,
+    before: prevSame,
+    label: "per\xEDodo ant."
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "text-[12px] mt-2",
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, periodo.closed ? "Período cerrado." : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    className: "num",
+    style: {
+      fontWeight: 700,
+      color: "var(--ink)"
+    }
+  }, Math.round(nivelAgua), "%"), " de la proyección"))), /*#__PURE__*/React.createElement(Tile, {
+    label: "Pedidos (P)",
+    value: agg.p,
+    unit: "pedidos",
+    /* RONDA 48 (punto 2.2) — la media es por DÍA TRABAJADO, no por día del calendario.
+       Antes se dividía entre «elapsed», los días transcurridos del período, así que
+       los domingos, los días libres y los días que aún no se han trabajado entraban
+       como 0 y hundían la media. Ahora se divide entre los días con entregas
+       (diasConDatos, el mismo número que sale en «Día · N con entregas» más abajo,
+       para que las dos cifras cuadren). */
+    foot: "Media de " + (agg.p / Math.max(1, diasConDatos.length)).toFixed(1).replace(".", ",") + " al día · " + diasConDatos.length + (diasConDatos.length === 1 ? " día trabajado" : " días trabajados")
+  }), /*#__PURE__*/React.createElement(Tile, {
+    label: "XR + XP (dobles)",
+    value: agg.xr + agg.xp,
+    unit: "entregas"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2 mt-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, nf(agg.xr)), " XR"), /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, nf(agg.xp)), " XP"))), /*#__PURE__*/React.createElement(Tile, {
+    label: periodo.closed ? "Cierre real" : "Proyección a cierre",
+    value: periodo.closed ? agg.total : Math.round(proj.total),
+    unit: "entregas",
+    accent: periodo.closed ? undefined : "var(--s4)",
+    foot: periodo.closed ? "El período está cerrado: no hay nada que proyectar." : nf(proj.observado) + " ya entregados + " + nf(proj.extra) + " previstos en los " + proj.rest.length + " días que quedan."
+  })), /*#__PURE__*/React.createElement(Card, {
+    className: "p-4 mb-8 enter",
+    style: {
+      animationDelay: "60ms"
+    }
+  }, /*#__PURE__*/React.createElement(SectionHead, {
+    n: "Total por d\xEDa",
+    title: vista === "diario" ? "Entregas de cada día" : "Acumulado del período",
+    sub: vista === "diario" ? "Las barras apagadas son los días que faltan, con la mediana de ese día de la semana." : "La curva del período actual frente al anterior y al año pasado, día de período a día de período.",
+    right: /*#__PURE__*/React.createElement(Seg, {
+      label: "Vista del gr\xE1fico",
+      value: vista,
+      onChange: setVista,
+      options: [{
+        v: "diario",
+        l: "Diario"
+      }, {
+        v: "acumulado",
+        l: "Acumulado"
+      }]
+    })
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 300
+    }
+  }, /*#__PURE__*/React.createElement(RC.ResponsiveContainer, {
+    width: "100%",
+    height: "100%"
+  }, vista === "diario" ? /*#__PURE__*/React.createElement(RC.BarChart, {
+    data: serieDiaria,
+    margin: {
+      top: 8,
+      right: 8,
+      left: -14,
+      bottom: 0
+    },
+    barGap: 2
+  }, /*#__PURE__*/React.createElement("defs", null, /*#__PURE__*/React.createElement("pattern", {
+    id: "trama",
+    width: "6",
+    height: "6",
+    patternTransform: "rotate(45)",
+    patternUnits: "userSpaceOnUse"
+  }, /*#__PURE__*/React.createElement("rect", {
+    width: "6",
+    height: "6",
+    fill: T.surface
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: "0",
+    y1: "0",
+    x2: "0",
+    y2: "6",
+    stroke: T.proj,
+    strokeWidth: "3"
+  }))), /*#__PURE__*/React.createElement(RC.CartesianGrid, {
+    stroke: T.grid,
+    vertical: false
+  }), /*#__PURE__*/React.createElement(RC.XAxis, _extends({
+    dataKey: "etiqueta"
+  }, axis, {
+    interval: "preserveStartEnd",
+    minTickGap: 14
+  })), /*#__PURE__*/React.createElement(RC.YAxis, _extends({}, axis, {
+    width: 44
+  })), /*#__PURE__*/React.createElement(RC.Tooltip, {
+    content: /*#__PURE__*/React.createElement(Tip, null),
+    cursor: {
+      fill: T["surface-2"]
+    }
+  }), /*#__PURE__*/React.createElement(RC.Legend, {
+    verticalAlign: "top",
+    align: "left",
+    height: 28,
+    iconType: "square",
+    wrapperStyle: {
+      fontSize: 12,
+      color: T["ink-2"],
+      paddingBottom: 6
+    }
+  }), /*#__PURE__*/React.createElement(RC.Bar, {
+    dataKey: "real",
+    name: "Entregado",
+    fill: T.s1,
+    radius: [4, 4, 0, 0],
+    animationDuration: anim,
+    maxBarSize: 26
+  }), /*#__PURE__*/React.createElement(RC.Bar, {
+    dataKey: "prevista",
+    name: "Previsto",
+    fill: "url(#trama)",
+    stroke: T.proj,
+    strokeWidth: 1,
+    radius: [4, 4, 0, 0],
+    animationDuration: anim,
+    maxBarSize: 26
+  }, serieDiaria.map((d, i) => /*#__PURE__*/React.createElement(RC.Cell, {
+    key: i,
+    stroke: d.club ? T.s4 : T.proj,
+    strokeWidth: d.club ? 2 : 1
+  })))) : /*#__PURE__*/React.createElement(RC.LineChart, {
+    data: serieAcum,
+    margin: {
+      top: 8,
+      right: 10,
+      left: -14,
+      bottom: 0
+    }
+  }, /*#__PURE__*/React.createElement(RC.CartesianGrid, {
+    stroke: T.grid,
+    vertical: false
+  }), /*#__PURE__*/React.createElement(RC.XAxis, _extends({
+    dataKey: "etiqueta"
+  }, axis, {
+    interval: "preserveStartEnd",
+    minTickGap: 14
+  })), /*#__PURE__*/React.createElement(RC.YAxis, _extends({}, axis, {
+    width: 48
+  })), /*#__PURE__*/React.createElement(RC.Tooltip, {
+    content: /*#__PURE__*/React.createElement(Tip, null)
+  }), /*#__PURE__*/React.createElement(RC.Legend, {
+    verticalAlign: "top",
+    align: "left",
+    height: 28,
+    iconType: "plainline",
+    wrapperStyle: {
+      fontSize: 12,
+      color: T["ink-2"],
+      paddingBottom: 6
+    }
+  }), /*#__PURE__*/React.createElement(RC.Line, {
+    dataKey: "actual",
+    name: "Per\xEDodo actual",
+    stroke: T.s1,
+    strokeWidth: 2.5,
+    dot: false,
+    animationDuration: anim
+  }), /*#__PURE__*/React.createElement(RC.Line, {
+    dataKey: "proyeccion",
+    name: "Proyecci\xF3n",
+    stroke: T.s4,
+    strokeWidth: 2.5,
+    strokeDasharray: "5 4",
+    dot: false,
+    animationDuration: anim
+  }), prev.total > 0 && /*#__PURE__*/React.createElement(RC.Line, {
+    dataKey: "anterior",
+    name: "Per\xEDodo anterior",
+    stroke: T.s3,
+    strokeWidth: 2,
+    dot: false,
+    animationDuration: anim
+  }), yearDaily.length > 0 && VE_OPERACION && /*#__PURE__*/React.createElement(RC.Line, {
+    dataKey: "anio",
+    name: "A\xF1o anterior (operaci\xF3n)",
+    stroke: T["ink-3"],
+    strokeWidth: 1.6,
+    strokeDasharray: "2 3",
+    dot: false,
+    animationDuration: anim
+  }))))), /*#__PURE__*/React.createElement("div", {
+    className: "grid gap-3 mb-8",
+    style: {
+      gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))"
+    }
+  }, /*#__PURE__*/React.createElement(Card, {
+    className: "p-4 enter",
+    style: {
+      animationDelay: "100ms"
+    }
+  }, /*#__PURE__*/React.createElement(SectionHead, {
+    n: "Comparaci\xF3n",
+    title: "Mismo tramo de cada per\xEDodo",
+    sub: "Primeros " + elapsed + " días de cada período, para comparar lo comparable.",
+    right: VE_OPERACION ? /*#__PURE__*/React.createElement(Seg, {
+      label: "\xC1mbito",
+      value: compMode,
+      onChange: setCompMode,
+      options: [{
+        v: "mio",
+        l: rep === "*" ? "Operación" : "Mis datos"
+      }, {
+        v: "op",
+        l: "Operación"
+      }]
+    }) : null
+  }), (() => {
+    const mio = (!VE_OPERACION || compMode === "mio") && rep !== "*";
+    const now = mio ? curTotal : opTotal,
+      before = mio ? prevSame : opPrevSame;
+    const filas = [{
+      k: "Actual",
+      v: now,
+      c: T.s1
+    }, ...(before > 0 ? [{
+      k: "Anterior",
+      v: before,
+      c: T.s3
+    }] : []), ...(!mio && yearSame > 0 ? [{
+      k: "Año anterior",
+      v: yearSame,
+      c: T["ink-3"]
+    }] : [])];
+    const max = Math.max(1, ...filas.map(f => f.v));
+    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-col gap-3"
+    }, filas.map(f => /*#__PURE__*/React.createElement("div", {
+      key: f.k
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-baseline justify-between text-[13px]"
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--ink-2)",
+        fontWeight: 600
+      }
+    }, f.k), /*#__PURE__*/React.createElement("strong", {
+      className: "num disp text-[17px]"
+    }, nf(f.v))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 10,
+        background: "var(--grid)",
+        borderRadius: 5,
+        marginTop: 4,
+        overflow: "hidden"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: f.v / max * 100 + "%",
+        height: "100%",
+        background: f.c,
+        borderRadius: 5,
+        transition: "width .5s cubic-bezier(.2,.7,.3,1)"
+      }
+    }))))), /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-wrap gap-2 mt-4"
+    }, /*#__PURE__*/React.createElement(Delta, {
+      now: now,
+      before: before,
+      label: "vs anterior"
+    }), !mio && yearSame > 0 && /*#__PURE__*/React.createElement(Delta, {
+      now: now,
+      before: yearSame,
+      label: "vs a\xF1o ant."
+    })), /*#__PURE__*/React.createElement("p", {
+      className: "text-[12px] mt-3 leading-snug",
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, before === 0 ? "De antes del " + fmtDay(DATA.cover.ini) + " todavía no hay detalle por ticket cargado, así que este período no tiene con qué compararse." : mio ? VE_OPERACION ? "El año anterior no se guardaba el reparto por repartidor: para comparar con 2025 cambia a Operación." : "El año anterior no se guardaba el reparto por repartidor, así que no hay con qué comparar 2025." : "En 2025 solo se anotaba TRAVESIA (" + nf(yearFull) + " en todo el período), así que el salto incluye las tiendas que se añadieron después."));
+  })()), /*#__PURE__*/React.createElement(Card, {
+    className: "p-4 enter",
+    style: {
+      animationDelay: "140ms"
+    }
+  }, /*#__PURE__*/React.createElement(SectionHead, {
+    n: "Proyecci\xF3n",
+    title: "C\xF3mo se calcula",
+    sub: "Mediana de cada d\xEDa de la semana, m\xE1s el empuj\xF3n del d\xEDa de Club Carrefour."
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 132
+    }
+  }, /*#__PURE__*/React.createElement(RC.ResponsiveContainer, {
+    width: "100%",
+    height: "100%"
+  }, /*#__PURE__*/React.createElement(RC.BarChart, {
+    data: serieSemana,
+    margin: {
+      top: 4,
+      right: 8,
+      left: -20,
+      bottom: 0
+    }
+  }, /*#__PURE__*/React.createElement(RC.CartesianGrid, {
+    stroke: T.grid,
+    vertical: false
+  }), /*#__PURE__*/React.createElement(RC.XAxis, _extends({
+    dataKey: "dia"
+  }, axis)), /*#__PURE__*/React.createElement(RC.YAxis, _extends({}, axis, {
+    width: 40
+  })), /*#__PURE__*/React.createElement(RC.Tooltip, {
+    content: /*#__PURE__*/React.createElement(Tip, null)
+  }), /*#__PURE__*/React.createElement(RC.Bar, {
+    dataKey: "media",
+    name: "Mediana por d\xEDa",
+    radius: [4, 4, 0, 0],
+    animationDuration: anim,
+    maxBarSize: 30
+  }, serieSemana.map((d, i) => /*#__PURE__*/React.createElement(RC.Cell, {
+    key: i,
+    fill: d.k === 5 || d.k === 6 ? T.s1 : T["seq-2"]
+  })))))), /*#__PURE__*/React.createElement("p", {
+    className: "text-[11.5px] mt-1",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, "Viernes y s\xE1bado en azul fuerte: son los d\xEDas que tiran del per\xEDodo."), !periodo.closed && /*#__PURE__*/React.createElement("div", {
+    className: "mt-3 pt-3 flex flex-col gap-3",
+    style: {
+      borderTop: "1px solid var(--ring)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-center gap-2"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "text-[12.5px] font-semibold",
+    htmlFor: "selClub0",
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, "D\xEDas de Club Carrefour"),
+  /* RONDA 50 — lo informa el ADM aquí y queda guardado en el servidor para ese
+     período, así lo ven todos. Los demás lo ven pero no lo tocan. Se ofrecen
+     todos los días del período (no solo los que quedan), por si hay que
+     apuntarlo a posteriori. */
+  [0, 1].map(function (k) {
+    return /*#__PURE__*/React.createElement("select", {
+      key: "club" + k,
+      id: "selClub" + k,
+      disabled: !ES_ADM,
+      value: clubDates[k] || "",
+      onChange: function (e) {
+        var v = e.target.value;
+        var l = clubDates.slice();
+        if (v) l[k] = v; else l.splice(k, 1);
+        var vistas = {}, limpio = [];
+        l.forEach(function (f) { if (f && !vistas[f]) { vistas[f] = true; limpio.push(f); } });
+        limpio.sort();
+        setClubDates(limpio.slice(0, 2));
+        setClubMsg("");
+      }
+    }, /*#__PURE__*/React.createElement("option", {
+      value: ""
+    }, k === 0 ? "ninguno" : "y otro (opcional)"), daysOf(periodo).map(function (f) {
+      return /*#__PURE__*/React.createElement("option", {
+        key: f,
+        value: f
+      }, fmtDay(f), " \xB7 ", DOW[dow(f)]);
+    }));
+  }),
+  ES_ADM && /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "pill",
+    style: { padding: "7px 12px", cursor: "pointer", fontWeight: 700 },
+    onClick: function () {
+      setClubMsg("guardando\u2026");
+      guardarClub(periodo.ini, clubDates).then(function (r) {
+        setClubMsg(r && r.ok ? "guardado" : ((r && r.error) || "no se pudo guardar"));
+      });
+    }
+  }, "Guardar"),
+  clubMsg && /*#__PURE__*/React.createElement("span", {
+    className: "text-[12px]",
+    style: { color: "var(--ink-3)" }
+  }, clubMsg),
+  !ES_ADM && !clubDates.length && /*#__PURE__*/React.createElement("span", {
+    className: "text-[12px]",
+    style: { color: "var(--ink-3)" }
+  }, "lo informa el ADM")),
+  /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline justify-between text-[12.5px]",
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    htmlFor: "rngClub",
+    className: "font-semibold"
+  }, "Subida ese d\xEDa"), /*#__PURE__*/React.createElement("strong", {
+    className: "num",
+    style: {
+      color: "var(--ink)"
+    }
+  }, "+", Math.round(uplift * 100), "%")), /*#__PURE__*/React.createElement("input", {
+    id: "rngClub",
+    type: "range",
+    min: "0",
+    max: "150",
+    step: "5",
+    className: "w-full mt-1",
+    value: Math.round(uplift * 100),
+    onChange: e => setClubUp(Number(e.target.value) / 100)
+  }), /*#__PURE__*/React.createElement("p", {
+    className: "text-[11.5px] mt-1",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, "Arranca en +", Math.round(upliftAuto * 100), "%, que es lo que subi\xF3 el mejor lunes\u2013jueves del per\xEDodo anterior sobre la mediana de esos d\xEDas.")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline justify-between"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "eyebrow"
+  }, "Cierre previsto"), /*#__PURE__*/React.createElement("strong", {
+    className: "disp num text-[26px]",
+    style: {
+      color: "var(--s4)"
+    }
+  }, nf(proj.total)))))), /*#__PURE__*/React.createElement("div", {
+    className: "grid gap-3 mb-8",
+    style: {
+      gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))"
+    }
+  }, /*#__PURE__*/React.createElement(Card, {
+    className: "p-4 enter",
+    style: {
+      animationDelay: "180ms"
+    }
+  }, /*#__PURE__*/React.createElement(SectionHead, {
+    n: "Reparto por tienda",
+    title: "% de pedidos por tienda",
+    sub: "Sobre el total de entregas del per\xEDodo."
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-center gap-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 190,
+      height: 190,
+      flex: "0 0 auto"
+    }
+  }, /*#__PURE__*/React.createElement(RC.ResponsiveContainer, {
+    width: "100%",
+    height: "100%"
+  }, /*#__PURE__*/React.createElement(RC.PieChart, null, /*#__PURE__*/React.createElement(RC.Tooltip, {
+    content: /*#__PURE__*/React.createElement(Tip, null)
+  }), /*#__PURE__*/React.createElement(RC.Pie, {
+    data: tiendas,
+    dataKey: "value",
+    nameKey: "name",
+    innerRadius: 52,
+    outerRadius: 88,
+    paddingAngle: 2,
+    stroke: T.surface,
+    strokeWidth: 2,
+    animationDuration: anim
+  }, tiendas.map((t, i) => /*#__PURE__*/React.createElement(RC.Cell, {
+    key: t.name,
+    fill: seriesCol[i % seriesCol.length]
+  })))))), /*#__PURE__*/React.createElement("ul", {
+    className: "flex-1 flex flex-col gap-1.5",
+    style: {
+      minWidth: 200
+    }
+  }, tiendas.map((t, i) => /*#__PURE__*/React.createElement("li", {
+    key: t.name,
+    className: "flex items-center gap-2 text-[13px]"
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 10,
+      height: 10,
+      borderRadius: 2,
+      background: seriesCol[i % seriesCol.length],
+      flex: "0 0 auto"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "flex-1 truncate",
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, t.name), /*#__PURE__*/React.createElement("strong", {
+    className: "num disp text-[15px]"
+  }, (t.value / tiendaTotal * 100).toFixed(1).replace(".", ","), "%"), /*#__PURE__*/React.createElement("span", {
+    className: "num text-[12px]",
+    style: {
+      color: "var(--ink-3)",
+      width: 38,
+      textAlign: "right"
+    }
+  }, nf(t.value))))))), /*#__PURE__*/React.createElement(Card, {
+    className: "p-4 enter",
+    style: {
+      animationDelay: "220ms"
+    }
+  }, /*#__PURE__*/React.createElement(SectionHead, {
+    n: "Estilo de conducci\xF3n",
+    title: rep === "*" ? "Toda la flota" : "Al volante",
+    right: /*#__PURE__*/React.createElement("span", {
+      className: "pill"
+    }, "carga del ", DATA.conduccion.periodo),
+    sub: "Hoja ESTILO CONDUCCI\xD3N de MANTENIMIENTO_FLOTA_COLATINO. En aceleraci\xF3n y frenado, cuanto m\xE1s bajo, mejor."
+  }), (() => {
+    const filas = DATA.conduccion.filas;
+    const mia = rep === "*" ? null : filas.find(f => f.rep === rep);
+    if (rep !== "*" && !mia) return /*#__PURE__*/React.createElement("p", {
+      className: "text-[13px]",
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, rep, " todav\xEDa no aparece en la hoja ESTILO CONDUCCI\xD3N.");
+    const mAcel = filas.reduce((s, f) => s + f.acel, 0) / filas.length;
+    const mFreno = filas.reduce((s, f) => s + f.freno, 0) / filas.length;
+    const d = mia || {
+      score: filas.reduce((s, f) => s + f.score, 0) / filas.length,
+      acel: mAcel,
+      freno: mFreno,
+      km: filas.reduce((s, f) => s + f.km, 0),
+      tiempo: null
+    };
+    const score = Math.round(d.score * 10) / 10;
+    const col = score >= 90 ? T.good : score >= 75 ? T.warn : T.crit;
+    const tope = Math.max(...filas.map(f => Math.max(f.acel, f.freno)));
+    const colorIdx = (v, m) => v <= m ? T.s3 : v <= m * 1.6 ? T.warn : T.crit;
+    const metricas = [{
+      k: "Índice de aceleración",
+      v: d.acel,
+      u: "",
+      pct: d.acel / tope * 100,
+      c: colorIdx(d.acel, mAcel),
+      ref: "media de la flota " + mAcel.toFixed(1).replace(".", ",")
+    }, {
+      k: "Índice de frenado",
+      v: d.freno,
+      u: "",
+      pct: d.freno / tope * 100,
+      c: colorIdx(d.freno, mFreno),
+      ref: "media de la flota " + mFreno.toFixed(1).replace(".", ",")
+    }];
+    const maxScore = 100;
+    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-wrap items-center gap-5"
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 148,
+        height: 148,
+        position: "relative",
+        flex: "0 0 auto"
+      }
+    }, /*#__PURE__*/React.createElement(RC.ResponsiveContainer, {
+      width: "100%",
+      height: "100%"
+    }, /*#__PURE__*/React.createElement(RC.RadialBarChart, {
+      innerRadius: "72%",
+      outerRadius: "100%",
+      barSize: 14,
+      startAngle: 90,
+      endAngle: -270,
+      data: [{
+        name: "Puntuación",
+        value: score
+      }]
+    }, /*#__PURE__*/React.createElement(RC.PolarAngleAxis, {
+      type: "number",
+      domain: [0, 100],
+      tick: false
+    }), /*#__PURE__*/React.createElement(RC.RadialBar, {
+      background: {
+        fill: T.grid
+      },
+      dataKey: "value",
+      cornerRadius: 7,
+      fill: col,
+      animationDuration: anim
+    }))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "absolute",
+        inset: 0,
+        display: "grid",
+        placeItems: "center",
+        pointerEvents: "none"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "text-center"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "disp num font-bold",
+      style: {
+        fontSize: 34,
+        lineHeight: 1,
+        color: col
+      }
+    }, String(score).replace(".", ",")), /*#__PURE__*/React.createElement("div", {
+      className: "eyebrow",
+      style: {
+        fontSize: 10
+      }
+    }, "sobre 100")))), /*#__PURE__*/React.createElement("ul", {
+      className: "flex-1 flex flex-col gap-2.5",
+      style: {
+        minWidth: 190
+      }
+    }, metricas.map(m => /*#__PURE__*/React.createElement("li", {
+      key: m.k
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-baseline justify-between text-[12.5px]"
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--ink-2)",
+        fontWeight: 600
+      }
+    }, m.k), /*#__PURE__*/React.createElement("span", {
+      className: "num",
+      style: {
+        color: "var(--ink)",
+        fontWeight: 700
+      }
+    }, String(m.v).replace(".", ","))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 6,
+        background: "var(--grid)",
+        borderRadius: 3,
+        marginTop: 3,
+        overflow: "hidden"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: Math.min(100, m.pct) + "%",
+        height: "100%",
+        borderRadius: 3,
+        background: m.c,
+        transition: "width .5s cubic-bezier(.2,.7,.3,1)"
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "text-[11px] mt-0.5",
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, m.ref))), /*#__PURE__*/React.createElement("li", {
+      className: "flex gap-2 flex-wrap mt-0.5"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "pill"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "num"
+    }, nf(d.km)), " km"), d.tiempo && /*#__PURE__*/React.createElement("span", {
+      className: "pill"
+    }, d.tiempo, " al volante")))), /*#__PURE__*/React.createElement("div", {
+      className: "mt-4 pt-3",
+      style: {
+        borderTop: "1px solid var(--ring)"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "eyebrow mb-2"
+    }, "Puntuaci\xF3n de los ", filas.length), /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-col gap-1.5"
+    }, [...filas].sort((a, b) => b.score - a.score).map(f => /*#__PURE__*/React.createElement("div", {
+      key: f.rep,
+      className: "flex items-center gap-2 text-[12.5px]"
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 84,
+        fontWeight: f.rep === rep ? 700 : 600,
+        color: f.rep === rep ? "var(--ink)" : "var(--ink-2)"
+      },
+      className: "truncate"
+    }, f.rep), /*#__PURE__*/React.createElement("span", {
+      style: {
+        flex: 1,
+        height: 8,
+        background: "var(--grid)",
+        borderRadius: 4,
+        overflow: "hidden",
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: "block",
+        width: f.score / maxScore * 100 + "%",
+        height: "100%",
+        borderRadius: 4,
+        background: f.rep === rep ? T.brand : T["seq-2"],
+        opacity: f.rep === rep ? 1 : .55,
+        transition: "width .5s cubic-bezier(.2,.7,.3,1)"
+      }
+    })), /*#__PURE__*/React.createElement("strong", {
+      className: "num",
+      style: {
+        width: 40,
+        textAlign: "right"
+      }
+    }, String(f.score).replace(".", ",")))))));
+  })())), /*#__PURE__*/React.createElement(Card, {
+    className: "p-4 mb-8 enter",
+    style: {
+      animationDelay: "260ms"
+    }
+  }, /*#__PURE__*/React.createElement(SectionHead, {
+    n: "Desglose",
+    title: "D\xEDa \u25B8 Tienda \u25B8 Franja",
+    sub: "Elige un d\xEDa y una tienda para bajar hasta la franja horaria.",
+    right: /*#__PURE__*/React.createElement(Seg, {
+      label: "Forma del desglose",
+      value: desglose,
+      onChange: setDesglose,
+      options: [{
+        v: "arbol",
+        l: "Árbol"
+      }, {
+        v: "mapa",
+        l: "Mapa de franjas"
+      }]
+    })
+  }), desglose === "arbol" ? /*#__PURE__*/React.createElement("div", {
+    className: "grid gap-4",
+    style: {
+      gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "eyebrow mb-2"
+  }, "D\xEDa \xB7 ", diasConDatos.length, " con entregas"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      maxHeight: 260,
+      overflowY: "auto",
+      paddingRight: 4
+    }
+  }, diasConDatos.map(f => {
+    const v = agg.byDay.get(f) || 0;
+    const max = Math.max(1, ...diasConDatos.map(x => agg.byDay.get(x) || 0));
+    return /*#__PURE__*/React.createElement("button", {
+      key: f,
+      className: "drillrow",
+      "aria-pressed": drillDay === f,
+      onClick: () => {
+        setDrillDay(f);
+        setDrillTienda(null);
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "text-[13px] font-semibold"
+    }, fmtDay(f)), /*#__PURE__*/React.createElement("span", {
+      className: "text-[12px]",
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, " \xB7 ", DOW[dow(f)]), /*#__PURE__*/React.createElement("span", {
+      className: "bar"
+    }, /*#__PURE__*/React.createElement("i", {
+      style: {
+        width: v / max * 100 + "%"
+      }
+    }))), /*#__PURE__*/React.createElement("strong", {
+      className: "num disp text-[16px]"
+    }, v));
+  }), !diasConDatos.length && /*#__PURE__*/React.createElement("p", {
+    className: "text-[13px]",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, "Sin entregas de ", rep, " en este per\xEDodo."))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "eyebrow mb-2"
+  }, "Tienda ", drillDay && "· " + fmtDay(drillDay)), nivelTiendas.map(([n, v]) => {
+    const max = Math.max(1, ...nivelTiendas.map(x => x[1]));
+    return /*#__PURE__*/React.createElement("button", {
+      key: n,
+      className: "drillrow",
+      "aria-pressed": drillTienda === n,
+      onClick: () => setDrillTienda(n)
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "text-[13px] font-semibold truncate block"
+    }, n), /*#__PURE__*/React.createElement("span", {
+      className: "bar"
+    }, /*#__PURE__*/React.createElement("i", {
+      style: {
+        width: v / max * 100 + "%",
+        background: "var(--s3)"
+      }
+    }))), /*#__PURE__*/React.createElement("strong", {
+      className: "num disp text-[16px]"
+    }, v));
+  }), !nivelTiendas.length && /*#__PURE__*/React.createElement("p", {
+    className: "text-[13px]",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, "Elige un d\xEDa.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "eyebrow mb-2"
+  }, "Franja ", drillTienda && "· " + drillTienda, " ", drillDay && "· " + fmtDay(drillDay)), nivelFranjas.map(([n, v]) => {
+    const max = Math.max(1, ...nivelFranjas.map(x => x[1]));
+    return /*#__PURE__*/React.createElement("div", {
+      key: n,
+      className: "drillrow",
+      style: {
+        cursor: "default"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "text-[13px] font-semibold"
+    }, n), /*#__PURE__*/React.createElement("span", {
+      className: "bar"
+    }, /*#__PURE__*/React.createElement("i", {
+      style: {
+        width: v / max * 100 + "%",
+        background: "var(--s4)"
+      }
+    }))), /*#__PURE__*/React.createElement("strong", {
+      className: "num disp text-[16px]"
+    }, v));
+  }), !nivelFranjas.length && /*#__PURE__*/React.createElement("p", {
+    className: "text-[13px]",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, "Elige una tienda."))) : /*#__PURE__*/React.createElement("div", {
+    className: "mapagrid"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "scrollx"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "hm"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
+    style: {
+      textAlign: "left"
+    }
+  }, "Franja"), mapa.dias.map(f => /*#__PURE__*/React.createElement("th", {
+    key: f
+  }, toDate(f).getUTCDate())))), /*#__PURE__*/React.createElement("tbody", null, mapa.rows.map(r => {
+    const activa = mapaSel && mapaSel.franja === r.franja;
+    return /*#__PURE__*/React.createElement("tr", {
+      key: r.franja
+    }, /*#__PURE__*/React.createElement("th", {
+      className: "fr",
+      scope: "row",
+      role: "button",
+      tabIndex: 0,
+      "aria-pressed": !!activa,
+      style: {
+        textAlign: "left"
+      },
+      onClick: () => setMapaSel(activa && !mapaSel.dia ? null : {
+        franja: r.franja,
+        dia: null
+      }),
+      onKeyDown: e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setMapaSel(activa && !mapaSel.dia ? null : {
+            franja: r.franja,
+            dia: null
+          });
+        }
+      }
+    }, r.franja), r.vals.map((v, i) => {
+      const k = v / mapa.max;
+      const step = v === 0 ? null : k > .8 ? "seq-1" : k > .6 ? "seq-2" : k > .4 ? "seq-3" : k > .2 ? "seq-4" : "seq-5";
+      const sel = activa && mapaSel.dia === mapa.dias[i];
+      return /*#__PURE__*/React.createElement("td", {
+        key: i,
+        title: fmtDay(mapa.dias[i]) + " · " + r.franja + " · " + v,
+        className: "num" + (v ? " on" : "") + (sel ? " sel" : ""),
+        onClick: v ? () => setMapaSel(sel ? {
+          franja: r.franja,
+          dia: null
+        } : {
+          franja: r.franja,
+          dia: mapa.dias[i]
+        }) : undefined,
+        style: step ? {
+          background: "var(--" + step + ")",
+          color: k > .4 ? "#fff" : "var(--ink)"
+        } : undefined
+      }, v || "");
+    }));
+  })))), /*#__PURE__*/React.createElement("p", {
+    className: "text-[11.5px] mt-2",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, "Azul m\xE1s oscuro, m\xE1s entregas. Toca una franja para ver sus entregas, o una celda para un solo d\xEDa.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      minWidth: 0
+    }
+  }, !mapaSel ? /*#__PURE__*/React.createElement("p", {
+    className: "text-[13px]",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, "Elige una franja del mapa.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-center gap-2 mb-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "eyebrow"
+  }, mapaSel.franja, mapaSel.dia ? " · " + fmtDay(mapaSel.dia) : " · todo el período"), mapaSel.dia && /*#__PURE__*/React.createElement("button", {
+    className: "pill chipf",
+    onClick: () => setMapaSel({
+      franja: mapaSel.franja,
+      dia: null
+    })
+  }, "toda la franja")), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col gap-2",
+    style: {
+      maxHeight: 430,
+      overflowY: "auto",
+      paddingRight: 4
+    }
+  }, mapaCards.map(c => c.tipo === "cliente" ? /*#__PURE__*/React.createElement("div", {
+    key: c.k,
+    style: {
+      background: "var(--surface-2)",
+      border: "1px solid var(--ring)",
+      borderRadius: 10,
+      padding: "9px 11px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline justify-between gap-2"
+  }, /*#__PURE__*/React.createElement("strong", {
+    className: "text-[13px] truncate"
+  }, c.cli), /*#__PURE__*/React.createElement("span", {
+    className: "num text-[12px]",
+    style: {
+      color: "var(--ink-3)",
+      flex: "0 0 auto"
+    }
+  }, fmtDay(c.f))), /*#__PURE__*/React.createElement("div", {
+    className: "text-[12px]",
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, c.tienda, " \xB7 ", DOW[dow(c.f)], c.h ? " · " + c.h : ""), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap gap-1.5 mt-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, "caja ", /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, c.caja)), c.tk && /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, "ticket ", /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, c.tk)), /*#__PURE__*/React.createElement("span", {
+    className: "pill",
+    style: {
+      color: c.est === "ENTREGADO" ? "var(--good)" : c.est === "ASIGNADO" ? "var(--s1)" : "var(--ink-3)"
+    }
+  }, c.est.toLowerCase()), rep === "*" && c.quien && /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, c.quien))) : /*#__PURE__*/React.createElement("div", {
+    key: c.k,
+    style: {
+      background: "var(--surface-2)",
+      border: "1px dashed var(--ring)",
+      borderRadius: 10,
+      padding: "9px 11px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline justify-between gap-2"
+  }, /*#__PURE__*/React.createElement("strong", {
+    className: "text-[13px] truncate"
+  }, c.tienda), /*#__PURE__*/React.createElement("span", {
+    className: "disp num font-bold text-[17px]"
+  }, c.total)), /*#__PURE__*/React.createElement("div", {
+    className: "text-[12px]",
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, fmtDay(c.f), " \xB7 ", DOW[dow(c.f)]), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap gap-1.5 mt-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, c.p), " P"), c.xr > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "pill",
+    style: {
+      color: "var(--s4)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, c.xr), " XR"), c.xp > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "pill",
+    style: {
+      color: "var(--s5)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, c.xp), " XP"), rep === "*" && /*#__PURE__*/React.createElement("span", {
+    className: "pill"
+  }, c.quien)), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] mt-1.5",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, "Del parte del d\xEDa: sin cliente grabado."))), !mapaCards.length && /*#__PURE__*/React.createElement("p", {
+    className: "text-[13px]",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, "Sin entregas en esa franja.")))))), /*#__PURE__*/React.createElement(Card, {
+    className: "p-4 mb-8 enter",
+    style: {
+      animationDelay: "300ms"
+    }
+  }, (() => {
+    const dentro = DATA.incidencias.filter(i => i.f >= periodo.ini && i.f <= periodo.fin && (rep === "*" || i.u === rep));
+    const hoy = dentro.filter(i => i.f === SNAPSHOT).length;
+    const cerradas = dentro.filter(i => i.fin).length;
+    const abiertas = dentro.length - cerradas;
+    const cuenta = campo => {
+      const m = new Map();
+      dentro.forEach(i => m.set(i[campo] || "Sin indicar", (m.get(i[campo] || "Sin indicar") || 0) + 1));
+      return [...m.entries()].sort((a, b) => b[1] - a[1]);
+    };
+    const tipos = cuenta("tipo"),
+      resp = cuenta("resp");
+    const maxT = Math.max(1, ...tipos.map(t => t[1]));
+    const tasa = agg.total ? dentro.length / agg.total * 100 : 0;
+    const colResp = r => r === "Cliente" ? T.s1 : r === "Tienda" ? T.s2 : T["ink-3"];
+    const visibles = dentro.filter(i => (!incTipo || i.tipo === incTipo) && (!incResp || i.resp === incResp));
+    const hayFiltro = !!(incTipo || incResp);
+    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionHead, {
+      n: "Incidencias",
+      title: "Del d\xEDa y del per\xEDodo",
+      right: /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 116,
+          height: 116,
+          position: "relative",
+          flex: "0 0 auto"
+        }
+      }, /*#__PURE__*/React.createElement(RC.ResponsiveContainer, {
+        width: "100%",
+        height: "100%"
+      }, /*#__PURE__*/React.createElement(RC.RadialBarChart, {
+        innerRadius: "70%",
+        outerRadius: "100%",
+        barSize: 11,
+        startAngle: 90,
+        endAngle: -270,
+        data: [{
+          name: "Tasa",
+          value: Math.min(5, tasa)
+        }]
+      }, /*#__PURE__*/React.createElement(RC.PolarAngleAxis, {
+        type: "number",
+        domain: [0, 5],
+        tick: false
+      }), /*#__PURE__*/React.createElement(RC.RadialBar, {
+        background: {
+          fill: T.grid
+        },
+        dataKey: "value",
+        cornerRadius: 6,
+        fill: T.serious,
+        animationDuration: anim
+      }))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          position: "absolute",
+          inset: 0,
+          display: "grid",
+          placeItems: "center",
+          pointerEvents: "none"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "text-center"
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "disp num font-bold",
+        style: {
+          fontSize: 24,
+          lineHeight: 1,
+          color: T.serious
+        }
+      }, tasa.toFixed(1).replace(".", ","), "%"), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 9.5,
+          fontWeight: 600,
+          color: "var(--ink-3)",
+          marginTop: 1
+        }
+      }, "de entregas")))),
+      sub: "Hoja INCIDENCIAS, filtrada por el usuario que la registró y por fecha. El aro va de 0 a 5 %."
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "flex gap-3 flex-wrap items-start mb-5"
+    }, [{
+      l: "Hoy",
+      v: hoy,
+      c: hoy ? T.warn : T["ink-3"]
+    }, {
+      l: "Período",
+      v: dentro.length,
+      c: T.s2
+    }, {
+      l: "Sin cerrar",
+      v: abiertas,
+      c: abiertas ? T.crit : T["ink-3"]
+    }, {
+      l: "Cerradas",
+      v: cerradas,
+      c: T.good
+    }].map(x => /*#__PURE__*/React.createElement("div", {
+      key: x.l,
+      style: {
+        background: "var(--surface-2)",
+        border: "1px solid var(--ring)",
+        borderRadius: 10,
+        padding: "10px 14px",
+        minWidth: 92
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "eyebrow"
+    }, x.l), /*#__PURE__*/React.createElement("div", {
+      className: "disp num font-bold text-[27px]",
+      style: {
+        color: x.c,
+        lineHeight: 1.05
+      }
+    }, x.v)))), dentro.length === 0 ? /*#__PURE__*/React.createElement("p", {
+      className: "text-[13px]",
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, "Ninguna incidencia registrada en este per\xEDodo", rep === "*" ? "" : " por " + rep, ". El registro de incidencias empez\xF3 el 10 de octubre.") : /*#__PURE__*/React.createElement("div", {
+      className: "grid gap-5",
+      style: {
+        gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-col gap-4",
+      style: {
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("ul", {
+      className: "flex flex-col gap-2"
+    }, /*#__PURE__*/React.createElement("li", {
+      className: "eyebrow"
+    }, "Por tipo"), tipos.map(([k, v]) => /*#__PURE__*/React.createElement("li", {
+      key: k
+    }, /*#__PURE__*/React.createElement("button", {
+      className: "filtro",
+      "aria-pressed": incTipo === k,
+      style: {
+        padding: "4px 6px"
+      },
+      onClick: () => setIncTipo(incTipo === k ? null : k)
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "flex items-baseline justify-between gap-2 text-[12.5px]"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "truncate",
+      style: {
+        color: "var(--ink-2)",
+        fontWeight: 600
+      }
+    }, k), /*#__PURE__*/React.createElement("strong", {
+      className: "num"
+    }, v)), /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: "block",
+        height: 6,
+        background: "var(--grid)",
+        borderRadius: 3,
+        marginTop: 3,
+        overflow: "hidden"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: "block",
+        width: v / maxT * 100 + "%",
+        height: "100%",
+        background: T.s2,
+        borderRadius: 3
+      }
+    })))))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "eyebrow mb-2"
+    }, "De qui\xE9n fue"), /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-wrap gap-2"
+    }, resp.map(([k, v]) => /*#__PURE__*/React.createElement("button", {
+      key: k,
+      className: "pill chipf",
+      "aria-pressed": incResp === k,
+      style: {
+        color: "var(--ink)"
+      },
+      onClick: () => setIncResp(incResp === k ? null : k)
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 8,
+        height: 8,
+        borderRadius: 2,
+        background: colResp(k),
+        display: "inline-block"
+      }
+    }), k, " ", /*#__PURE__*/React.createElement("strong", {
+      className: "num"
+    }, v)))), !resp.some(([k]) => /usuario|repartidor/i.test(k)) && /*#__PURE__*/React.createElement("p", {
+      className: "text-[11.5px] mt-2",
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, "Ninguna tiene como responsable al repartidor."))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-wrap items-center gap-2 mb-2"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "eyebrow"
+    }, "Una a una"), hayFiltro && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+      className: "pill"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "num"
+    }, visibles.length), " de ", dentro.length), /*#__PURE__*/React.createElement("button", {
+      className: "pill chipf",
+      onClick: () => {
+        setIncTipo(null);
+        setIncResp(null);
+      }
+    }, "quitar filtro"))), /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-col gap-2",
+      style: {
+        maxHeight: 300,
+        overflowY: "auto",
+        paddingRight: 4
+      }
+    }, visibles.map(i => /*#__PURE__*/React.createElement("div", {
+      key: i.id,
+      style: {
+        background: "var(--surface-2)",
+        border: "1px solid var(--ring)",
+        borderRadius: 10,
+        padding: "9px 11px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-baseline justify-between gap-2"
+    }, /*#__PURE__*/React.createElement("strong", {
+      className: "text-[13px]"
+    }, i.tipo), /*#__PURE__*/React.createElement("span", {
+      className: "num text-[12px]",
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, fmtDay(i.f))), /*#__PURE__*/React.createElement("div", {
+      className: "text-[12px] truncate",
+      style: {
+        color: "var(--ink-2)"
+      }
+    }, i.cli), /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-wrap items-center gap-1.5 mt-1.5"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "pill",
+      style: {
+        color: colResp(i.resp)
+      }
+    }, i.resp), /*#__PURE__*/React.createElement("span", {
+      className: "pill",
+      style: {
+        color: i.fin ? "var(--good)" : "var(--crit)"
+      }
+    }, i.estado.toLowerCase()), i.int > 0 && /*#__PURE__*/React.createElement("span", {
+      className: "pill"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "num"
+    }, i.int), " ", i.int === 1 ? "intento" : "intentos"), rep === "*" && /*#__PURE__*/React.createElement("span", {
+      className: "pill"
+    }, i.u), i.url && /*#__PURE__*/React.createElement("a", {
+      href: i.url,
+      target: "_blank",
+      rel: "noopener noreferrer",
+      className: "pill",
+      style: {
+        color: "var(--brand)",
+        textDecoration: "none"
+      }
+    }, "ticket")), i.sol && /*#__PURE__*/React.createElement("p", {
+      className: "text-[11.5px] mt-1.5",
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, i.sol))), !visibles.length && /*#__PURE__*/React.createElement("p", {
+      className: "text-[13px]",
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, "Ninguna con ese filtro."))), /*#__PURE__*/React.createElement("div", {
+      className: "text-[12.5px] leading-relaxed",
+      style: {
+        color: "var(--ink-2)",
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("p", {
+      className: "mb-2"
+    }, /*#__PURE__*/React.createElement("strong", {
+      style: {
+        color: "var(--ink)"
+      }
+    }, "Regla de c\xF3mputo:"), " si el repartidor lleg\xF3 al cliente, la entrega computa aunque haya incidencia. La incidencia queda registrada aparte para gestionarla."), /*#__PURE__*/React.createElement("p", {
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, "Cliente ausente con vuelta = ticket nuevo y entrega nueva. Una incidencia RESTAURADA es la que devolvi\xF3 el pedido a la ruta."))));
+  })()), /*#__PURE__*/React.createElement("footer", {
+    className: "text-[12px] leading-relaxed enter",
+    style: {
+      color: "var(--ink-3)",
+      animationDelay: "340ms"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "eyebrow mb-2"
+  }, "De d\xF3nde sale cada n\xFAmero"), /*#__PURE__*/React.createElement("ul", {
+    className: "flex flex-col gap-1"
+  }, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("strong", {
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, "P, XR, XP, tienda y franja"), " \u2014 hojas 2026.OCT y 2026.SEP de SAD DISTRIBUTION REPORT, una fila por ticket. ", nf(DATA.rows.length), " filas agregadas, del ", fmtDay(DATA.cover.ini), " al ", fmtDay(DATA.cover.fin), " de 2026."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("strong", {
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, "A\xF1o anterior"), " \u2014 PEDIDOS_TOTALES, columna de repartos reales. En 2025 solo se anotaba TRAVESIA."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("strong", {
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, "D\xEDas de corte 26 \u2192 25"), " \u2014 hoja TIENDAS de DATABASE (FECHA INICIO / FECHA FIN), no fijados en el c\xF3digo."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("strong", {
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, "Niveles y tienda por defecto"), " \u2014 hoja USUARIOS de DATABASE."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("strong", {
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, "Estilo de conducci\xF3n"), " \u2014 hoja ESTILO CONDUCCI\xD3N de MANTENIMIENTO_FLOTA_COLATINO. Carga del ", DATA.conduccion.periodo, ": es la \xFAltima que hay, todav\xEDa no va por per\xEDodo."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("strong", {
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, "Incidencias"), " \u2014 planilla INCIDENCIAS, filtrada por el usuario que la registr\xF3. El registro arranc\xF3 el 10 de octubre, as\xED que el per\xEDodo anterior sale vac\xEDo.")), /*#__PURE__*/React.createElement("p", {
+    className: "mt-3"
+  }, "Foto de los datos del ", fmtDay(SNAPSHOT), " de 2026. Cuando el backend sirva el objeto DATA, esta misma pantalla leer\xE1 las hojas en vivo."), /*#__PURE__*/React.createElement("p", {
+    className: "mt-1"
+  }, /*#__PURE__*/React.createElement("span", {
+    "data-nexo-version": "Informe"
+  }, "Informe"))), SESION && /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2 mt-6"
+  }, /*#__PURE__*/React.createElement("a", {
+    className: "navbtn",
+    href: "index.html"
+  }, /*#__PURE__*/React.createElement("span", {
+    "aria-hidden": "true"
+  }, "\u2B05\uFE0F"), " Volver"), /*#__PURE__*/React.createElement("button", {
+    className: "navbtn salir",
+    onClick: cerrarSesion
+  }, /*#__PURE__*/React.createElement("span", {
+    "aria-hidden": "true"
+  }, "\uD83D\uDEAA"), " Salir"))));
+}
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
+}
+
+/* ═══════════════ RONDA 49 · carga de los datos ═══════════════ */
+(function () {
+  var URL_EMBOLSADO = "https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoDisEn4qrGWh0tEGfGHn4NXoEqP1ShODyIWQ1bzYyWfcuz_Pqh/exec";
+  var URL_PROXY = "https://sad-proxy.colatino-ventas-enlinea.workers.dev/";
+  var CLAVE = 'nexo_informe_datos';
+  var raiz = document.getElementById('root');
+  var ses = null;
+  try { ses = JSON.parse(sessionStorage.getItem('sad_user') || 'null'); } catch (e) {}
+
+  function aviso(html) {
+    raiz.innerHTML = '<div style="max-width:560px;margin:14vh auto;padding:0 20px;text-align:center;' +
+      'font:600 16px/1.5 var(--texto,system-ui);color:var(--ink,#0B2447)">' + html + '</div>';
+  }
+  function llamar(accion, extra) {
+    var cuerpo = { accion: accion, usuario: (ses && ses.usuario) || '' };
+    if (extra) for (var k in extra) cuerpo[k] = extra[k];
+    return fetch(URL_PROXY + '?url=' + encodeURIComponent(URL_EMBOLSADO), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo)
+    }).then(function (r) { return r.text(); }).then(function (t) {
+      try { return JSON.parse(t); } catch (e) { return { ok: false, error: 'Respuesta ilegible del servidor.' }; }
+    }).catch(function () { return { ok: false, red: true, error: 'Sin conexión con el servidor.' }; });
+  }
+  function guardado() {
+    try { return JSON.parse(localStorage.getItem(CLAVE) || 'null'); } catch (e) { return null; }
+  }
+  function guardar(generado, datos) {
+    try { localStorage.setItem(CLAVE, JSON.stringify({ generado: generado, datos: datos })); } catch (e) {}
+  }
+  /* "2026-10-24T14:00" → "14:00 del 24/10" */
+  function cuando(g) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(String(g || ''));
+    return m ? m[4] + ':' + m[5] + ' del ' + m[3] + '/' + m[2] : '—';
+  }
+
+  var BARRA_ID = 'nxInfBarra';
+  function barra(generado, estado) {
+    var b = document.getElementById(BARRA_ID);
+    if (!b) {
+      b = document.createElement('div');
+      b.id = BARRA_ID;
+      b.style.cssText = 'display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;' +
+        'padding:8px 14px;font:600 13px/1.3 var(--texto,system-ui);color:var(--ink-2,#55606e)';
+      raiz.parentNode.insertBefore(b, raiz);
+    }
+    b.innerHTML = '<span>Datos de las <b>' + cuando(generado) + '</b>' +
+      ' · se actualizan solos cada 3 h desde las 11h</span>' +
+      '<button type="button" id="nxInfAct" style="min-height:36px;padding:0 12px;border:0;border-radius:10px;' +
+      'background:var(--ink,#0B2447);color:#fff;font:700 13px var(--texto,system-ui)">' +
+      (estado === 'cargando' ? 'Buscando…' : 'Buscar datos nuevos') + '</button>' +
+      (estado && estado !== 'cargando' ? '<span style="color:var(--s4,#b45309)">' + estado + '</span>' : '');
+    var btn = document.getElementById('nxInfAct');
+    if (btn) btn.onclick = function () { comprobar(true); };
+  }
+
+  var montado = false;
+  function montar(generado) {
+    if (!montado) { arrancarInforme(); montado = true; }
+    barra(generado, '');
+  }
+
+  /* Pide solo la marca de hora; descarga el objeto únicamente si hace falta. */
+  function comprobar(manual) {
+    var local = guardado();
+    if (manual) barra(local && local.generado, 'cargando');
+    return llamar('informeRepartidorDatosVersion').then(function (v) {
+      if (v && v.ok && v.generado && local && local.generado === v.generado) {
+        DATA = local.datos;                      // nada que descargar
+        montar(local.generado);
+        if (manual) barra(local.generado, 'ya tenías los últimos');
+        return;
+      }
+      if (v && !v.ok && !v.red) {                // el backend contesta pero dice que no
+        if (local) { DATA = local.datos; montar(local.generado); barra(local.generado, v.error || ''); return; }
+        aviso('No se pudieron cargar los datos del informe.<br><span style="font-weight:500">' +
+          (v.error || '') + '</span>');
+        return;
+      }
+      return llamar('informeRepartidorDatos').then(function (r) {
+        if (r && r.ok && r.datos && r.datos.rows) {
+          DATA = r.datos;
+          guardar(r.generado || r.datos.generado || '', r.datos);
+          montar(r.generado || r.datos.generado || '');
+          return;
+        }
+        if (local) {                             // sin red: se sigue con lo que hay en el móvil
+          DATA = local.datos;
+          montar(local.generado);
+          barra(local.generado, 'sin conexión: datos guardados en este móvil');
+          return;
+        }
+        aviso('No se pudieron cargar los datos del informe.<br><span style="font-weight:500">' +
+          ((r && r.error) || 'Sin conexión.') + '</span><br><br>' +
+          '<button type="button" onclick="location.reload()" style="min-height:44px;padding:0 16px;border:0;' +
+          'border-radius:12px;background:#0B2447;color:#fff;font:700 15px system-ui">Volver a intentarlo</button>');
+      });
+    });
+  }
+
+  if (!ses || !ses.usuario) return;              // el guard de sesión ya manda al login
+  var hay = guardado();
+  if (hay && hay.datos && hay.datos.rows && hay.datos.rows.length) {
+    DATA = hay.datos;                            // se pinta al instante con lo guardado
+    montar(hay.generado);
+    comprobar(false);                            // y se comprueba por detrás
+  } else {
+    aviso('Cargando los datos del informe…');
+    comprobar(false);
+  }
+})();
+</script>
+<script src="nexo-version.js" defer></script>
+</body>
+</html>

@@ -8,8 +8,9 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#003366" />
+<meta name="color-scheme" content="light" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -135,12 +136,19 @@ body {
   }
 })();
 </script>
+<style>
+/* Ronda 26 (accesibilidad) */
+:root { color-scheme:light; }
+a:focus-visible, button:focus-visible, summary:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible { outline:3px solid #17409E !important; outline-offset:2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration:.01ms !important; scroll-behavior:auto !important; } }
+body { padding-top:max(0px, env(safe-area-inset-top)); padding-bottom:max(0px, env(safe-area-inset-bottom)); }
+</style>
 </head>
 <body>
 
-<div class="card">
+<div class="card" role="main">
   <div class="header">
-    <img class="logo" src="nexo-logo-full.png" alt="Nexo · Distribución Inteligente" />
+    <img class="logo" src="nexo-logo-full.png" alt="Nexo · Distribución Inteligente" width="512" height="341" />
     <div class="titulo">📊 Informe</div>
     <div class="user-badge">
       👤 <span id="badgeNombre">—</span>
