@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.27">
+<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.28">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -786,6 +786,10 @@ function App() {
   const opCum = useMemo(() => cumulative(aggOp.byDay, periodo.ini, elapsed), [periodoId, elapsed]);
   const opTotal = opCum.length ? opCum[opCum.length - 1].acc : 0;
   const opPrevSame = cumulative(prevOp.byDay, prevPeriodo.ini, elapsed).slice(-1)[0]?.acc || 0;
+  /* Ronda 61: «Período actual vs anterior» compara con el período anterior COMPLETO (lo que dice
+     «MES ANTERIOR» en UNIFICADA). Antes eran solo sus primeros días («mismo tramo») y salía de menos. */
+  const compNow = curTotal;
+  const compBefore = prev.total || 0;
 
   /* serie principal */
   const serieDiaria = useMemo(() => {
@@ -1038,7 +1042,9 @@ function App() {
   }, p.label))))))), /*#__PURE__*/React.createElement("main", {
     className: "wrap",
     style: {
-      paddingBlock: "20px 44px"
+      paddingBlock: "20px 44px",
+      display: "flex",
+      flexDirection: "column"   // ronda 61: orden de las secciones con «order»
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex flex-wrap items-center gap-2 mb-5 enter",
@@ -1075,12 +1081,15 @@ function App() {
     }
   }, "viendo a ", rep)), /*#__PURE__*/React.createElement(SectionHead, {
     n: "Resumen del per\xEDodo",
-    title: "Pedidos, dobles y total",
-    sub: "Del " + fmtDay(periodo.ini) + " al " + fmtDay(periodo.fin) + ". Un XR o un XP cuenta como entrega aparte: el total es P + XR + XP."
+    title: "Pedidos Naturales, XR y XP"
   }), /*#__PURE__*/React.createElement("div", {
     className: "grid gap-3 mb-8",
     style: {
-      gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))"
+      gridTemplateColumns: "repeat(2,minmax(0,1fr))"   // ronda 61: de dos en dos
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      gridColumn: "1 / -1"
     }
   }, /*#__PURE__*/React.createElement(Tile, {
     label: "Total",
@@ -1093,8 +1102,8 @@ function App() {
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex flex-wrap gap-2 mt-2"
   }, /*#__PURE__*/React.createElement(Delta, {
-    now: curTotal,
-    before: prevSame,
+    now: compNow,
+    before: compBefore,
     label: "per\xEDodo ant."
   })), /*#__PURE__*/React.createElement("div", {
     className: "text-[12px] mt-2",
@@ -1107,7 +1116,7 @@ function App() {
       fontWeight: 700,
       color: "var(--ink)"
     }
-  }, Math.round(nivelAgua), "%"), " de la proyección"))), /*#__PURE__*/React.createElement(Tile, {
+  }, Math.round(nivelAgua), "%"), " de la proyección")))), /*#__PURE__*/React.createElement(Tile, {
     label: "Pedidos (P)",
     value: agg.p,
     unit: "pedidos",
@@ -1138,10 +1147,52 @@ function App() {
     unit: "entregas",
     accent: periodo.closed ? undefined : "var(--s4)",
     foot: periodo.closed ? "El período está cerrado: no hay nada que proyectar." : nf(proj.observado) + " ya entregados + " + nf(proj.extra) + " previstos en los " + proj.rest.length + " días que quedan."
-  })), /*#__PURE__*/React.createElement(Card, {
+  }), /*#__PURE__*/React.createElement(Tile, {
+    label: "Per\xEDodo actual vs anterior",
+    value: compNow,
+    unit: "entregas"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-[13px] mt-1",
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, "Anterior: ", /*#__PURE__*/React.createElement("strong", {
+    className: "num",
+    style: {
+      color: "var(--ink)"
+    }
+  }, nf(compBefore))), compBefore > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap gap-2 mt-2"
+  }, /*#__PURE__*/React.createElement(Delta, {
+    now: compNow,
+    before: compBefore,
+    label: "vs anterior"
+  })), rep === "*" && yearFull > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "text-[13px] mt-2",
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, "A\xF1o anterior: ", /*#__PURE__*/React.createElement("strong", {
+    className: "num",
+    style: {
+      color: "var(--ink)"
+    }
+  }, nf(yearFull)), /*#__PURE__*/React.createElement("span", {
+    className: "text-[11px]",
+    style: {
+      color: "var(--ink-3)"
+    }
+  }, " \xB7 en 2025 solo TRAVESIA")), rep === "*" && yearFull > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap gap-2 mt-1"
+  }, /*#__PURE__*/React.createElement(Delta, {
+    now: compNow,
+    before: yearFull,
+    label: "vs a\xF1o ant."
+  })))), /*#__PURE__*/React.createElement(Card, {
     className: "p-4 mb-8 enter",
     style: {
-      animationDelay: "60ms"
+      animationDelay: "60ms",
+      order: 2   // ronda 61: Total por día
     }
   }, /*#__PURE__*/React.createElement(SectionHead, {
     n: "Total por d\xEDa",
@@ -1298,98 +1349,14 @@ function App() {
     dot: false,
     animationDuration: anim
   }))))), /*#__PURE__*/React.createElement("div", {
-    className: "grid gap-3 mb-8",
     style: {
-      gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))"
+      display: "contents"   // ronda 61
     }
   }, /*#__PURE__*/React.createElement(Card, {
-    className: "p-4 enter",
+    className: "p-4 mb-8 enter",
     style: {
-      animationDelay: "100ms"
-    }
-  }, /*#__PURE__*/React.createElement(SectionHead, {
-    n: "Comparaci\xF3n",
-    title: "Mismo tramo de cada per\xEDodo",
-    sub: "Primeros " + elapsed + " días de cada período, para comparar lo comparable.",
-    right: VE_OPERACION ? /*#__PURE__*/React.createElement(Seg, {
-      label: "\xC1mbito",
-      value: compMode,
-      onChange: setCompMode,
-      options: [{
-        v: "mio",
-        l: rep === "*" ? "Operación" : "Mis datos"
-      }, {
-        v: "op",
-        l: "Operación"
-      }]
-    }) : null
-  }), (() => {
-    const mio = (!VE_OPERACION || compMode === "mio") && rep !== "*";
-    const now = mio ? curTotal : opTotal,
-      before = mio ? prevSame : opPrevSame;
-    const filas = [{
-      k: "Actual",
-      v: now,
-      c: T.s1
-    }, ...(before > 0 ? [{
-      k: "Anterior",
-      v: before,
-      c: T.s3
-    }] : []), ...(!mio && yearSame > 0 ? [{
-      k: "Año anterior",
-      v: yearSame,
-      c: T["ink-3"]
-    }] : [])];
-    const max = Math.max(1, ...filas.map(f => f.v));
-    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-      className: "flex flex-col gap-3"
-    }, filas.map(f => /*#__PURE__*/React.createElement("div", {
-      key: f.k
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "flex items-baseline justify-between text-[13px]"
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: "var(--ink-2)",
-        fontWeight: 600
-      }
-    }, f.k), /*#__PURE__*/React.createElement("strong", {
-      className: "num disp text-[17px]"
-    }, nf(f.v))), /*#__PURE__*/React.createElement("div", {
-      style: {
-        height: 10,
-        background: "var(--grid)",
-        borderRadius: 5,
-        marginTop: 4,
-        overflow: "hidden"
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: f.v / max * 100 + "%",
-        height: "100%",
-        background: f.c,
-        borderRadius: 5,
-        transition: "width .5s cubic-bezier(.2,.7,.3,1)"
-      }
-    }))))), /*#__PURE__*/React.createElement("div", {
-      className: "flex flex-wrap gap-2 mt-4"
-    }, /*#__PURE__*/React.createElement(Delta, {
-      now: now,
-      before: before,
-      label: "vs anterior"
-    }), !mio && yearSame > 0 && /*#__PURE__*/React.createElement(Delta, {
-      now: now,
-      before: yearSame,
-      label: "vs a\xF1o ant."
-    })), /*#__PURE__*/React.createElement("p", {
-      className: "text-[12px] mt-3 leading-snug",
-      style: {
-        color: "var(--ink-3)"
-      }
-    }, before === 0 ? "De antes del " + fmtDay(DATA.cover.ini) + " todavía no hay detalle por ticket cargado, así que este período no tiene con qué compararse." : mio ? VE_OPERACION ? "El año anterior no se guardaba el reparto por repartidor: para comparar con 2025 cambia a Operación." : "El año anterior no se guardaba el reparto por repartidor, así que no hay con qué comparar 2025." : "En 2025 solo se anotaba TRAVESIA (" + nf(yearFull) + " en todo el período), así que el salto incluye las tiendas que se añadieron después."));
-  })()), /*#__PURE__*/React.createElement(Card, {
-    className: "p-4 enter",
-    style: {
-      animationDelay: "140ms"
+      animationDelay: "140ms",
+      order: 7   // ronda 61: Proyección
     }
   }, /*#__PURE__*/React.createElement(SectionHead, {
     n: "Proyecci\xF3n",
@@ -1532,14 +1499,14 @@ function App() {
       color: "var(--s4)"
     }
   }, nf(proj.total)))))), /*#__PURE__*/React.createElement("div", {
-    className: "grid gap-3 mb-8",
     style: {
-      gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))"
+      display: "contents"   // ronda 61
     }
   }, /*#__PURE__*/React.createElement(Card, {
-    className: "p-4 enter",
+    className: "p-4 mb-8 enter",
     style: {
-      animationDelay: "180ms"
+      animationDelay: "180ms",
+      order: 4   // ronda 61: Reparto por tienda
     }
   }, /*#__PURE__*/React.createElement(SectionHead, {
     n: "Reparto por tienda",
@@ -1602,9 +1569,10 @@ function App() {
       textAlign: "right"
     }
   }, nf(t.value))))))), /*#__PURE__*/React.createElement(Card, {
-    className: "p-4 enter",
+    className: "p-4 mb-8 enter",
     style: {
-      animationDelay: "220ms"
+      animationDelay: "220ms",
+      order: 6   // ronda 61: Estilo de conducción
     }
   }, /*#__PURE__*/React.createElement(SectionHead, {
     n: "Estilo de conducci\xF3n",
@@ -1612,7 +1580,7 @@ function App() {
     right: /*#__PURE__*/React.createElement("span", {
       className: "pill"
     }, "carga del ", DATA.conduccion.periodo),
-    sub: "Hoja ESTILO CONDUCCI\xD3N de MANTENIMIENTO_FLOTA_COLATINO. En aceleraci\xF3n y frenado, cuanto m\xE1s bajo, mejor."
+    sub: null
   }), (() => {
     const filas = DATA.conduccion.filas;
     const mia = rep === "*" ? null : filas.find(f => f.rep === rep);
@@ -1804,7 +1772,8 @@ function App() {
   })())), /*#__PURE__*/React.createElement(Card, {
     className: "p-4 mb-8 enter",
     style: {
-      animationDelay: "260ms"
+      animationDelay: "260ms",
+      order: 3   // ronda 61: Desglose
     }
   }, /*#__PURE__*/React.createElement(SectionHead, {
     n: "Desglose",
@@ -1835,7 +1804,7 @@ function App() {
     className: "eyebrow mb-2"
   }, "D\xEDa \xB7 ", diasConDatos.length, " con entregas"), /*#__PURE__*/React.createElement("div", {
     style: {
-      maxHeight: 260,
+      maxHeight: 132,   // ronda 61: se ven los 3 últimos días; el resto, desplazando
       overflowY: "auto",
       paddingRight: 4
     }
@@ -2138,7 +2107,8 @@ function App() {
   }, "Sin entregas en esa franja.")))))), /*#__PURE__*/React.createElement(Card, {
     className: "p-4 mb-8 enter",
     style: {
-      animationDelay: "300ms"
+      animationDelay: "300ms",
+      order: 5   // ronda 61: Incidencias
     }
   }, (() => {
     const dentro = DATA.incidencias.filter(i => i.f >= periodo.ini && i.f <= periodo.fin && (rep === "*" || i.u === rep));
@@ -2443,12 +2413,16 @@ function App() {
       }
     }, "Cliente ausente con vuelta = ticket nuevo y entrega nueva. Una incidencia RESTAURADA es la que devolvi\xF3 el pedido a la ruta."))));
   })()), /*#__PURE__*/React.createElement("div", {
-    id: "prevMananaSlot"
+    id: "prevMananaSlot",
+    style: {
+      order: 8   // ronda 61: clientes previstos, al final
+    }
   }), /*#__PURE__*/React.createElement("footer", {
     className: "text-[12px] leading-relaxed enter",
     style: {
       color: "var(--ink-3)",
-      animationDelay: "340ms"
+      animationDelay: "340ms",
+      order: 9
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "eyebrow mb-2"
@@ -2485,7 +2459,16 @@ function App() {
   }, /*#__PURE__*/React.createElement("span", {
     "data-nexo-version": "Informe"
   }, "Informe"))), SESION && /*#__PURE__*/React.createElement("div", {
-    className: "flex gap-2 mt-6"
+    id: "nxInfBarraSlot",
+    className: "mt-6",
+    style: {
+      order: 10   // ronda 61: la barra de datos, al final…
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2 mt-3",
+    style: {
+      order: 11   // …y luego Volver / Salir
+    }
   }, /*#__PURE__*/React.createElement("a", {
     className: "navbtn",
     href: "index.html"
@@ -2544,6 +2527,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.c
       b.style.cssText = 'display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;' +
         'padding:8px 14px;font:600 13px/1.3 var(--texto,system-ui);color:var(--ink-2,#55606e)';
       raiz.parentNode.insertBefore(b, raiz);
+      // Ronda 61: va al FINAL del informe, antes de «Volver» y «Salir» (hueco #nxInfBarraSlot).
+      var colocarB = function () { var sl = document.getElementById('nxInfBarraSlot'); if (sl && b.parentNode !== sl) sl.appendChild(b); };
+      colocarB();
+      try { new MutationObserver(colocarB).observe(raiz, { childList: true, subtree: true }); } catch (e) {}
     }
     b.innerHTML = '<span>Datos de las <b>' + cuando(generado) + '</b>' +
       ' · se actualizan solos cada 3 h desde las 11h</span>' +
@@ -2605,6 +2592,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.c
   }
   var DIAS_SEM = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   function previstosManana() {
+    // Ronda 61: de 0:00 a 19:00, los de HOY; a partir de las 19:00, los de MAÑANA (y cambia sola a las 19:00).
+    var ahora = new Date(), dia = ahora.getHours() >= 19 ? 'manana' : 'hoy';
+    if (dia === 'hoy' && !previstosManana._t) {
+      var a19 = new Date(ahora); a19.setHours(19, 0, 5, 0);
+      previstosManana._t = setTimeout(function () { previstosManana._t = null; previstosManana(); }, a19 - ahora);
+    }
     var sec = document.getElementById('prevManana');
     if (!sec) {
       sec = document.createElement('section');
@@ -2617,15 +2610,17 @@ ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.c
       if (slot && sec.parentNode !== slot) slot.appendChild(sec);
     }
     colocar();
-    try { new MutationObserver(colocar).observe(raiz, { childList: true, subtree: true }); } catch (e) {}
+    if (!previstosManana._obs) {
+      try { previstosManana._obs = new MutationObserver(colocar); previstosManana._obs.observe(raiz, { childList: true, subtree: true }); } catch (e) {}
+    }
     var est = { TRAVESIA: null, GRANVIA: null, DIA: null }, fecha = '';
     function pintar() {
       var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha), txtF = '';
       if (m) txtF = DIAS_SEM[new Date(+m[1], +m[2] - 1, +m[3]).getDay()] + ' ' + m[3] + '/' + m[2] + ' · ';
       var tiendas = [['TRAVESIA', 'TRAVESIA'], ['GRANVIA', 'GRANVIA'], ['DIA', '%DIA']];
       var abiertos = [].map.call(sec.querySelectorAll('details'), function (d) { return d.open; });   // se repinta al llegar cada respuesta: no cerrar lo abierto
-      sec.innerHTML ='<h3>Clientes previstos para mañana</h3>' +
-        '<p class="nota">' + pvEsc(txtF) + 'para planificar repartidores y furgonetas.</p>' +
+      sec.innerHTML = '<h3>Clientes previstos para ' + (dia === 'manana' ? 'mañana' : 'hoy') + '</h3>' +
+        '<p class="nota">' + pvEsc(txtF) + (dia === 'manana' ? 'para planificar repartidores y furgonetas.' : 'de 8:00 a 19:00 · a partir de las 19:00 salen los de mañana.') + '</p>' +
         '<div class="prev-tot">' + tiendas.map(function (t) {
           var l = est[t[0]]; return '<div><b>' + (l ? (l.ok ? l.clientes.length : '—') : '…') + '</b><span>' + t[1] + '</span></div>';
         }).join('') + '</div>' +
@@ -2639,7 +2634,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.c
     }
     function norm(t) { t = String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase(); return /GRAN\s*VIA/.test(t) ? 'GRANVIA' : 'TRAVESIA'; }
     pintar();
-    pvCargar('nexo_prev_man_crf', function () { return llamar('clientesPrevistos', { dia: 'manana' }); }, function (r) {
+    est = { TRAVESIA: null, GRANVIA: null, DIA: null };
+    pvCargar('nexo_prev_' + dia + '_crf', function () { return llamar('clientesPrevistos', { dia: dia }); }, function (r) {
       if (r && r.ok) {
         fecha = r.fecha || fecha;
         est.TRAVESIA = { ok: true, clientes: r.clientes.filter(function (c) { return norm(c.tienda) === 'TRAVESIA'; }) };
@@ -2647,7 +2643,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.c
       } else { est.TRAVESIA = est.GRANVIA = { ok: false, error: (r && r.error) || '' }; }
       pintar();
     });
-    pvCargar('nexo_prev_man_dia', function () { return llamarDia('diaClientesPrevistos', { dia: 'manana' }); }, function (r) {
+    pvCargar('nexo_prev_' + dia + '_dia', function () { return llamarDia('diaClientesPrevistos', { dia: dia }); }, function (r) {
       est.DIA = r && r.ok ? { ok: true, clientes: r.clientes || [] } : { ok: false, error: (r && r.error) || '' };
       if (r && r.fecha) fecha = fecha || r.fecha;
       pintar();
