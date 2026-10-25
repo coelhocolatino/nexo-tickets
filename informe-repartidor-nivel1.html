@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.24">
+<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.25">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -87,6 +87,32 @@ img{max-width:100%}
 }
 
 body{background:var(--plane);color:var(--ink);font-family:var(--font-body);-webkit-font-smoothing:antialiased}
+/* Ronda 54: «Clientes previstos para mañana» — misma estructura que el lienzo, con los colores del informe */
+.prev-bloque{margin:16px 16px 24px;background:var(--surface);border:1px solid var(--ring);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;max-width:1240px}
+@media (min-width:1272px){.prev-bloque{margin:16px auto 24px}}
+.prev-bloque h3{margin:0;font-family:var(--font-display);font-weight:700;font-size:24px;line-height:1.05;color:var(--ink)}
+.prev-bloque .nota{margin:0;font-size:13px;font-weight:600;color:var(--ink-2)}
+.prev-tot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.prev-tot div{background:var(--surface-2);border-radius:12px;padding:10px 8px;text-align:center}
+.prev-tot b{display:block;font:700 28px/1 var(--font-display);color:var(--ink)}
+.prev-tot span{font-size:11px;font-weight:700;color:var(--ink-2);letter-spacing:.04em}
+.prev-bloque details.previstos{background:var(--surface-2);border-radius:14px}
+.prev-bloque details.previstos>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:52px;padding:6px 14px;font-weight:700;font-size:16px;color:var(--ink);cursor:pointer}
+.prev-bloque details.previstos>summary::-webkit-details-marker{display:none}
+.prev-bloque details.previstos>summary .flecha{transition:transform .15s;color:var(--ink-2);flex:0 0 auto}
+.prev-bloque details.previstos[open]>summary .flecha{transform:rotate(180deg)}
+.prev-bloque .prev-lista{display:flex;flex-direction:column;padding:0 8px 8px}
+.prev-bloque .prev-franja{font-size:12px;font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:.04em;padding:10px 8px 4px}
+.prev-bloque .prev{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;padding:10px;background:var(--surface);border-radius:12px;margin-bottom:6px}
+.prev-bloque .prev b{font-size:15px;font-weight:700;text-transform:uppercase;overflow-wrap:anywhere;color:var(--ink)}
+.prev-bloque .prev span.dir{grid-column:1;font-size:13px;font-weight:500;color:var(--ink-2);overflow-wrap:anywhere}
+.prev-bloque .prev .prob{grid-row:1/span 2;grid-column:2;text-align:right;font-weight:700;font-size:14px}
+.prev-bloque .prev .prob i{display:block;font-style:normal;font-size:11px;font-weight:600;color:var(--ink-3)}
+.prev-bloque .prev .prob.alta{color:var(--s3)} .prev-bloque .prev .prob.media{color:var(--s4)}
+.prev-bloque .prev.ya{opacity:.6}
+.prev-bloque .prev.ya b::after{content:' · ya tiene pedido';font-size:11px;font-weight:600;color:var(--s3);text-transform:none}
+.prev-bloque .prev-nota{padding:4px 8px 2px;font-size:12px;font-weight:600;color:var(--ink-2)}
+
 .wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--plane)}
 
@@ -2517,8 +2543,94 @@ ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.c
 
   var montado = false;
   function montar(generado) {
-    if (!montado) { arrancarInforme(); montado = true; }
+    if (!montado) { arrancarInforme(); montado = true; previstosManana(); }   // ronda 54
     barra(generado, '');
+  }
+  /* ══════════════════════════════════════════════════════════════════════════
+     RONDA 54 · CLIENTES PREVISTOS (mismo bloque en dia.html, asignar.html y el informe)
+     El servidor los calcula a las 5:00. La lista se pide SOLO al abrir el menú y se
+     guarda en el móvil para el resto del día (así la página no carga nada de más).
+     ══════════════════════════════════════════════════════════════════════════ */
+  var PV_FLECHA = '<svg class="flecha" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>';
+  function pvEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function pvHoyLocal() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function pvLeerCache(clave) {
+    try { var c = JSON.parse(localStorage.getItem(clave) || 'null'); return c && c.ok && c.hoyLocal === pvHoyLocal() ? c : null; } catch (e) { return null; }
+  }
+  /* Lo guardado hoy sale al instante; luego llega lo del servidor (pedir() devuelve una promesa). */
+  function pvCargar(clave, pedir, alLlegar) {
+    var c = pvLeerCache(clave);
+    if (c) alLlegar(c);
+    return pedir().then(function (r) {
+      if (r && r.ok) { r.hoyLocal = pvHoyLocal(); try { localStorage.setItem(clave, JSON.stringify(r)); } catch (e) {} alLlegar(r); }
+      else if (!c) alLlegar(r || { ok: false, error: 'Sin conexión.' });
+    });
+  }
+  /* Filas agrupadas por franja (el servidor ya las manda ordenadas por franja y probabilidad). */
+  function pvFilasHTML(lista, conTienda) {
+    if (!lista.length) return '<div class="prev-nota">Ningún cliente con un hábito claro para este día.</div>';
+    var h = '', fr = null;
+    lista.forEach(function (c) {
+      if (c.franja !== fr) { fr = c.franja; h += '<div class="prev-franja">' + pvEsc(fr || 'Sin franja') + '</div>'; }
+      h += '<div class="prev' + (c.ya ? ' ya' : '') + '"><b>' + pvEsc(c.nombre || '—') + '</b>' +
+        '<span class="dir">' + pvEsc(c.direccion || '') + (conTienda && c.tienda ? ' · ' + pvEsc(c.tienda) : '') + '</span>' +
+        '<span class="prob ' + (c.nivel === 'ALTA' ? 'alta' : 'media') + '">' + (c.prob || 0) + '%<i>' + (c.veces || 0) + ' de ' + (c.semanas || 0) + '</i></span></div>';
+    });
+    return h;
+  }
+  function pvHora(generado) { var m = /(\d{1,2}:\d{2})/.exec(String(generado || '')); return m ? m[1] : '05:00'; }
+  /* Ronda 54: «Clientes previstos para mañana», al final del informe. Totales por tienda a la vista y
+     la lista de cada tienda cerrada. Carrefour viene del Módulo Embolsado y %DIA de NEXO · DIA. */
+  var URL_DIA = 'https://script.google.com/macros/s/AKfycbwrX90CKa7GQki-DUDZFpdGVlGIXZvmiHsRKCEW7ZwBbYkKfYPr3R1kx96Uz9GKL_0m/exec';
+  function llamarDia(accion, extra) {
+    var cuerpo = { accion: accion, usuario: (ses && ses.usuario) || '' };
+    if (extra) for (var k in extra) cuerpo[k] = extra[k];
+    return fetch(URL_PROXY + '?url=' + encodeURIComponent(URL_DIA), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo)
+    }).then(function (r) { return r.json(); }).catch(function () { return { ok: false, error: 'Sin conexión.' }; });
+  }
+  var DIAS_SEM = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  function previstosManana() {
+    var sec = document.getElementById('prevManana');
+    if (!sec) {
+      sec = document.createElement('section');
+      sec.id = 'prevManana'; sec.className = 'prev-bloque';
+      raiz.parentNode.insertBefore(sec, raiz.nextSibling);
+    }
+    var est = { TRAVESIA: null, GRANVIA: null, DIA: null }, fecha = '';
+    function pintar() {
+      var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha), txtF = '';
+      if (m) txtF = DIAS_SEM[new Date(+m[1], +m[2] - 1, +m[3]).getDay()] + ' ' + m[3] + '/' + m[2] + ' · ';
+      var tiendas = [['TRAVESIA', 'TRAVESIA'], ['GRANVIA', 'GRANVIA'], ['DIA', '%DIA']];
+      var abiertos = [].map.call(sec.querySelectorAll('details'), function (d) { return d.open; });   // se repinta al llegar cada respuesta: no cerrar lo abierto
+      sec.innerHTML ='<h3>Clientes previstos para mañana</h3>' +
+        '<p class="nota">' + pvEsc(txtF) + 'para planificar repartidores y furgonetas.</p>' +
+        '<div class="prev-tot">' + tiendas.map(function (t) {
+          var l = est[t[0]]; return '<div><b>' + (l ? (l.ok ? l.clientes.length : '—') : '…') + '</b><span>' + t[1] + '</span></div>';
+        }).join('') + '</div>' +
+        tiendas.map(function (t) {
+          var l = est[t[0]];
+          var cuerpo = !l ? '<div class="prev-nota">Cargando…</div>' : (l.ok ? pvFilasHTML(l.clientes, t[0] === 'DIA') : '<div class="prev-nota">' + pvEsc(l.error || 'No disponible.') + '</div>');
+          return '<details class="previstos"><summary><span>' + t[1] + (l && l.ok ? ' (' + l.clientes.length + ')' : '') + '</span>' + PV_FLECHA + '</summary>' +
+            '<div class="prev-lista">' + cuerpo + '</div></details>';
+        }).join('');
+      [].forEach.call(sec.querySelectorAll('details'), function (d, i) { if (abiertos[i]) d.open = true; });
+    }
+    function norm(t) { t = String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase(); return /GRAN\s*VIA/.test(t) ? 'GRANVIA' : 'TRAVESIA'; }
+    pintar();
+    pvCargar('nexo_prev_man_crf', function () { return llamar('clientesPrevistos', { dia: 'manana' }); }, function (r) {
+      if (r && r.ok) {
+        fecha = r.fecha || fecha;
+        est.TRAVESIA = { ok: true, clientes: r.clientes.filter(function (c) { return norm(c.tienda) === 'TRAVESIA'; }) };
+        est.GRANVIA = { ok: true, clientes: r.clientes.filter(function (c) { return norm(c.tienda) === 'GRANVIA'; }) };
+      } else { est.TRAVESIA = est.GRANVIA = { ok: false, error: (r && r.error) || '' }; }
+      pintar();
+    });
+    pvCargar('nexo_prev_man_dia', function () { return llamarDia('diaClientesPrevistos', { dia: 'manana' }); }, function (r) {
+      est.DIA = r && r.ok ? { ok: true, clientes: r.clientes || [] } : { ok: false, error: (r && r.error) || '' };
+      if (r && r.fecha) fecha = fecha || r.fecha;
+      pintar();
+    });
   }
 
   /* Pide solo la marca de hora; descarga el objeto únicamente si hace falta. */

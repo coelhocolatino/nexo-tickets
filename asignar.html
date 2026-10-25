@@ -25,8 +25,10 @@
      v3.11.3 (2026-10-25, ronda 52): VELOCIDAD. «Finalizar» ya no espera con la rueda: el pedido pasa a
      ENTREGADO al momento y el ticket se archiva en NEXO detrás (cola guardada en el móvil, reintento solo,
      aviso rojo si falla de verdad). La lista se guarda en el móvil entre aperturas (antes se perdía al cerrar).
+     v3.11.4 (2026-10-25, ronda 54): «Clientes previstos para hoy» al final de la ruta, según la tienda (TRAVESIA /
+     GRANVIA). Menú cerrado; la lista se pide al abrirlo. Requiere Embolsado.js de la ronda 54 (clientesPrevistos).
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.11.3">
+<html lang="es" data-pagina="asignar" data-version="v3.11.4">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -117,6 +119,26 @@ body.nx { padding-bottom:96px; }
 .b-deshacer { min-height:48px; border:0; border-radius:12px; background:transparent; box-shadow:inset 0 0 0 1.5px var(--nx-linea);
   color:var(--nx-tinta); font:800 15px var(--nx-texto); cursor:pointer; }
 .tag.rep { background:var(--nx-tinta); color:var(--nx-tinta-clara); }
+/* Ronda 54: «Clientes previstos» (lienzo aprobado; mismo desplegable que «Entregados hoy») */
+details.previstos { background:var(--nx-chip); border-radius:var(--nx-r-tarjeta); }
+details.previstos > summary { list-style:none; display:flex; align-items:center; justify-content:space-between; gap:8px;
+  min-height:56px; padding:8px 16px; font-weight:800; font-size:16px; color:var(--nx-tinta); cursor:pointer; }
+details.previstos > summary::-webkit-details-marker { display:none; }
+details.previstos > summary .flecha { transition:transform .15s; color:var(--nx-suave); flex:0 0 auto; }
+details.previstos[open] > summary .flecha { transform:rotate(180deg); }
+details.previstos > summary small { display:block; font-size:12px; font-weight:700; color:var(--nx-suave); margin-top:2px; }
+.prev-lista { display:flex; flex-direction:column; padding:0 8px 8px; }
+.prev-franja { font:800 12px var(--nx-texto); color:var(--nx-suave); text-transform:uppercase; letter-spacing:.04em; padding:10px 8px 4px; }
+.prev { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 10px; align-items:center; padding:10px 8px; background:var(--nx-superficie);
+  border-radius:12px; margin-bottom:6px; }
+.prev b { font-size:15px; font-weight:800; text-transform:uppercase; overflow-wrap:anywhere; }
+.prev span.dir { grid-column:1; font-size:13px; font-weight:600; color:var(--nx-suave); overflow-wrap:anywhere; }
+.prev .prob { grid-row:1 / span 2; grid-column:2; text-align:right; font:800 13px var(--nx-texto); }
+.prev .prob i { display:block; font-style:normal; font-size:11px; font-weight:700; color:var(--nx-suave); }
+.prev .prob.alta { color:var(--nx-verde); } .prev .prob.media { color:var(--nx-ambar); }
+.prev.ya { opacity:.6; }
+.prev.ya b::after { content:' · ya tiene pedido'; font-size:11px; font-weight:700; color:var(--nx-verde); text-transform:none; }
+.prev-nota { padding:4px 8px 2px; font-size:12px; font-weight:600; color:var(--nx-suave); line-height:1.35; }
 /* Bloque "Entregados hoy (n)", cerrado hasta que se toca */
 details.entregados { background:var(--nx-chip); border-radius:var(--nx-r-tarjeta); }
 details.entregados > summary { list-style:none; display:flex; align-items:center; justify-content:space-between; gap:8px;
@@ -273,7 +295,12 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
   <div class="info" id="info"></div>
   <div id="msg"></div>
   <div id="lista"></div>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.3</div>
+  <!-- Ronda 54: clientes previstos para hoy de la tienda que se está viendo. Cerrado: se pide al abrirlo. -->
+  <details class="previstos" id="prevAsig" hidden ontoggle="abrirPrevistosAsig(this)">
+    <summary><span><span id="prevAsigTit">Clientes previstos para hoy</span><small id="prevAsigSub">Calculado a las 05:00</small></span><svg class="flecha" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></summary>
+    <div class="prev-lista" id="prevAsigLista"><div class="prev-nota">Cargando…</div></div>
+  </details>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.4</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
@@ -716,6 +743,8 @@ function pintarInfo() {
 function pintar() {
   var l = document.getElementById('lista');
   var barra = document.getElementById('barra');
+  var pvA = document.getElementById('prevAsig');   // ronda 54: solo en la pestaña de la ruta
+  if (pvA) { pvA.hidden = tab === 'disp'; if (!pvA.hidden) pintarPrevistosAsig(PV_ASIG_ULT || pvLeerCache(PV_CLAVE_ASIG)); }
   var sr = document.getElementById('selRep'); if (sr) sr.disabled = (tab === 'disp');
   pintarInfo();
   if (tab === 'disp') {
@@ -1114,6 +1143,61 @@ function avisoEnt(texto, tipo) {
   d.querySelector('button').onclick = function () { d.parentNode.removeChild(d); };
   box.appendChild(d);
   try { box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RONDA 54 · CLIENTES PREVISTOS (mismo bloque en dia.html, asignar.html y el informe)
+   El servidor los calcula a las 5:00. La lista se pide SOLO al abrir el menú y se
+   guarda en el móvil para el resto del día (así la página no carga nada de más).
+   ══════════════════════════════════════════════════════════════════════════ */
+var PV_FLECHA = '<svg class="flecha" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>';
+function pvEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function pvHoyLocal() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function pvLeerCache(clave) {
+  try { var c = JSON.parse(localStorage.getItem(clave) || 'null'); return c && c.ok && c.hoyLocal === pvHoyLocal() ? c : null; } catch (e) { return null; }
+}
+/* Lo guardado hoy sale al instante; luego llega lo del servidor (pedir() devuelve una promesa). */
+function pvCargar(clave, pedir, alLlegar) {
+  var c = pvLeerCache(clave);
+  if (c) alLlegar(c);
+  return pedir().then(function (r) {
+    if (r && r.ok) { r.hoyLocal = pvHoyLocal(); try { localStorage.setItem(clave, JSON.stringify(r)); } catch (e) {} alLlegar(r); }
+    else if (!c) alLlegar(r || { ok: false, error: 'Sin conexión.' });
+  });
+}
+/* Filas agrupadas por franja (el servidor ya las manda ordenadas por franja y probabilidad). */
+function pvFilasHTML(lista, conTienda) {
+  if (!lista.length) return '<div class="prev-nota">Ningún cliente con un hábito claro para este día.</div>';
+  var h = '', fr = null;
+  lista.forEach(function (c) {
+    if (c.franja !== fr) { fr = c.franja; h += '<div class="prev-franja">' + pvEsc(fr || 'Sin franja') + '</div>'; }
+    h += '<div class="prev' + (c.ya ? ' ya' : '') + '"><b>' + pvEsc(c.nombre || '—') + '</b>' +
+      '<span class="dir">' + pvEsc(c.direccion || '') + (conTienda && c.tienda ? ' · ' + pvEsc(c.tienda) : '') + '</span>' +
+      '<span class="prob ' + (c.nivel === 'ALTA' ? 'alta' : 'media') + '">' + (c.prob || 0) + '%<i>' + (c.veces || 0) + ' de ' + (c.semanas || 0) + '</i></span></div>';
+  });
+  return h;
+}
+function pvHora(generado) { var m = /(\d{1,2}:\d{2})/.exec(String(generado || '')); return m ? m[1] : '05:00'; }
+var PV_CLAVE_ASIG = 'nexo_prev_crf_' + USUARIO, PV_ASIG_ULT = null, _pvAsigPedido = false;
+/* El servidor manda TRAVESIA y GRANVIA juntas: aquí se enseña la tienda que se está viendo. */
+function pvTiendaVista() { return ES_ADMIN ? TIENDA_SEL : (normTiendaC(TIENDA_PRE) || 'TRAVESIA'); }
+function pintarPrevistosAsig(r) {
+  var t = pvTiendaVista();
+  var tit = document.getElementById('prevAsigTit'), lis = document.getElementById('prevAsigLista');
+  if (!tit) return;
+  if (!r) { tit.textContent = 'Clientes previstos para hoy · ' + t; return; }
+  PV_ASIG_ULT = r;
+  if (!r.ok) { lis.innerHTML = '<div class="prev-nota">' + pvEsc(r.error || 'No se pudo cargar.') + '</div>'; return; }
+  var l = (r.clientes || []).filter(function (c) { return normTiendaC(c.tienda) === t; });
+  tit.textContent = 'Clientes previstos para hoy · ' + t + ' (' + l.length + ')';
+  document.getElementById('prevAsigSub').textContent = 'Calculado a las ' + pvHora(r.generado);
+  lis.innerHTML = pvFilasHTML(l, false);
+}
+function abrirPrevistosAsig(el) {
+  if (!el.open || _pvAsigPedido) return;
+  _pvAsigPedido = true;
+  pvCargar(PV_CLAVE_ASIG, function () { return api('clientesPrevistos', { dia: 'hoy' }); }, pintarPrevistosAsig)
+    .then(function () { _pvAsigPedido = false; });
 }
 
 /* ============ Ronda 34 · punto 5: INCIDENCIAS ANTERIORES DEL CLIENTE ============ */

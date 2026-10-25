@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — dia.html (Pedidos %DIA)
+     v3.10.8 (2026-10-25, ronda 54): «Clientes previstos para hoy» en Pendientes (menú cerrado; la lista se
+       pide al abrirlo). Requiere NEXO DIA Code.js de la ronda 54 (diaClientesPrevistos).
      v3.10.7 (2026-10-16, ronda 31): "Finalizar sin incidencia" / "Finalizar con incidencia". Con incidencia el
        pedido se ENTREGA igualmente (ticket archivado = computa) y después se registra la incidencia, que queda
        abierta para ADM. "Añadir incidencia" en los entregados de hoy. Requiere NEXO DIA Code.js de la ronda 31.
@@ -14,7 +16,7 @@
        "Activar avisos"; la suscripción se guarda en NEXO DIA → hoja _DIA_AVISOS).
      v3.10.3 (2026-10-09): incidencias con hasta 10 fotos y sin la espera de 10 min tras las 3 llamadas.
 -->
-<html lang="es" data-pagina="dia" data-version="v3.10.7">
+<html lang="es" data-pagina="dia" data-version="v3.10.8">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -125,6 +127,26 @@ select.nx-input { -webkit-appearance:none; appearance:none; padding-right:36px; 
 .b-hecho { width:100%; background:var(--nx-chip); color:var(--nx-suave); cursor:default; }
 .b-deshacer { width:100%; min-height:48px; background:transparent; box-shadow:inset 0 0 0 1.5px var(--nx-linea); color:var(--nx-tinta); }
 .b-editar { width:100%; background:var(--nx-azul-fondo); color:var(--nx-azul); }
+/* Ronda 54: «Clientes previstos» (lienzo aprobado; mismo desplegable que «Entregados hoy») */
+details.previstos { background:var(--nx-chip); border-radius:var(--nx-r-tarjeta); }
+details.previstos > summary { list-style:none; display:flex; align-items:center; justify-content:space-between; gap:8px;
+  min-height:56px; padding:8px 16px; font-weight:800; font-size:16px; color:var(--nx-tinta); cursor:pointer; }
+details.previstos > summary::-webkit-details-marker { display:none; }
+details.previstos > summary .flecha { transition:transform .15s; color:var(--nx-suave); flex:0 0 auto; }
+details.previstos[open] > summary .flecha { transform:rotate(180deg); }
+details.previstos > summary small { display:block; font-size:12px; font-weight:700; color:var(--nx-suave); margin-top:2px; }
+.prev-lista { display:flex; flex-direction:column; padding:0 8px 8px; }
+.prev-franja { font:800 12px var(--nx-texto); color:var(--nx-suave); text-transform:uppercase; letter-spacing:.04em; padding:10px 8px 4px; }
+.prev { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 10px; align-items:center; padding:10px 8px; background:var(--nx-superficie);
+  border-radius:12px; margin-bottom:6px; }
+.prev b { font-size:15px; font-weight:800; text-transform:uppercase; overflow-wrap:anywhere; }
+.prev span.dir { grid-column:1; font-size:13px; font-weight:600; color:var(--nx-suave); overflow-wrap:anywhere; }
+.prev .prob { grid-row:1 / span 2; grid-column:2; text-align:right; font:800 13px var(--nx-texto); }
+.prev .prob i { display:block; font-style:normal; font-size:11px; font-weight:700; color:var(--nx-suave); }
+.prev .prob.alta { color:var(--nx-verde); } .prev .prob.media { color:var(--nx-ambar); }
+.prev.ya { opacity:.6; }
+.prev.ya b::after { content:' · ya tiene pedido'; font-size:11px; font-weight:700; color:var(--nx-verde); text-transform:none; }
+.prev-nota { padding:4px 8px 2px; font-size:12px; font-weight:600; color:var(--nx-suave); line-height:1.35; }
 details.hist { font-size:12px; color:var(--nx-suave); }
 details.hist summary { font-weight:800; cursor:pointer; }
 details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
@@ -211,8 +233,13 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
   <div class="info" id="info"></div>
   <div id="msg"></div>
   <div id="lista"><div class="vacio">Cargando…</div></div>
+  <!-- Ronda 54: clientes previstos para hoy, al final de Pendientes (solo gestores). Cerrado: se pide al abrirlo. -->
+  <details class="previstos" id="prevDia" hidden ontoggle="abrirPrevistosDia(this)">
+    <summary><span><span id="prevDiaTit">Clientes previstos para hoy</span><small id="prevDiaSub">Calculado a las 05:00 · con sus compras de las últimas semanas</small></span><svg class="flecha" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></summary>
+    <div class="prev-lista" id="prevDiaLista"><div class="prev-nota">Cargando…</div></div>
+  </details>
   <button class="nx-btn texto btn-todos" id="btnTodos" onclick="verTodos()">Ver histórico (45 días)</button>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos %DIA">Nexo · Pedidos %DIA v3.10.7</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos %DIA">Nexo · Pedidos %DIA v3.10.8</div>
 </main>
 
 <!-- Imagen ampliada -->
@@ -547,11 +574,63 @@ function pintar() {
   l.innerHTML = lista.length ? lista.map(cardHTML).join('') : '<div class="vacio">' + (gestor ? 'No hay pedidos en esta pestaña.' : 'No tienes pedidos %DIA pendientes.') + '</div>';
   Object.keys(guardados).forEach(function (k) { var s = document.getElementById(k); if (s && guardados[k]) s.value = guardados[k]; });
   lista.forEach(function (o) { if (o.tieneCaptura || o.tieneFoto) cargarMiniatura(o); });
+  var pv = document.getElementById('prevDia');   // ronda 54
+  if (pv) { pv.hidden = !(gestor && TAB === 'pend'); if (!pv.hidden) pintarPrevistosDia(pvLeerCache(PV_CLAVE_DIA)); }
   if (FOCO) {
     var el = document.getElementById('c_' + FOCO);
     if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('foco'); }
     FOCO = null;
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RONDA 54 · CLIENTES PREVISTOS (mismo bloque en dia.html, asignar.html y el informe)
+   El servidor los calcula a las 5:00. La lista se pide SOLO al abrir el menú y se
+   guarda en el móvil para el resto del día (así la página no carga nada de más).
+   ══════════════════════════════════════════════════════════════════════════ */
+var PV_FLECHA = '<svg class="flecha" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>';
+function pvEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function pvHoyLocal() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function pvLeerCache(clave) {
+  try { var c = JSON.parse(localStorage.getItem(clave) || 'null'); return c && c.ok && c.hoyLocal === pvHoyLocal() ? c : null; } catch (e) { return null; }
+}
+/* Lo guardado hoy sale al instante; luego llega lo del servidor (pedir() devuelve una promesa). */
+function pvCargar(clave, pedir, alLlegar) {
+  var c = pvLeerCache(clave);
+  if (c) alLlegar(c);
+  return pedir().then(function (r) {
+    if (r && r.ok) { r.hoyLocal = pvHoyLocal(); try { localStorage.setItem(clave, JSON.stringify(r)); } catch (e) {} alLlegar(r); }
+    else if (!c) alLlegar(r || { ok: false, error: 'Sin conexión.' });
+  });
+}
+/* Filas agrupadas por franja (el servidor ya las manda ordenadas por franja y probabilidad). */
+function pvFilasHTML(lista, conTienda) {
+  if (!lista.length) return '<div class="prev-nota">Ningún cliente con un hábito claro para este día.</div>';
+  var h = '', fr = null;
+  lista.forEach(function (c) {
+    if (c.franja !== fr) { fr = c.franja; h += '<div class="prev-franja">' + pvEsc(fr || 'Sin franja') + '</div>'; }
+    h += '<div class="prev' + (c.ya ? ' ya' : '') + '"><b>' + pvEsc(c.nombre || '—') + '</b>' +
+      '<span class="dir">' + pvEsc(c.direccion || '') + (conTienda && c.tienda ? ' · ' + pvEsc(c.tienda) : '') + '</span>' +
+      '<span class="prob ' + (c.nivel === 'ALTA' ? 'alta' : 'media') + '">' + (c.prob || 0) + '%<i>' + (c.veces || 0) + ' de ' + (c.semanas || 0) + '</i></span></div>';
+  });
+  return h;
+}
+function pvHora(generado) { var m = /(\d{1,2}:\d{2})/.exec(String(generado || '')); return m ? m[1] : '05:00'; }
+var PV_CLAVE_DIA = 'nexo_prev_dia_' + USUARIO;
+function pintarPrevistosDia(r) {
+  if (!r) return;
+  if (!r.ok) { document.getElementById('prevDiaLista').innerHTML = '<div class="prev-nota">' + pvEsc(r.error || 'No se pudo cargar.') + '</div>'; return; }
+  var l = r.clientes || [];
+  document.getElementById('prevDiaTit').textContent = 'Clientes previstos para hoy (' + l.length + ')';
+  document.getElementById('prevDiaSub').textContent = 'Calculado a las ' + pvHora(r.generado) + ' · con sus compras de las últimas semanas';
+  document.getElementById('prevDiaLista').innerHTML = pvFilasHTML(l, true);
+}
+var _pvDiaPedido = false;
+function abrirPrevistosDia(el) {
+  if (!el.open || _pvDiaPedido) return;
+  _pvDiaPedido = true;
+  pvCargar(PV_CLAVE_DIA, function () { return api('diaClientesPrevistos', { dia: 'hoy' }, 2); }, pintarPrevistosDia)
+    .then(function () { _pvDiaPedido = false; });
 }
 
 function opcionesTiendas(sel) {
