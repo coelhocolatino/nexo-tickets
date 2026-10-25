@@ -22,8 +22,11 @@
      archivo lleva al final C<caja>-T<ticket> para que dos pedidos del mismo tramo no se pisen). KM (opcional),
      XR y XP se marcan en la propia tarjeta. «Asignar a mi ruta» ya NO salta a index.html: se queda aquí y pasa
      a la pestaña de la ruta. Al repartidor no se le pide ninguna foto.
+     v3.11.3 (2026-10-25, ronda 52): VELOCIDAD. «Finalizar» ya no espera con la rueda: el pedido pasa a
+     ENTREGADO al momento y el ticket se archiva en NEXO detrás (cola guardada en el móvil, reintento solo,
+     aviso rojo si falla de verdad). La lista se guarda en el móvil entre aperturas (antes se perdía al cerrar).
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.11.2">
+<html lang="es" data-pagina="asignar" data-version="v3.11.3">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -51,6 +54,18 @@ body.nx { padding-bottom:96px; }
 #msg { display:none; padding:10px 12px; border-radius:12px; font-size:14px; font-weight:700; line-height:1.4; }
 #msg.ok { display:block; background:var(--nx-verde-fondo); color:var(--nx-verde-tinta); }
 #msg.err { display:block; background:var(--nx-rojo-fondo); color:#7A1A12; }
+/* Ronda 52: cola de entregas en segundo plano */
+.chip-ent { position:fixed; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom)); z-index:70; display:flex; align-items:center; gap:12px;
+  min-height:52px; padding:8px 14px; border-radius:14px; background:#0B2447; color:#fff; font-weight:800; font-size:14px; box-shadow:0 8px 22px rgba(11,36,71,.35); }
+.chip-ent small { display:block; font-size:12px; font-weight:700; color:#B9C7DD; margin-top:2px; }
+.chip-ent.reint { background:#92400E; } .chip-ent.reint small { color:#FDE7C7; }
+.chip-ent .giro { width:20px; height:20px; border-radius:50%; border:3px solid #FBBF24; border-top-color:transparent; animation:giroEnt .8s linear infinite; flex:0 0 auto; }
+@keyframes giroEnt { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .chip-ent .giro { animation:none; } }
+.aviso-ent { display:flex; gap:10px; align-items:center; padding:10px 12px; border-radius:12px; margin-bottom:8px; font-size:14px; font-weight:700; line-height:1.4;
+  background:var(--nx-rojo-fondo); color:#7A1A12; }
+.aviso-ent span { flex:1; }
+.aviso-ent button { border:0; border-radius:10px; min-height:40px; padding:0 12px; background:#7A1A12; color:#fff; font-weight:800; cursor:pointer; }
 .vacio { text-align:center; color:var(--nx-suave); font-weight:700; padding:32px 12px; background:var(--nx-superficie); border-radius:var(--nx-r-tarjeta); }
 #lista { display:flex; flex-direction:column; gap:12px; }
 
@@ -258,7 +273,7 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
   <div class="info" id="info"></div>
   <div id="msg"></div>
   <div id="lista"></div>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.10.13</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.3</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
@@ -445,10 +460,11 @@ function esMio(o) {
    Va en sessionStorage (datos de clientes): se borra al cerrar la app o salir de la sesión. */
 var CLAVE_CACHE = 'nexo_asig_cache_' + USUARIO;
 function leerCache() {
-  try { var c = JSON.parse(sessionStorage.getItem(CLAVE_CACHE) || 'null'); return c && c.dia === hoyISO() ? c : null; } catch (e) { return null; }
+  // Ronda 52: localStorage (antes sessionStorage, que se borra al cerrar la app → cada apertura empezaba en blanco).
+  try { var c = JSON.parse(localStorage.getItem(CLAVE_CACHE) || 'null'); return c && c.dia === hoyISO() ? c : null; } catch (e) { return null; }
 }
 function guardarCache() {
-  try { sessionStorage.setItem(CLAVE_CACHE, JSON.stringify({ dia: hoyISO(), ruta: ruta, diaRuta: diaRuta, entAdm: entAdm, rutaAdm: rutaAdm, repartidores: repartidores })); } catch (e) {}
+  try { localStorage.setItem(CLAVE_CACHE, JSON.stringify({ dia: hoyISO(), ruta: ruta, diaRuta: diaRuta, entAdm: entAdm, rutaAdm: rutaAdm, repartidores: repartidores })); } catch (e) {}
 }
 
 /* ---- 6.3 · orden manual (flechas) — se recuerda por usuario y por día en este móvil ---- */
@@ -594,6 +610,7 @@ async function cargar(inicial) {
   var fallo = (!rr.ok && rr.error) ? rr.error : '';
   if (!rr.ok && ruta.length === 0 && !leerCache()) msg(fallo, 'err');
   if (rr.ok) ruta = rr.pedidos || [];
+  aplicarColaEnt();   // ronda 52: lo que aún se está archivando sigue saliendo como entregado
   if (rr.ok || (rdia && rdia.ok)) guardarCache();
   actualizarPestanas();
   opcionesFiltroRep();
@@ -938,6 +955,9 @@ async function confirmarEntrega(id, cobrado, importe, sinCobrar) {
     _incTrasEntrega = null;
     return;
   }
+  // Ronda 52: sin incidencia, el envío va detrás y la pantalla no se bloquea.
+  // «Con incidencia» sigue esperando: la incidencia se registra sobre el pedido ya entregado en la hoja.
+  if (!conInc) { encolarEntrega(id, cobrado, importe, sinCobrar); return; }
   var o = buscarPedidoRuta(id) || {};
   var d = datosDeEntrega(id);
   spin(true);
@@ -970,6 +990,130 @@ async function confirmarEntrega(id, cobrado, importe, sinCobrar) {
   // de entregar tú mismo — ver registrarIncidencia en Embolsado.gs).
   if (_incTrasEntrega === id) { _incTrasEntrega = null; abrirIncidencia(id); }
   cargar(false);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RONDA 52 · FINALIZAR EN SEGUNDO PLANO
+   Antes «Finalizar» esperaba con la rueda a que el servidor archivara el ticket
+   en NEXO (en GRANVIA además bajaba la foto con varios tickets, la recortaba y la
+   volvía a subir). Ahora el pedido pasa a ENTREGADO en pantalla al momento y el
+   envío va detrás, en una cola guardada en el móvil: si se cierra la página,
+   sigue al volver a abrirla.
+   · Sin red o sistema ocupado → se reintenta solo (5 s, 15 s, 30 s y luego cada minuto).
+   · Error de verdad (p. ej. el pedido ya no está en tu ruta) → el pedido vuelve
+     a la ruta y sale un aviso rojo que no se va solo.
+   El servidor no cambia sus reglas; si el envío le llega dos veces responde
+   «ya entregado», así que repetir no duplica nada.
+   ══════════════════════════════════════════════════════════════════════════ */
+var COLA_ENT_CLAVE = 'nexo_cola_entregas_v1_' + USUARIO;
+var COLA_ENT_ESPERAS = [5000, 15000, 30000, 60000];
+var colaEntCorriendo = false, colaEntTimer = null;
+function colaEntLeer() { try { return JSON.parse(localStorage.getItem(COLA_ENT_CLAVE) || '[]'); } catch (e) { return []; } }
+function colaEntGuardar(c) { try { localStorage.setItem(COLA_ENT_CLAVE, JSON.stringify(c)); } catch (e) {} }
+function aplicarColaEnt() {
+  var c = colaEntLeer(); if (!c.length) return;
+  var porId = {}; c.forEach(function (j) { porId[j.id] = j; });
+  ruta.concat((rutaAdm && rutaAdm.ruta) || []).forEach(function (o) {
+    if (porId[o.id] && o.entregaEstado !== 'ENTREGADO') { o.entregaEstado = 'ENTREGADO'; o.entregaTs = porId[o.id].hora; }
+  });
+}
+function encolarEntrega(id, cobrado, importe, sinCobrar) {
+  var o = buscarPedidoRuta(id) || {};
+  var d = datosDeEntrega(id);
+  var hora = hoyDMA() + ' ' + new Date().toTimeString().slice(0, 8);
+  var c = colaEntLeer().filter(function (j) { return j.id !== id; });
+  c.push({ id: id, caja: o.caja || '', ticket: o.ticket || '', tieneBox: !!o.tieneBox, km: d.km, xr: d.xr, xp: d.xp,
+           cobrado: !!cobrado, importe: importe || '', sinCobrar: !!sinCobrar, hora: hora, intentos: 0, prox: 0, error: '' });
+  colaEntGuardar(c);
+  delete datosEntrega[id];
+  if (o.id) { o.entregaEstado = 'ENTREGADO'; o.entregaTs = hora; }
+  guardarCache(); actualizarPestanas(); pintar();
+  var extra = (d.km ? ' · ' + d.km + ' km' : '') + (d.xr ? ' · XR' : '') + (d.xp ? ' · XP' : '');
+  msg('Pedido entregado' + extra + '. El ticket se archiva en NEXO en segundo plano.', 'ok');
+  pintarChipEnt();
+  procesarColaEnt();
+}
+async function enviarEntrega(j) {
+  var img = '';
+  if (j.tieneBox) {
+    try {
+      var rf = await api('fotoTicketBase64', { id: j.id });
+      if (rf && rf.red) return rf;   // sin red: se reintenta entero
+      if (rf && rf.ok && rf.dataUrl) img = rf.box ? await recortar(rf.dataUrl, rf.box, 1400) : rf.dataUrl;
+    } catch (e) { /* si falla el recorte, el servidor sube la foto del pedido tal cual */ }
+  }
+  return api('entregarYSubir', {
+    id: j.id, imagenBase64: img, km: j.km, xr: j.xr, xp: j.xp,
+    cobroConfirmado: j.cobrado, cobroImporte: j.importe, cobroSinConfirmar: j.sinCobrar
+  });
+}
+function quitarDeColaEnt(id) { colaEntGuardar(colaEntLeer().filter(function (x) { return x.id !== id; })); }
+async function procesarColaEnt() {
+  if (colaEntCorriendo) return;
+  colaEntCorriendo = true; clearTimeout(colaEntTimer);
+  var hubo = false;
+  try {
+    for (;;) {
+      var ahora = Date.now();
+      var j = colaEntLeer().filter(function (x) { return !x.prox || x.prox <= ahora; })[0];
+      if (!j) break;
+      var r = await enviarEntrega(j);
+      var etiqueta = 'Caja ' + (j.caja || '—') + ' · ticket ' + (j.ticket || '—');
+      if (r && r.ok) {
+        quitarDeColaEnt(j.id); hubo = true;
+        if (r.incidencia) avisoEnt(etiqueta + ': entregado · incidencia abierta a tu nombre por el cobro.', 'err');
+        else if (r.cobroDifiere) avisoEnt(etiqueta + ': entregado · ojo, el importe cobrado no coincide con el del pedido (' + (r.cobroPedido || '') + ').', 'err');
+      } else if (!r || r.red || r.ocupado || r.reintentable) {
+        var c = colaEntLeer();
+        c.forEach(function (x) {
+          if (x.id !== j.id) return;
+          x.intentos = (x.intentos || 0) + 1;
+          x.prox = Date.now() + COLA_ENT_ESPERAS[Math.min(x.intentos - 1, COLA_ENT_ESPERAS.length - 1)];
+          x.error = (r && r.error) || 'Sin conexión con el servidor.';
+        });
+        colaEntGuardar(c);
+      } else {
+        quitarDeColaEnt(j.id); hubo = true;
+        var o = buscarPedidoRuta(j.id);
+        if (o) { o.entregaEstado = 'ASIGNADO'; o.entregaTs = ''; }
+        guardarCache(); actualizarPestanas(); pintar();
+        avisoEnt(etiqueta + ': NO se ha podido finalizar. ' + (r.error || '') + ' El pedido vuelve a tu ruta.', 'err');
+      }
+      pintarChipEnt();
+    }
+  } finally {
+    colaEntCorriendo = false;
+    pintarChipEnt();
+    var resto = colaEntLeer();
+    if (resto.length) {
+      var prox = Math.min.apply(null, resto.map(function (x) { return x.prox || 0; }));
+      colaEntTimer = setTimeout(procesarColaEnt, Math.max(1000, prox - Date.now()));
+    } else if (hubo) cargar(false);   // todo archivado: se confirma con la hoja
+  }
+}
+function pintarChipEnt() {
+  var c = colaEntLeer(), b = document.getElementById('chipEnt');
+  if (!c.length) { if (b) b.parentNode.removeChild(b); return; }
+  if (!b) { b = document.createElement('div'); b.id = 'chipEnt'; b.setAttribute('role', 'status'); document.body.appendChild(b); }
+  var reint = c.filter(function (x) { return x.intentos > 0; });
+  b.className = 'chip-ent' + (reint.length ? ' reint' : '');
+  b.innerHTML = '<span class="giro"></span><span class="t">' +
+    (c.length === 1 ? 'Archivando 1 ticket en NEXO…' : 'Archivando ' + c.length + ' tickets en NEXO…') +
+    '<small>' + (reint.length ? esc(reint[0].error) + ' · se reintenta solo' : 'Puedes seguir trabajando') + '</small></span>';
+}
+/* Aviso que NO se va solo (a diferencia de msg): para lo que el repartidor tiene que ver sí o sí. */
+function avisoEnt(texto, tipo) {
+  var box = document.getElementById('avisosEnt');
+  if (!box) {
+    box = document.createElement('div'); box.id = 'avisosEnt';
+    var m = document.getElementById('msg'); m.parentNode.insertBefore(box, m);
+  }
+  var d = document.createElement('div');
+  d.className = 'aviso-ent ' + (tipo || '');
+  d.innerHTML = '<span>' + esc(texto) + '</span><button type="button">Entendido</button>';
+  d.querySelector('button').onclick = function () { d.parentNode.removeChild(d); };
+  box.appendChild(d);
+  try { box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
 }
 
 /* ============ Ronda 34 · punto 5: INCIDENCIAS ANTERIORES DEL CLIENTE ============ */
@@ -1375,7 +1519,7 @@ setInterval(reintentarLotes, 30000);
 // Aviso si se sale de la página mientras se leen tickets.
 window.addEventListener('beforeunload', function (e) {
   var leyendo = Object.keys(LOTES).some(function (k) { return LOTES[k].estado === 'leyendo'; });
-  if (leyendo) { e.preventDefault(); e.returnValue = ''; }
+  if (leyendo || colaEntLeer().length) { e.preventDefault(); e.returnValue = ''; }   // ronda 52: tickets aún por archivar
 });
 
 if (EMBOLSADO_URL.indexOf('PEGAR_AQUI') === 0) msg('Falta configurar EMBOLSADO_URL en asignar.html', 'err');
@@ -1384,10 +1528,12 @@ else {
   var c0 = leerCache();
   if (c0) {
     ruta = c0.ruta || []; diaRuta = c0.diaRuta || []; entAdm = c0.entAdm || null; rutaAdm = c0.rutaAdm || null; repartidores = c0.repartidores || [];
+    aplicarColaEnt();
     actualizarPestanas(); opcionesFiltroRep();
   }
   cambiarTab('ruta');
   cargar(true);
+  pintarChipEnt(); procesarColaEnt();   // ronda 52: tickets que quedaron por archivar la última vez
   procesarPendientes().then(function (hubo) { if (hubo) cargar(false); });
 }
 </script>
