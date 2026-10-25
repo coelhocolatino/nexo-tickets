@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.26">
+<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.27">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -895,6 +895,7 @@ function App() {
       tienda: e.t,
       quien: e.rep,
       cli: e.cli,
+      dir: e.dir,   // ronda 60: dirección debajo del nombre
       caja: e.caja,
       tk: e.tk,
       est: e.est,
@@ -2055,7 +2056,13 @@ function App() {
       color: "var(--ink-3)",
       flex: "0 0 auto"
     }
-  }, fmtDay(c.f))), /*#__PURE__*/React.createElement("div", {
+  }, fmtDay(c.f))), c.dir && /*#__PURE__*/React.createElement("div", {
+    className: "text-[12px] truncate",
+    title: c.dir,
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, c.dir), /*#__PURE__*/React.createElement("div", {
     className: "text-[12px]",
     style: {
       color: "var(--ink-2)"
@@ -2375,7 +2382,13 @@ function App() {
       style: {
         color: "var(--ink-2)"
       }
-    }, i.cli), /*#__PURE__*/React.createElement("div", {
+    }, i.cli), i.dir && /*#__PURE__*/React.createElement("div", {
+      className: "text-[12px] truncate",
+      title: i.dir,
+      style: {
+        color: "var(--ink-3)"
+      }
+    }, i.dir), /*#__PURE__*/React.createElement("div", {
       className: "flex flex-wrap items-center gap-1.5 mt-1.5"
     }, /*#__PURE__*/React.createElement("span", {
       className: "pill",
