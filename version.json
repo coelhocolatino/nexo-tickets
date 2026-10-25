@@ -3,12 +3,12 @@
   "index": "v3.11.2",
   "auto": "v3.11.1",
   "inicio-embolsado": "v3.10.4",
-  "asignar": "v3.11.4",
+  "asignar": "v3.11.5",
   "dia": "v3.10.8",
   "incidencias": "v3.10.8",
   "config": "v3.10.12",
   "reservas": "v3.10.2",
   "flota": "v3.10.2",
-  "informe-repartidor": "v3.10.25",
+  "informe-repartidor": "v3.10.26",
   "mapa": "v3.10.1"
 }

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.25">
+<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.26">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -88,8 +88,7 @@ img{max-width:100%}
 
 body{background:var(--plane);color:var(--ink);font-family:var(--font-body);-webkit-font-smoothing:antialiased}
 /* Ronda 54: «Clientes previstos para mañana» — misma estructura que el lienzo, con los colores del informe */
-.prev-bloque{margin:16px 16px 24px;background:var(--surface);border:1px solid var(--ring);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;max-width:1240px}
-@media (min-width:1272px){.prev-bloque{margin:16px auto 24px}}
+.prev-bloque{margin:0 0 32px;background:var(--surface);border:1px solid var(--ring);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;max-width:1240px}
 .prev-bloque h3{margin:0;font-family:var(--font-display);font-weight:700;font-size:24px;line-height:1.05;color:var(--ink)}
 .prev-bloque .nota{margin:0;font-size:13px;font-weight:600;color:var(--ink-2)}
 .prev-tot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -2430,7 +2429,9 @@ function App() {
         color: "var(--ink-3)"
       }
     }, "Cliente ausente con vuelta = ticket nuevo y entrega nueva. Una incidencia RESTAURADA es la que devolvi\xF3 el pedido a la ruta."))));
-  })()), /*#__PURE__*/React.createElement("footer", {
+  })()), /*#__PURE__*/React.createElement("div", {
+    id: "prevMananaSlot"
+  }), /*#__PURE__*/React.createElement("footer", {
     className: "text-[12px] leading-relaxed enter",
     style: {
       color: "var(--ink-3)",
@@ -2595,8 +2596,15 @@ ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.c
     if (!sec) {
       sec = document.createElement('section');
       sec.id = 'prevManana'; sec.className = 'prev-bloque';
-      raiz.parentNode.insertBefore(sec, raiz.nextSibling);
     }
+    /* Ronda 56: va JUSTO DEBAJO DE INCIDENCIAS, dentro del hueco #prevMananaSlot que deja el informe.
+       React pinta el informe un instante después y puede volver a crear el hueco: se recoloca solo. */
+    function colocar() {
+      var slot = document.getElementById('prevMananaSlot');
+      if (slot && sec.parentNode !== slot) slot.appendChild(sec);
+    }
+    colocar();
+    try { new MutationObserver(colocar).observe(raiz, { childList: true, subtree: true }); } catch (e) {}
     var est = { TRAVESIA: null, GRANVIA: null, DIA: null }, fecha = '';
     function pintar() {
       var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha), txtF = '';

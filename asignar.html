@@ -27,8 +27,10 @@
      aviso rojo si falla de verdad). La lista se guarda en el móvil entre aperturas (antes se perdía al cerrar).
      v3.11.4 (2026-10-25, ronda 54): «Clientes previstos para hoy» al final de la ruta, según la tienda (TRAVESIA /
      GRANVIA). Menú cerrado; la lista se pide al abrirlo. Requiere Embolsado.js de la ronda 54 (clientesPrevistos).
+     v3.11.5 (2026-10-25, ronda 56): el ADM puede finalizar (sin o con incidencia) los pedidos de cualquier
+     repartidor; el ticket se archiva a nombre del repartidor. Requiere Embolsado.js de la ronda 56.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.11.4">
+<html lang="es" data-pagina="asignar" data-version="v3.11.5">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -300,7 +302,7 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
     <summary><span><span id="prevAsigTit">Clientes previstos para hoy</span><small id="prevAsigSub">Calculado a las 05:00</small></span><svg class="flecha" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></summary>
     <div class="prev-lista" id="prevAsigLista"><div class="prev-nota">Cargando…</div></div>
   </details>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.4</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.5</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
@@ -561,7 +563,7 @@ function diaCardHTML(o, ord) {
     h += '<div class="acciones hecho" style="grid-template-columns:1fr"><button class="b-hecho" disabled>' + IC_OK + 'Entregado' + horaCorta(o.entregaHora) + '</button></div>';
     if (ES_ADMIN) h += '<button class="b-deshacer" onclick="deshacer(\'dia\',\'' + esc(o.id) + '\',\'' + esc(o.repartidor || o.asignadoA || '') + '\')">Deshacer entrega</button>';
   }
-  else if (propio) h += '<div class="acciones" style="grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)"><a class="b-inc" href="dia.html?id=' + encodeURIComponent(o.id) + '&ent=1&inc=1">Con incidencia</a>' +
+  else if (propio || ES_ADMIN) h += '<div class="acciones" style="grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)"><a class="b-inc" href="dia.html?id=' + encodeURIComponent(o.id) + '&ent=1&inc=1">Con incidencia</a>' +
        '<a class="b-ent" href="dia.html?id=' + encodeURIComponent(o.id) + '&ent=1">' + IC_OK + 'Finalizar</a></div>';
   // 6.1 — ADM: editar el pedido %DIA (se abre en la página %DIA, ya situado en su tarjeta)
   if (ES_ADMIN && o.estadoNexo !== 'ENTREGADO') h += '<a class="b-deshacer" href="dia.html?id=' + encodeURIComponent(o.id) + '">Ver y editar en %DIA</a>';
@@ -702,12 +704,11 @@ function cardHTML(o, conCheck, conAcc, ord) {
   h += '<div class="chips"><span class="chip">' + esc(o.nCajas || '0') + ' cajas</span><span class="chip">Nevera ' + esc(o.nevera || '0') + '</span><span class="chip">Fríos ' + esc(o.frios || '0') + '</span><span class="chip">Congelados ' + esc(o.congelados || '0') + '</span></div>';
   if (o.cobro) h += '<div class="cobro-badge">COBRO: ' + esc(o.cobro) + '</div>';
   var cam = '<button class="btn-cam" title="Ver foto del ticket" aria-label="Ver foto del ticket" ' + (o.tieneFoto ? '' : 'disabled') + ' onclick="verFoto(\'' + esc(o.id) + '\')">' + IC_CAM + '</button>';
-  var propio = !ES_ADMIN || esMio(o);
   if (conAcc && o.entregaEstado === 'ENTREGADO') {
     h += '<div class="acciones hecho">' + cam + '<button class="b-hecho" disabled>' + IC_OK + 'Entregado' + horaCorta(o.entregaTs) + '</button></div>';
     if (ES_ADMIN) h += '<button class="b-deshacer" onclick="deshacer(\'emb\',\'' + esc(o.id) + '\',\'' + esc(o.repartidor || '') + '\')">Deshacer entrega</button>';
   }
-  else if (conAcc && propio) {
+  else if (conAcc) {   // ronda 56: también el ADM en los pedidos de otro repartidor (finaliza en su nombre)
     // Ronda 43: KM / XR / XP antes de los botones; lo marcado viaja en el nombre del ticket.
     var sid = idSeguro(o.id), dd = datosEntrega[o.id] || {};
     h += '<div class="entrega-datos">' +
@@ -978,9 +979,12 @@ function cobroNo() {
    se queda en la ruta para volver a intentarlo. */
 async function confirmarEntrega(id, cobrado, importe, sinCobrar) {
   var conInc = (_incTrasEntrega === id);   // ronda 47
-  if (!cobrado && !sinCobrar && !confirm(conInc
+  // Ronda 56: el ADM finalizando el pedido de otro repartidor lo ve claro antes de confirmar.
+  var oC = buscarPedidoRuta(id) || {};
+  var enNombre = ES_ADMIN && !esMio(oC) ? 'Lo finalizas EN NOMBRE DE ' + String(oC.repartidor || oC.asignadoUsuario || 'el repartidor').toUpperCase() + ': le cuenta a él.\n\n' : '';
+  if (!cobrado && !sinCobrar && !confirm(enNombre + (conInc
         ? '¿Finalizar este pedido CON incidencia?\n\nSe sube el ticket y, acto seguido, se abre el registro de la incidencia.'
-        : '¿Confirmas que el pedido ha sido ENTREGADO?\n\nSe sube el ticket con la foto del embolsado.')) {
+        : '¿Confirmas que el pedido ha sido ENTREGADO?\n\nSe sube el ticket con la foto del embolsado.'))) {
     _incTrasEntrega = null;
     return;
   }
@@ -1232,7 +1236,7 @@ var incId = null, incTipo = null, incFotos = [], incIntentos = [], incTimer = nu
 
 function abrirIncidencia(id) {
   incId = id; incTipo = null; incFotos = []; incIntentos = []; clearInterval(incTimer);
-  var o = ruta.filter(function (x) { return x.id === id; })[0] || {};
+  var o = buscarPedidoCualquiera(id) || {};   // ronda 56: también los de otros repartidores y los ya entregados (ADM)
   document.getElementById('incTitulo').textContent = 'Incidencia · Caja ' + (o.caja || '') + ' · Ticket ' + (o.ticket || '');
   document.getElementById('incTipos').innerHTML = Object.keys(TIPOS).map(function (k) {
     return '<button class="tipo" id="t_' + k + '" onclick="elegirTipo(\'' + k + '\')">' + TIPOS[k].etiqueta + '</button>';
