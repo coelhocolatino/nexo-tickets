@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.28">
+<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.29">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -404,7 +404,14 @@ function useCountUp(value, ms = 750) {
 
 /* ------------------------------------------------------------------ agregado */
 /* filas: [fecha, tiendaIdx, repIdx, franjaIdx, p, xp, xr] */
-function aggregate(periodo, rep) {
+/* Ronda 62: filtro de tienda del ADM. '' = todas · 'GRUPO_DIA' = todas las tiendas %DIA · si no, esa tienda. */
+function tiendaOkInf(nombre, tf) {
+  if (!tf) return true;
+  const n = String(nombre || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+  if (tf === "GRUPO_DIA") return /(^|[^A-Z])DIA([^A-Z]|$)/.test(n);
+  return n === String(tf).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+}
+function aggregate(periodo, rep, tf) {
   const {
     ini,
     fin
@@ -425,6 +432,7 @@ function aggregate(periodo, rep) {
     const [f, ti, ri, fri, rp, rxp, rxr, rper] = r;
     if (rper ? rper !== periodo.id : (f < ini || f > fin)) continue;
     if (rep !== "*" && DATA.reps[ri] !== rep) continue;
+    if (tf && !tiendaOkInf(DATA.tiendas[ti], tf)) continue;   // ronda 62
     const tot = rp + rxp + rxr;
     p += rp;
     xp += rxp;
@@ -743,6 +751,13 @@ function App() {
   const [incTipo, setIncTipo] = useState(null);
   const [incResp, setIncResp] = useState(null);
   const [clubUp, setClubUp] = useState(null);
+  /* Ronda 62: el ADM filtra el informe por tienda (se recuerda en este móvil). */
+  const [tiendaF, setTiendaF] = useState(() => {
+    if (!ES_ADM) return "";
+    try { return localStorage.getItem("nexo_inf_tienda") || ""; } catch (e) { return ""; }
+  });
+  const elegirTiendaF = v => { setTiendaF(v); try { localStorage.setItem("nexo_inf_tienda", v); } catch (e) {} };
+  const repKey = rep + "|" + tiendaF;
   /* RONDA 50 — el Club Carrefour no tiene fecha fija y pueden ser 1 o 2 días
      al mes, así que lo informa el ADM y se guarda en el servidor. */
   const [clubDates, setClubDates] = useState(() => {
@@ -765,20 +780,20 @@ function App() {
   const periodo = DATA.periodos.find(p => p.id === periodoId);
   const prevPeriodo = DATA.periodos.find(p => p.id === periodo.prev) || periodo;
   const yearPeriodo = DATA.periodos.find(p => p.id === periodo.year);
-  const agg = useMemo(() => aggregate(periodo, rep), [periodoId, rep]);
-  const prev = useMemo(() => aggregate(prevPeriodo, rep), [periodo.prev, rep]);
-  const aggOp = useMemo(() => aggregate(periodo, "*"), [periodoId]);
-  const prevOp = useMemo(() => aggregate(prevPeriodo, "*"), [periodo.prev]);
+  const agg = useMemo(() => aggregate(periodo, rep, tiendaF), [periodoId, repKey]);
+  const prev = useMemo(() => aggregate(prevPeriodo, rep, tiendaF), [periodo.prev, repKey]);
+  const aggOp = useMemo(() => aggregate(periodo, "*", tiendaF), [periodoId, tiendaF]);
+  const prevOp = useMemo(() => aggregate(prevPeriodo, "*", tiendaF), [periodo.prev, tiendaF]);
   const nDays = daysOf(periodo).length;
   const elapsed = periodo.closed ? nDays : Math.min(nDays, diffDays(periodo.ini, SNAPSHOT) + 1);
-  const upliftAuto = useMemo(() => clubUplift(prev, prevPeriodo), [periodo.prev, rep]);
+  const upliftAuto = useMemo(() => clubUplift(prev, prevPeriodo), [periodo.prev, repKey]);
   const uplift = clubUp == null ? upliftAuto : clubUp;
-  const proj = useMemo(() => project(agg, prev, prevPeriodo, periodo, elapsed, clubDates, uplift), [periodoId, rep, elapsed, clubKey, uplift]);
+  const proj = useMemo(() => project(agg, prev, prevPeriodo, periodo, elapsed, clubDates, uplift), [periodoId, repKey, elapsed, clubKey, uplift]);
 
   /* comparación contra los MISMOS días del período anterior / del año anterior */
-  const sameDaysPrev = useMemo(() => cumulative(prev.byDay, prevPeriodo.ini, elapsed), [periodo.prev, rep, elapsed]);
+  const sameDaysPrev = useMemo(() => cumulative(prev.byDay, prevPeriodo.ini, elapsed), [periodo.prev, repKey, elapsed]);
   const prevSame = sameDaysPrev.length ? sameDaysPrev[sameDaysPrev.length - 1].acc : 0;
-  const curCum = useMemo(() => cumulative(agg.byDay, periodo.ini, elapsed), [periodoId, rep, elapsed]);
+  const curCum = useMemo(() => cumulative(agg.byDay, periodo.ini, elapsed), [periodoId, repKey, elapsed]);
   const curTotal = curCum.length ? curCum[curCum.length - 1].acc : 0;
   const yearDaily = yearPeriodo ? DATA.yearDaily[yearPeriodo.id] || [] : [];
   const yearSame = yearDaily.slice(0, elapsed).reduce((a, b) => a + b, 0);
@@ -803,7 +818,7 @@ function App() {
       prevista: i < elapsed ? null : Math.round(projMap.get(f) || 0),
       club: clubDates.indexOf(f) !== -1
     }));
-  }, [periodoId, rep, elapsed, clubKey, uplift]);
+  }, [periodoId, repKey, elapsed, clubKey, uplift]);
   const serieAcum = useMemo(() => {
     const all = daysOf(periodo);
     const prevC = cumulative(prev.byDay, prevPeriodo.ini, nDays);
@@ -823,7 +838,7 @@ function App() {
         anio: yearDaily.length ? yearDaily.slice(0, i + 1).reduce((a, b) => a + b, 0) : null
       };
     });
-  }, [periodoId, rep, elapsed, clubKey, uplift]);
+  }, [periodoId, repKey, elapsed, clubKey, uplift]);
 
   /* % por tienda: top 6 + otras */
   const tiendas = useMemo(() => {
@@ -840,27 +855,27 @@ function App() {
       value: resto
     });
     return out;
-  }, [periodoId, rep]);
+  }, [periodoId, repKey]);
   const tiendaTotal = tiendas.reduce((s, x) => s + x.value, 0) || 1;
 
   /* desglose día > tienda > franja */
-  const diasConDatos = useMemo(() => daysOf(periodo).slice(0, elapsed).filter(f => (agg.byDay.get(f) || 0) > 0).reverse(), [periodoId, rep, elapsed]);
+  const diasConDatos = useMemo(() => daysOf(periodo).slice(0, elapsed).filter(f => (agg.byDay.get(f) || 0) > 0).reverse(), [periodoId, repKey, elapsed]);
   useEffect(() => {
     setDrillDay(diasConDatos[0] || null);
     setDrillTienda(null);
-  }, [periodoId, rep]);
+  }, [periodoId, repKey]);
   const nivelTiendas = useMemo(() => {
     if (!drillDay || !agg.nest.has(drillDay)) return [];
     return [...agg.nest.get(drillDay).entries()].map(([n, m]) => [n, [...m.values()].reduce((a, b) => a + b, 0)]).sort((a, b) => b[1] - a[1]);
-  }, [drillDay, periodoId, rep]);
+  }, [drillDay, periodoId, repKey]);
   useEffect(() => {
     setDrillTienda(nivelTiendas[0]?.[0] || null);
-  }, [drillDay, periodoId, rep]);
+  }, [drillDay, periodoId, repKey]);
   const nivelFranjas = useMemo(() => {
     if (!drillDay || !drillTienda) return [];
     const m = agg.nest.get(drillDay)?.get(drillTienda);
     return m ? [...m.entries()].sort((a, b) => DATA.franjas.indexOf(a[0]) - DATA.franjas.indexOf(b[0])) : [];
-  }, [drillDay, drillTienda, periodoId, rep]);
+  }, [drillDay, drillTienda, periodoId, repKey]);
 
   /* mapa de franjas: franja × día */
   const mapa = useMemo(() => {
@@ -885,14 +900,14 @@ function App() {
       rows,
       max
     };
-  }, [periodoId, rep, elapsed]);
+  }, [periodoId, repKey, elapsed]);
 
   /* Tarjetas del mapa. Primero las de cliente (planilla de reservas); donde no
      hay cliente grabado, una tarjeta genérica con lo que dice el parte del día. */
   const mapaCards = useMemo(() => {
     if (!mapaSel) return [];
     const dentroSel = (f, fr) => f >= periodo.ini && f <= periodo.fin && fr === mapaSel.franja && (!mapaSel.dia || f === mapaSel.dia);
-    const clientes = DATA.entregas.filter(e => dentroSel(e.f, e.fr) && (rep === "*" || e.rep === rep)).map(e => ({
+    const clientes = DATA.entregas.filter(e => dentroSel(e.f, e.fr) && (rep === "*" || e.rep === rep) && tiendaOkInf(e.t, tiendaF)).map(e => ({
       tipo: "cliente",
       k: "c" + e.f + e.caja + e.tk + e.cli,
       f: e.f,
@@ -912,6 +927,7 @@ function App() {
       const tienda = DATA.tiendas[ti];
       if (!dentroSel(f, DATA.franjas[fri])) continue;
       if (rep !== "*" && DATA.reps[ri] !== rep) continue;
+      if (!tiendaOkInf(tienda, tiendaF)) continue;   // ronda 62
       if (cubierto.has(f + "|" + tienda)) continue; // ya hay tarjetas de cliente
       genericas.push({
         tipo: "parte",
@@ -926,14 +942,14 @@ function App() {
       });
     }
     return [...clientes, ...genericas].sort((a, b) => a.f < b.f ? 1 : a.f > b.f ? -1 : (a.tienda || "").localeCompare(b.tienda || ""));
-  }, [mapaSel, periodoId, rep]);
+  }, [mapaSel, periodoId, repKey]);
 
   /* al abrir el mapa, se elige sola la franja con más entregas */
   useEffect(() => {
     setMapaSel(null);
     setIncTipo(null);
     setIncResp(null);
-  }, [periodoId, rep]);
+  }, [periodoId, repKey]);
   useEffect(() => {
     if (desglose !== "mapa" || mapaSel || !mapa.rows.length) return;
     const mejor = [...mapa.rows].sort((a, b) => b.vals.reduce((x, y) => x + y, 0) - a.vals.reduce((x, y) => x + y, 0))[0];
@@ -941,12 +957,12 @@ function App() {
       franja: mejor.franja,
       dia: null
     });
-  }, [desglose, periodoId, rep, mapaSel]);
+  }, [desglose, periodoId, repKey, mapaSel]);
   const serieSemana = useMemo(() => [1, 2, 3, 4, 5, 6, 0].map(k => ({
     dia: DOW[k],
     media: Math.round(proj.med[k] || 0),
     k
-  })), [periodoId, rep, elapsed]);
+  })), [periodoId, repKey, elapsed]);
   const nivelAgua = periodo.closed ? 100 : Math.max(2, Math.min(100, proj.total ? agg.total / proj.total * 100 : 0));
   const seriesCol = [T.s1, T.s2, T.s3, T.s4, T.s5, T.s6, T["ink-3"]];
   const axis = {
@@ -1021,7 +1037,30 @@ function App() {
   }, opciones.map(o => /*#__PURE__*/React.createElement("option", {
     key: o,
     value: o
-  }, o === "*" ? "Toda la operación (ADM)" : o)))) : /*#__PURE__*/React.createElement("span", {
+  }, o === "*" ? "Toda la operación (ADM)" : o))), ES_ADM && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
+    className: "sr-only",
+    htmlFor: "selTienda"
+  }, "Tienda"), /*#__PURE__*/React.createElement("select", {
+    id: "selTienda",
+    value: tiendaF,
+    onChange: e => elegirTiendaF(e.target.value)
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Todas las tiendas"), (() => {
+    /* Ronda 62: primero las de Carrefour, luego «%DIA» (todas las DIA juntas) y cada DIA por separado. */
+    const esDia = t => tiendaOkInf(t, "GRUPO_DIA");
+    const crf = DATA.tiendas.filter(t => !esDia(t)), dia = DATA.tiendas.filter(esDia);
+    return [...crf.map(t => /*#__PURE__*/React.createElement("option", {
+      key: t,
+      value: t
+    }, t)), dia.length > 0 && /*#__PURE__*/React.createElement("option", {
+      key: "GRUPO_DIA",
+      value: "GRUPO_DIA"
+    }, "%DIA (todas las DIA)"), ...dia.map(t => /*#__PURE__*/React.createElement("option", {
+      key: t,
+      value: t
+    }, "\xA0\xA0" + t))];
+  })()))) : /*#__PURE__*/React.createElement("span", {
     className: "pill",
     style: {
       color: "var(--ink)",
@@ -1167,7 +1206,7 @@ function App() {
     now: compNow,
     before: compBefore,
     label: "vs anterior"
-  })), rep === "*" && yearFull > 0 && /*#__PURE__*/React.createElement("div", {
+  })), rep === "*" && yearFull > 0 && (!tiendaF || tiendaOkInf("TRAVESIA", tiendaF)) && /*#__PURE__*/React.createElement("div", {
     className: "text-[13px] mt-2",
     style: {
       color: "var(--ink-2)"
@@ -1182,7 +1221,7 @@ function App() {
     style: {
       color: "var(--ink-3)"
     }
-  }, " \xB7 en 2025 solo TRAVESIA")), rep === "*" && yearFull > 0 && /*#__PURE__*/React.createElement("div", {
+  }, " \xB7 en 2025 solo TRAVESIA")), rep === "*" && yearFull > 0 && (!tiendaF || tiendaOkInf("TRAVESIA", tiendaF)) && /*#__PURE__*/React.createElement("div", {
     className: "flex flex-wrap gap-2 mt-1"
   }, /*#__PURE__*/React.createElement(Delta, {
     now: compNow,
@@ -2111,7 +2150,8 @@ function App() {
       order: 5   // ronda 61: Incidencias
     }
   }, (() => {
-    const dentro = DATA.incidencias.filter(i => i.f >= periodo.ini && i.f <= periodo.fin && (rep === "*" || i.u === rep));
+    const dentro = DATA.incidencias.filter(i => i.f >= periodo.ini && i.f <= periodo.fin && (rep === "*" || i.u === rep) &&
+      (!tiendaF || (tiendaF === "GRUPO_DIA" && i.dia) || tiendaOkInf(i.t, tiendaF)));   // ronda 62
     const hoy = dentro.filter(i => i.f === SNAPSHOT).length;
     const cerradas = dentro.filter(i => i.fin).length;
     const abiertas = dentro.length - cerradas;
