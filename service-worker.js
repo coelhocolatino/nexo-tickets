@@ -76,6 +76,8 @@ self.addEventListener("fetch", (event) => {
     url.includes("fonts.googleapis.com") ||
     url.includes("fonts.gstatic.com") ||
     url.includes("version.json") ||          // ronda 24: la versión se lee siempre de la red
+    url.includes("/mapa/") ||                // Mapa de NexoApp: siempre datos frescos
+    url.includes("cdn.jsdelivr.net/npm/mermaid") ||
     url.startsWith("chrome-extension://") ||
     req.method !== "GET"
   ) {

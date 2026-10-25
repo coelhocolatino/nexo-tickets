@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es" data-pagina="mapa" data-version="v3.10.1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mapa de NexoApp</title>
+<meta name="description" content="Mapa mental, arquitectura y flujos de NexoApp, generados desde NotebookLM.">
+<link rel="icon" href="../nexo-icon-192.png">
+<link rel="stylesheet" href="../nexo-tema.css?v=28">
+<link rel="stylesheet" href="mapa.css?v=2">
+</head>
+<body class="nx">
+<header class="nx-cab">
+  <a class="nx-cab-logo" href="../index.html" aria-label="Ir al inicio"><img src="../nexo-logo-oficial.png" alt="Nexo" width="480" height="194"><span class="nx-cab-seccion">Mapa</span></a>
+  <span class="mp-estado" id="estado" aria-live="polite">Cargando…</span>
+</header>
+
+<main class="nx-pag mp-pag">
+  <h1 class="nx-titulo">Mapa de NexoApp</h1>
+  <p class="nx-nota" id="resumen"></p>
+
+  <nav class="nx-pestanas mp-pestanas" role="tablist" aria-label="Secciones">
+    <button role="tab" id="tab-mapa" data-vista="mapa">Mapa</button>
+    <button role="tab" id="tab-arquitectura" data-vista="arquitectura">Arquitectura</button>
+    <button role="tab" id="tab-flujos" data-vista="flujos">Flujos</button>
+    <button role="tab" id="tab-pantallas" data-vista="pantallas">Roles y pantallas</button>
+    <button role="tab" id="tab-datos" data-vista="datos">Datos</button>
+  </nav>
+
+  <div class="mp-buscar">
+    <input id="buscar" class="nx-input" type="search" placeholder="Buscar pantalla, hoja, columna, flujo…" autocomplete="off" aria-label="Buscar">
+    <span id="buscar-n"></span>
+  </div>
+
+  <section id="vista-mapa" class="mp-vista" role="tabpanel" aria-labelledby="tab-mapa">
+    <div class="mp-barra">
+      <h2 class="nx-subtitulo">Mapa mental</h2>
+      <div class="mp-chips">
+        <button class="nx-btn suave" id="abrir-todo">Abrir todo</button>
+        <button class="nx-btn suave" id="cerrar-todo">Cerrar todo</button>
+      </div>
+    </div>
+    <div class="nx-tarjeta mp-mente" id="mind"></div>
+  </section>
+
+  <section id="vista-arquitectura" class="mp-vista" role="tabpanel" aria-labelledby="tab-arquitectura" hidden>
+    <div class="mp-barra"><h2 class="nx-subtitulo">Arquitectura</h2></div>
+    <p class="nx-nota">Toca un componente para ver en qué flujos participa.</p>
+    <div class="nx-tarjeta mp-diagrama" id="arq-diagrama"></div>
+    <div class="mp-rejilla" id="componentes"></div>
+  </section>
+
+  <section id="vista-flujos" class="mp-vista" role="tabpanel" aria-labelledby="tab-flujos" hidden>
+    <div class="mp-barra"><h2 class="nx-subtitulo">Flujos paso a paso</h2></div>
+    <div class="mp-chips" id="filtro-comp" aria-label="Filtrar por componente"></div>
+    <div class="mp-flujos">
+      <ol class="mp-lista" id="lista-flujos"></ol>
+      <article class="nx-tarjeta mp-detalle" id="detalle-flujo"></article>
+    </div>
+  </section>
+
+  <section id="vista-pantallas" class="mp-vista" role="tabpanel" aria-labelledby="tab-pantallas" hidden>
+    <div class="mp-barra"><h2 class="nx-subtitulo">Niveles de usuario</h2></div>
+    <div class="mp-tabla"><table id="tabla-roles"></table></div>
+    <div class="mp-chips" id="permisos"></div>
+    <div class="mp-barra"><h2 class="nx-subtitulo">Pantallas</h2></div>
+    <div class="mp-chips" id="filtro-modulo" aria-label="Filtrar por módulo"></div>
+    <div class="mp-tarjetas" id="pantallas"></div>
+  </section>
+
+  <section id="vista-datos" class="mp-vista" role="tabpanel" aria-labelledby="tab-datos" hidden>
+    <div class="mp-barra"><h2 class="nx-subtitulo">Hojas de Google Sheets</h2></div>
+    <div class="mp-tarjetas" id="hojas"></div>
+    <div class="mp-barra"><h2 class="nx-subtitulo">Google Drive</h2></div>
+    <div class="mp-tarjetas" id="drive"></div>
+    <div class="mp-barra"><h2 class="nx-subtitulo">Automatizaciones</h2></div>
+    <div class="mp-tarjetas" id="autos"></div>
+  </section>
+
+  <p class="nx-nota" id="pie"></p>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<script src="mapa.js?v=2"></script>
+</body>
+</html>

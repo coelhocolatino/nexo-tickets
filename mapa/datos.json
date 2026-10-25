@@ -1,0 +1,881 @@
+{
+  "general": {
+    "resumen": "NexoApp es una Progressive Web App (PWA) de gestión logística y reparto a domicilio desarrollada para Colatino Repartos y Transportes. Permite a los trabajadores digitalizar la captura de tickets, administrar reservas de pedidos y registrar incidencias en ruta de forma ágil incluso sin conexión.",
+    "empresa": "Colatino Repartos y Transportes",
+    "departamentos": [
+      "REPARTO",
+      "EMBOLSADO",
+      "ADM"
+    ],
+    "roles": [
+      {
+        "nivel": "admin",
+        "fecha": "Modificable",
+        "repartidor": "Modificable",
+        "franjas": "Todas",
+        "uso": "Coordinadores y administradores con acceso total al sistema."
+      },
+      {
+        "nivel": "usuario 1",
+        "fecha": "Solo hoy",
+        "repartidor": "Fijo (su nombre)",
+        "franjas": "Filtradas por hora actual",
+        "uso": "Repartidores individuales en ruta."
+      },
+      {
+        "nivel": "usuario 2",
+        "fecha": "Solo hoy",
+        "repartidor": "Modificable (libre)",
+        "franjas": "Filtradas por hora actual",
+        "uso": "Cargar tickets de múltiples repartidores desde un mismo teléfono."
+      },
+      {
+        "nivel": "usuario 3",
+        "fecha": "Solo hoy",
+        "repartidor": "Fijo (su nombre)",
+        "franjas": "Todas (sin restricción)",
+        "uso": "Repartidores con jornadas extendidas o turnos especiales."
+      }
+    ],
+    "permisos": [
+      {
+        "nombre": "ACTIVO",
+        "descripcion": "Indica si el usuario tiene el acceso habilitado al sistema (SI/NO)."
+      },
+      {
+        "nombre": "PASSWORD_HASH",
+        "descripcion": "Hash SHA-256 de la contraseña (si está vacío, activa el flujo de primer acceso)."
+      },
+      {
+        "nombre": "NIVEL",
+        "descripcion": "Nivel de rol y permisos operativos (ADMIN, USUARIO 1, USUARIO 2, USUARIO 3)."
+      },
+      {
+        "nombre": "TIENDA_PRE",
+        "descripcion": "Tienda predeterminada configurada para el usuario."
+      },
+      {
+        "nombre": "MODULO RESERVAS",
+        "descripcion": "Habilita o deshabilita el acceso al módulo de reservas de pedidos (SI/NO)."
+      },
+      {
+        "nombre": "DEPARTAMENTO",
+        "descripcion": "Departamento asignado al usuario (REPARTO, EMBOLSADO, ADM)."
+      },
+      {
+        "nombre": "MATRICULA_PRE",
+        "descripcion": "Matrícula del vehículo predeterminado asignado."
+      },
+      {
+        "nombre": "INFORME",
+        "descripcion": "Enlace individual al panel interactivo de Looker Studio."
+      },
+      {
+        "nombre": "asignar_DIA",
+        "descripcion": "Permite asignar repartos del portal externo DIA a otros repartidores."
+      },
+      {
+        "nombre": "MODULO_EMBOLSADO",
+        "descripcion": "Habilita el acceso a las pantallas de preparación y embolsado de paquetes (SI/NO)."
+      },
+      {
+        "nombre": "INFORME_AUTO",
+        "descripcion": "Configura el envío automático del informe individual de rendimiento (SI/NO)."
+      }
+    ]
+  },
+  "arquitectura": {
+    "pantallas": [
+      {
+        "archivo": "login.html",
+        "nombre": "Acceso",
+        "modulo": "Acceso",
+        "descripcion": "Autenticación de usuarios mediante contraseña SHA-256 o biometría WebAuthn."
+      },
+      {
+        "archivo": "index.html",
+        "nombre": "Captura de Tickets",
+        "modulo": "Tickets",
+        "descripcion": "Formulario principal para captura, compresión y envío de tickets de reparto."
+      },
+      {
+        "archivo": "incidencias.html",
+        "nombre": "Incidencias",
+        "modulo": "Incidencias",
+        "descripcion": "Registro y seguimiento de imprevistos en ruta con fotos de evidencia."
+      },
+      {
+        "archivo": "reservas.html",
+        "nombre": "Reservas",
+        "modulo": "Reservas",
+        "descripcion": "Redirige con sesión identificada a la Web App externa NEXO RESERVAS."
+      },
+      {
+        "archivo": "inicio-embolsado.html",
+        "nombre": "Preparación Bultos",
+        "modulo": "Embolsado",
+        "descripcion": "Interfaz para la preparación y embolsado previo de paquetes en tienda."
+      },
+      {
+        "archivo": "asignar.html",
+        "nombre": "Asignación Pedidos",
+        "modulo": "Gestión",
+        "descripcion": "Pantalla para asignar repartos y franjas horarias a repartidores."
+      },
+      {
+        "archivo": "auto.html",
+        "nombre": "Reservas Automáticas",
+        "modulo": "Reservas",
+        "descripcion": "Gestión de reglas de programación periódica para clientes habituales."
+      },
+      {
+        "archivo": "dia.html",
+        "nombre": "Agendas Día",
+        "modulo": "Gestión",
+        "descripcion": "Consulta y gestión de albaranes sincronizados con el portal Día."
+      },
+      {
+        "archivo": "flota.html",
+        "nombre": "Control Flota",
+        "modulo": "Gestión",
+        "descripcion": "Administración de vehículos, matrículas y asignación a repartidores."
+      },
+      {
+        "archivo": "config.html",
+        "nombre": "Ajustes",
+        "modulo": "Gestión",
+        "descripcion": "Configuración de parámetros globales del sistema y avisos."
+      },
+      {
+        "archivo": "informe.html",
+        "nombre": "Informe Usuario",
+        "modulo": "Informes",
+        "descripcion": "Renderiza en un iFrame el panel interactivo embebido de Looker Studio."
+      },
+      {
+        "archivo": "informe-repartidor-nivel1.html",
+        "nombre": "Informe Nivel 1",
+        "modulo": "Informes",
+        "descripcion": "Métricas de rendimiento adaptadas a repartidores de Nivel 1."
+      }
+    ],
+    "componentes": [
+      {
+        "id": "pwa",
+        "nombre": "PWA NexoApp",
+        "capa": "Móvil",
+        "descripcion": "Aplicación web cliente ejecutada en el navegador del dispositivo móvil."
+      },
+      {
+        "id": "sw",
+        "nombre": "Service Worker",
+        "capa": "Móvil",
+        "descripcion": "Gestor de caché offline y ciclo de sincronización en segundo plano."
+      },
+      {
+        "id": "idb",
+        "nombre": "IndexedDB",
+        "capa": "Móvil",
+        "descripcion": "Base de datos local para la cola de envíos pendientes sin conexión."
+      },
+      {
+        "id": "ghpages",
+        "nombre": "GitHub Pages",
+        "capa": "Hosting",
+        "descripcion": "Servidor de alojamiento estático para los archivos HTML, JS y CSS de la PWA."
+      },
+      {
+        "id": "proxy",
+        "nombre": "Cloudflare Worker sad-proxy",
+        "capa": "Proxy",
+        "descripcion": "Middleware intermedio para redirigir peticiones y evitar bloqueos CORS."
+      },
+      {
+        "id": "nexo_script",
+        "nombre": "NEXO SCRIPT (Apps Script)",
+        "capa": "Backend",
+        "descripcion": "Backend principal para login, subida idempotente de tickets e incidencias."
+      },
+      {
+        "id": "nexo_reservas",
+        "nombre": "NEXO RESERVAS (Apps Script)",
+        "capa": "Backend",
+        "descripcion": "Aplicación web independiente para agendamiento y gestión de reservas."
+      },
+      {
+        "id": "trigger",
+        "nombre": "Trigger Actualizar Control",
+        "capa": "Backend",
+        "descripcion": "Tarea programada cada 5 minutos para procesar Drive y reescribir hojas de control."
+      },
+      {
+        "id": "sheets",
+        "nombre": "Google Sheets",
+        "capa": "Datos",
+        "descripcion": "Base de datos principal organizada en tablas y pestañas por tienda."
+      },
+      {
+        "id": "drive",
+        "nombre": "Google Drive",
+        "capa": "Datos",
+        "descripcion": "Almacenamiento en la nube de fotos determinísticas e incidencias."
+      },
+      {
+        "id": "looker",
+        "nombre": "Looker Studio",
+        "capa": "Externo",
+        "descripcion": "Plataforma de reportes analíticos embebida por usuario."
+      },
+      {
+        "id": "push",
+        "nombre": "FCM / Apple Web Push",
+        "capa": "Externo",
+        "descripcion": "Servicios externos para transmisión de notificaciones emergentes."
+      },
+      {
+        "id": "portal_dia",
+        "nombre": "Portal SAD Día",
+        "capa": "Externo",
+        "descripcion": "Plataforma externa de agendas de reparto de tiendas Día."
+      }
+    ],
+    "conexiones": [
+      {
+        "desde": "ghpages",
+        "hacia": "pwa",
+        "etiqueta": "Descarga de interfaz y assets estáticos"
+      },
+      {
+        "desde": "pwa",
+        "hacia": "sw",
+        "etiqueta": "Registro e intercepción de peticiones"
+      },
+      {
+        "desde": "pwa",
+        "hacia": "idb",
+        "etiqueta": "Guardado local de tickets sin conexión"
+      },
+      {
+        "desde": "sw",
+        "hacia": "proxy",
+        "etiqueta": "Sincronización en segundo plano de cola offline"
+      },
+      {
+        "desde": "pwa",
+        "hacia": "proxy",
+        "etiqueta": "Peticiones HTTP POST para login, tickets e incidencias"
+      },
+      {
+        "desde": "proxy",
+        "hacia": "nexo_script",
+        "etiqueta": "Redirección de peticiones evadiendo CORS"
+      },
+      {
+        "desde": "pwa",
+        "hacia": "nexo_reservas",
+        "etiqueta": "Redirección con usuario identificado"
+      },
+      {
+        "desde": "nexo_script",
+        "hacia": "sheets",
+        "etiqueta": "Validación de usuarios y registro de datos"
+      },
+      {
+        "desde": "nexo_script",
+        "hacia": "drive",
+        "etiqueta": "Verificación de idempotencia y guardado de imágenes"
+      },
+      {
+        "desde": "nexo_reservas",
+        "hacia": "sheets",
+        "etiqueta": "Consulta de límites y guardado de reservas"
+      },
+      {
+        "desde": "trigger",
+        "hacia": "drive",
+        "etiqueta": "Escaneo periódico de fotos de tickets"
+      },
+      {
+        "desde": "trigger",
+        "hacia": "sheets",
+        "etiqueta": "Actualización de hojas de control por período"
+      },
+      {
+        "desde": "nexo_script",
+        "hacia": "push",
+        "etiqueta": "Envío de tokens y alertas push"
+      },
+      {
+        "desde": "push",
+        "hacia": "sw",
+        "etiqueta": "Recepción y despliegue de notificaciones"
+      },
+      {
+        "desde": "nexo_script",
+        "hacia": "portal_dia",
+        "etiqueta": "Sincronización y cierre automático de albaranes"
+      },
+      {
+        "desde": "pwa",
+        "hacia": "looker",
+        "etiqueta": "Carga de iFrame con informe individual"
+      }
+    ]
+  },
+  "flujos": {
+    "flujos": [
+      {
+        "id": "login",
+        "titulo": "Login y Autenticación",
+        "resumen": "Valida credenciales o biometría y carga los permisos del usuario.",
+        "pasos": [
+          {
+            "texto": "Ingreso de credenciales o activación biométrica en la PWA.",
+            "componentes": [
+              "pwa"
+            ]
+          },
+          {
+            "texto": "Petición HTTP POST redirigida mediante el proxy para evitar bloqueos CORS.",
+            "componentes": [
+              "proxy"
+            ]
+          },
+          {
+            "texto": "Verificación de hash SHA-256 o WebAuthn y consulta de permisos en la base de datos.",
+            "componentes": [
+              "nexo_script",
+              "sheets"
+            ]
+          },
+          {
+            "texto": "Guardado de sesión local y acceso al panel principal.",
+            "componentes": [
+              "pwa"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "subida-ticket",
+        "titulo": "Subida de Foto de Ticket (Cola Offline e Idempotencia)",
+        "resumen": "Comprime y envía la foto con nombre determinístico o la guarda localmente si no hay red.",
+        "pasos": [
+          {
+            "texto": "Captura de foto, compresión local y generación de nombre determinístico.",
+            "componentes": [
+              "pwa"
+            ]
+          },
+          {
+            "texto": "Envío de datos e imagen codificada a través del proxy hacia el backend.",
+            "componentes": [
+              "pwa",
+              "proxy"
+            ]
+          },
+          {
+            "texto": "Comprobación de idempotencia en Drive para evitar duplicados y registro en Sheets.",
+            "componentes": [
+              "nexo_script",
+              "drive",
+              "sheets"
+            ]
+          },
+          {
+            "texto": "Almacenamiento en IndexedDB ante falta de red y reintentos automáticos en segundo plano.",
+            "componentes": [
+              "sw",
+              "idb",
+              "proxy",
+              "nexo_script"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "registro-entregas",
+        "titulo": "Registro de Entregas",
+        "resumen": "Confirma la entrega de paquetes al cliente y actualiza el estado en ruta.",
+        "pasos": [
+          {
+            "texto": "Confirmación de entrega efectuada por el repartidor en la interfaz móvil.",
+            "componentes": [
+              "pwa"
+            ]
+          },
+          {
+            "texto": "Transmisión de metadatos de entrega a través del proxy.",
+            "componentes": [
+              "proxy"
+            ]
+          },
+          {
+            "texto": "Actualización del estado a entregado registrando fecha, hora exacta y usuario.",
+            "componentes": [
+              "nexo_script",
+              "sheets"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "incidencias",
+        "titulo": "Registro y Gestión de Incidencias",
+        "resumen": "Reporta imprevistos en ruta adjuntando evidencias y gestiona su solución.",
+        "pasos": [
+          {
+            "texto": "Registro de la novedad, detalle de llamadas e imágenes de prueba.",
+            "componentes": [
+              "pwa"
+            ]
+          },
+          {
+            "texto": "Creación de carpeta de evidencias en Drive y registro inicial como incidencia abierta.",
+            "componentes": [
+              "proxy",
+              "nexo_script",
+              "drive",
+              "sheets"
+            ]
+          },
+          {
+            "texto": "Revisión por coordinación y actualización del estado a solucionada o restaurada.",
+            "componentes": [
+              "sheets"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "reservas-limites",
+        "titulo": "Reservas y Límites de Capacidad",
+        "resumen": "Agenda entregas comprobando el cupo máximo permitido por tramo y día.",
+        "pasos": [
+          {
+            "texto": "Redirección con usuario identificado hacia la interfaz de reservas.",
+            "componentes": [
+              "pwa",
+              "nexo_reservas"
+            ]
+          },
+          {
+            "texto": "Consulta de la matriz de límites permitidos por franja horaria y día de la semana.",
+            "componentes": [
+              "nexo_reservas",
+              "sheets"
+            ]
+          },
+          {
+            "texto": "Guardado de la reserva si existe cupo disponible o bloqueo si se alcanza el máximo.",
+            "componentes": [
+              "nexo_reservas",
+              "sheets"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "reservas-automaticas",
+        "titulo": "Reservas Automáticas",
+        "resumen": "Programa pedidos recurrentes periódicos para clientes habituales.",
+        "pasos": [
+          {
+            "texto": "Definición de reglas de frecuencia semanal o quincenal en la tabla de configuración.",
+            "componentes": [
+              "pwa",
+              "sheets"
+            ]
+          },
+          {
+            "texto": "Ejecución de tareas automáticas para crear reservas futuras en las pestañas de tiendas.",
+            "componentes": [
+              "nexo_reservas",
+              "sheets"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "avisos-push",
+        "titulo": "Avisos y Notificaciones Push",
+        "resumen": "Registra suscripciones de dispositivos y envía alertas operativas emergentes.",
+        "pasos": [
+          {
+            "texto": "Obtención del token de suscripción del dispositivo desde el Service Worker.",
+            "componentes": [
+              "pwa",
+              "sw"
+            ]
+          },
+          {
+            "texto": "Almacenamiento de tokens y claves criptográficas asociados al usuario.",
+            "componentes": [
+              "nexo_script",
+              "sheets"
+            ]
+          },
+          {
+            "texto": "Emisión de avisos emergentes hacia las plataformas Push de Google o Apple.",
+            "componentes": [
+              "nexo_script",
+              "push",
+              "sw"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "sincronizacion-dia",
+        "titulo": "Sincronización con Portal SAD Día",
+        "resumen": "Extrae albaranes externos del portal Día y procesa sus cierres.",
+        "pasos": [
+          {
+            "texto": "Extracción periódica de agendas autenticando en el portal web externo.",
+            "componentes": [
+              "nexo_script",
+              "portal_dia"
+            ]
+          },
+          {
+            "texto": "Importación de albaranes pendientes a la hoja central de reparto.",
+            "componentes": [
+              "nexo_script",
+              "sheets"
+            ]
+          },
+          {
+            "texto": "Actualización y cierre del pedido en la plataforma externa tras la entrega.",
+            "componentes": [
+              "nexo_script",
+              "portal_dia",
+              "sheets"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trigger-5min",
+        "titulo": "Trigger de Control de Tickets (Cada 5 Minutos)",
+        "resumen": "Escanea periódicamente Drive para reescribir y actualizar hojas de control.",
+        "pasos": [
+          {
+            "texto": "Ejecución automática serverless activada por tiempo cada 5 minutos.",
+            "componentes": [
+              "trigger"
+            ]
+          },
+          {
+            "texto": "Lectura y análisis de nombres determinísticos en la carpeta de fotos de tickets.",
+            "componentes": [
+              "trigger",
+              "drive"
+            ]
+          },
+          {
+            "texto": "Reescritura y actualización de planillas de control operativo y facturación.",
+            "componentes": [
+              "trigger",
+              "sheets"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "informes-looker",
+        "titulo": "Informes de Looker Studio",
+        "resumen": "Muestra el panel interactivo de métricas configurado para cada trabajador.",
+        "pasos": [
+          {
+            "texto": "Consulta de la URL del informe asignada al usuario en la base de datos.",
+            "componentes": [
+              "pwa",
+              "sheets"
+            ]
+          },
+          {
+            "texto": "Carga e inserción del iFrame interactivo de Looker Studio en la pantalla de informe.",
+            "componentes": [
+              "pwa",
+              "looker"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "embolsado",
+        "titulo": "Preparación y Embolsado",
+        "resumen": "Organiza la preparación previo al reparto y la verificación de bultos.",
+        "pasos": [
+          {
+            "texto": "Carga de la lista de pedidos pendientes de empaquetar por tienda.",
+            "componentes": [
+              "pwa",
+              "proxy",
+              "nexo_script",
+              "sheets"
+            ]
+          },
+          {
+            "texto": "Verificación y marcado de bultos preparados antes de salir a ruta.",
+            "componentes": [
+              "pwa",
+              "proxy",
+              "nexo_script",
+              "sheets"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "datos": {
+    "hojas": [
+      {
+        "nombre": "USUARIOS",
+        "descripcion": "Gestión de credenciales, niveles de permiso y accesos de usuarios.",
+        "columnas": [
+          "USUARIO",
+          "NOMBRE",
+          "ACTIVO",
+          "PASSWORD_HASH",
+          "NIVEL",
+          "TIENDA_PRE",
+          "MODULO RESERVAS",
+          "DEPARTAMENTO",
+          "CORREO",
+          "TELEFONO",
+          "MATRICULA_PRE",
+          "INFORME",
+          "asignar_DIA",
+          "MODULO_EMBOLSADO",
+          "INFORME_AUTO"
+        ]
+      },
+      {
+        "nombre": "TIENDAS",
+        "descripcion": "Configuración de tiendas, períodos de facturación y tramos horarios.",
+        "columnas": [
+          "TIENDAS",
+          "FECHA INICIO",
+          "FECHA FIN",
+          "FRANJAS HORARIAS",
+          "DIRECCION",
+          "NÚMERO"
+        ]
+      },
+      {
+        "nombre": "INCIDENCIAS",
+        "descripcion": "Registro y seguimiento de incidencias o entregas fallidas en ruta.",
+        "columnas": [
+          "FECHA",
+          "CAJA",
+          "TICKET",
+          "NOMBRE",
+          "DIRECCION",
+          "TELEFONO",
+          "HORA",
+          "USUARIO",
+          "URL TICKET",
+          "URL CARPETA FOTOS",
+          "TIPO",
+          "OBSERVACIONES",
+          "ESTADO",
+          "ID RESERVA",
+          "ID INCIDENCIA",
+          "INTENTOS",
+          "RESUELTO POR",
+          "RESUELTO HORA",
+          "ORIGEN",
+          "RESPONSABLE",
+          "SOLUCION"
+        ]
+      },
+      {
+        "nombre": "_DIA",
+        "descripcion": "Centralización de albaranes y repartos importados del portal DIA.",
+        "columnas": [
+          "ID",
+          "CUENTA",
+          "ESTADO NEXO",
+          "ESTADO WEB",
+          "FECHA ENTREGA",
+          "TRAMO",
+          "TIENDA",
+          "CLIENTE",
+          "DIRECCION",
+          "TELEFONOS",
+          "NUM ALBARAN",
+          "PROCEDENCIA",
+          "SECO",
+          "FRESCO",
+          "CONGELADO",
+          "ASIGNADO A",
+          "REPARTIDOR",
+          "ENTREGA HORA",
+          "ENTREGA USUARIO",
+          "ARCHIVO NEXO"
+        ]
+      },
+      {
+        "nombre": "LIMITES",
+        "descripcion": "Matriz de capacidad máxima de pedidos por día y tramo horaria.",
+        "columnas": [
+          "DIA DE LA SEMANA",
+          "10-13H",
+          "13-16H",
+          "16-19H",
+          "19-22H"
+        ]
+      },
+      {
+        "nombre": "LIMITES_GRANVIA",
+        "descripcion": "Límites específicos de pedidos por franja horaria para la tienda Gran Vía.",
+        "columnas": [
+          "DIA DE LA SEMANA",
+          "10-13H",
+          "13-16H",
+          "16-19H",
+          "19-22H"
+        ]
+      },
+      {
+        "nombre": "RESERVAS_AUTO",
+        "descripcion": "Configuración de reservas periódicas automatizadas para clientes habituales.",
+        "columnas": [
+          "ID",
+          "CLIENTE DIRECCION",
+          "FRECUENCIA",
+          "DIA",
+          "FRANJA",
+          "INICIO",
+          "ACTIVA",
+          "CREADA POR",
+          "HISTORIAL",
+          "NOMBRE",
+          "DIRECCION"
+        ]
+      },
+      {
+        "nombre": "_DIA_AVISOS",
+        "descripcion": "Registro de tokens y suscripciones para notificaciones Push Web.",
+        "columnas": [
+          "USUARIO",
+          "ENDPOINT",
+          "P256DH",
+          "AUTH",
+          "DISPOSITIVO",
+          "ALTA",
+          "ULTIMO AVISO"
+        ]
+      },
+      {
+        "nombre": "AUDITORIA",
+        "descripcion": "Historial de acciones y registros operativos ejecutados en el sistema.",
+        "columnas": [
+          "FECHA",
+          "HORA",
+          "USUARIO",
+          "ACCION",
+          "ID RESERVA",
+          "CAJA",
+          "TICKET",
+          "DETALLE"
+        ]
+      },
+      {
+        "nombre": "INFORMES_CONFIG",
+        "descripcion": "Configuración de envíos de informes por correo diarios y mensuales.",
+        "columnas": [
+          "TIENDA",
+          "DIARIO AUTOMATICO",
+          "DIARIO DESTINO",
+          "MENSUAL AUTOMATICO",
+          "MENSUAL DESTINO",
+          "CAMPOS INFORME MENSUAL"
+        ]
+      },
+      {
+        "nombre": "INFORME_REPARTIDOR",
+        "descripcion": "Programación de envíos automáticos de reportes individuales a repartidores.",
+        "columnas": [
+          "USUARIO",
+          "ENVIO AUTOMATICO",
+          "FRECUENCIA",
+          "DIA SEMANA",
+          "HORA",
+          "DESTINO",
+          "VE REPARTIDORES"
+        ]
+      },
+      {
+        "nombre": "CORREOS",
+        "descripcion": "Listas de distribución de correo electrónico para avisos grupales.",
+        "columnas": [
+          "GRUPO",
+          "ATENCIÓN AL CLIENTE VIGO I",
+          "GRUPO VIGO II",
+          "GRUPO %DIA"
+        ]
+      },
+      {
+        "nombre": "TEL_UTILES_TRAVESIA",
+        "descripcion": "Directorio de extensiones y teléfonos de contacto de tienda Travesía.",
+        "columnas": [
+          "TIENDA",
+          "TELÉFONO / EXTENSIÓN"
+        ]
+      },
+      {
+        "nombre": "login.DIA",
+        "descripcion": "Directorio de URLs de inicio de sesión de los portales externos de agenda DIA.",
+        "columnas": [
+          "TIENDA",
+          "URL"
+        ]
+      }
+    ],
+    "drive": [
+      {
+        "nombre": "Fotos de Tickets (Folder Principal)",
+        "descripcion": "Carpeta raíz de Google Drive donde se almacenan las fotografías de los tickets con nombres determinísticos."
+      },
+      {
+        "nombre": "Carpetas de Fotos de Incidencias",
+        "descripcion": "Carpetas dinámicas generadas para guardar las fotos de evidencia capturadas durante entregas fallidas."
+      }
+    ],
+    "automatizaciones": [
+      {
+        "nombre": "ACTUALIZAR CONTROL DE TICKETS",
+        "frecuencia": "Cada 5 minutos",
+        "descripcion": "Escanea las fotos subidas a Google Drive y reescribe automáticamente las planillas de control por período."
+      },
+      {
+        "nombre": "Generación de Reservas Automáticas",
+        "frecuencia": "Diaria",
+        "descripcion": "Procesa la tabla RESERVAS_AUTO para insertar automáticamente pedidos semanales o quincenales."
+      },
+      {
+        "nombre": "Sincronización con Portal DIA",
+        "frecuencia": "Periódica / Eventual",
+        "descripcion": "Importa agendas desde el portal externo diasad.urplan2.com y actualiza el estado de cierre."
+      },
+      {
+        "nombre": "Envío de Informes Automáticos",
+        "frecuencia": "Diaria / Mensual",
+        "descripcion": "Envía por correo los reportes consolidados y de rendimiento individual según INFORMES_CONFIG e INFORME_REPARTIDOR."
+      }
+    ]
+  },
+  "meta": {
+    "actualizado": "2026-10-25T13:40:03+00:00",
+    "fuente": "NotebookLM · notebook NexoAPP",
+    "secciones": {
+      "general": "2026-10-25T13:40:03+00:00",
+      "arquitectura": "2026-10-25T13:40:03+00:00",
+      "flujos": "2026-10-25T13:40:03+00:00",
+      "datos": "2026-10-25T13:40:03+00:00"
+    }
+  }
+}

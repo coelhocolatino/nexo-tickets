@@ -1,0 +1,109 @@
+/* =============================================================
+   Mapa de NexoApp — sobre nexo-tema.css (tokens --nx-*, Big Shoulders
+   Display + Hanken Grotesk). Solo lo propio de esta página.
+   ============================================================= */
+[hidden] { display:none !important; }
+:root {
+  /* colores de las ramas del mapa mental, sacados del tema */
+  --rama-1:var(--nx-azul); --rama-2:var(--nx-verde); --rama-3:var(--nx-ambar);
+  --rama-4:var(--nx-rojo); --rama-5:var(--nx-tinta); --rama-6:var(--nx-suave);
+}
+
+/* La página es más ancha que las operativas: el diagrama lo necesita */
+.mp-pag { max-width:960px; padding-bottom:40px; }
+.mp-estado { margin-left:auto; font-size:12px; font-weight:800; color:var(--nx-suave); white-space:nowrap; }
+
+/* Pestañas: el segmentado del tema, desplazable en móvil */
+.mp-pestanas { position:sticky; top:calc(60px + env(safe-area-inset-top)); z-index:40;
+  grid-auto-columns:max-content; overflow-x:auto; scrollbar-width:none; }
+.mp-pestanas::-webkit-scrollbar { display:none; }
+.mp-pestanas > button { padding:0 14px; white-space:nowrap; }
+
+.mp-buscar { display:flex; align-items:center; gap:10px; }
+.mp-buscar .nx-input { flex:1; }
+.mp-buscar span { font-size:13px; font-weight:800; color:var(--nx-suave); white-space:nowrap; }
+
+.mp-vista { display:flex; flex-direction:column; gap:12px; }
+.mp-barra { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin-top:6px; }
+.mp-barra .nx-btn { min-height:44px; font-size:14px; }
+.mp-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.mp-chips > button:not(.nx-btn) { min-height:40px; padding:0 12px; border:0; border-radius:10px; cursor:pointer;
+  background:var(--nx-chip); color:var(--nx-tinta); font:800 13px var(--nx-texto); }
+.mp-chips > button[aria-pressed="true"] { background:var(--nx-tinta); color:var(--nx-tinta-clara); }
+.mp-vacio { color:var(--nx-suave); font-weight:600; }
+
+/* ---------- Mapa mental: árbol desplegable con ramas de color ---------- */
+.mp-mente { overflow-x:auto; }
+.mp-mente ul { list-style:none; margin:0; padding-left:20px; border-left:2px solid var(--rama, var(--nx-linea)); }
+.mp-mente > ul { padding-left:0; border:0; }
+.mp-mente li { position:relative; padding:4px 0 4px 14px; }
+.mp-mente > ul > li { padding-left:0; }
+.mp-mente li li::before { content:''; position:absolute; left:-2px; top:22px; width:14px; border-top:2px solid var(--rama, var(--nx-linea)); }
+.mp-mente summary { list-style:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px; min-height:44px; }
+.mp-mente summary::-webkit-details-marker { display:none; }
+.mp-mente summary::before { content:'+'; flex:none; display:inline-grid; place-items:center; width:22px; height:22px; border-radius:50%;
+  font:800 14px var(--nx-texto); color:#fff; background:var(--rama, var(--nx-tinta)); }
+.mp-mente details[open] > summary::before { content:'−'; }
+.mp-nodo { display:inline-block; max-width:60ch; padding:6px 10px; border-radius:10px; background:var(--nx-campo);
+  font-size:14px; font-weight:700; line-height:1.35; }
+.mp-nodo small { font-weight:600; color:var(--nx-suave); }
+.mp-raiz > details > summary .mp-nodo { background:var(--nx-tinta); color:var(--nx-tinta-clara);
+  font:800 26px/1 var(--nx-display); padding:8px 16px; }
+.mp-rama > details > summary .mp-nodo { font:800 20px/1 var(--nx-display); color:var(--rama); background:transparent; padding:4px 2px; }
+.mp-mente .hit > .mp-nodo, .mp-mente .hit > details > summary .mp-nodo { background:var(--nx-cobro); }
+
+/* ---------- Arquitectura ---------- */
+.mp-diagrama { overflow-x:auto; }
+.mp-diagrama .mermaid { min-width:720px; display:flex; justify-content:center; }
+.mp-diagrama svg { max-width:100%; height:auto; }
+.mp-rejilla { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:10px; }
+.mp-comp { border:0; text-align:left; cursor:pointer; color:inherit; font:inherit; gap:6px; }
+.mp-comp b { font:800 22px/1 var(--nx-display); }
+.mp-comp p { margin:0; font-size:13px; font-weight:600; line-height:1.4; color:var(--nx-suave); }
+.mp-comp .mp-usos { font-size:13px; font-weight:800; color:var(--nx-azul); }
+.mp-capa { font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--nx-suave); }
+
+/* ---------- Flujos ---------- */
+.mp-flujos { display:grid; grid-template-columns:minmax(220px, 300px) 1fr; gap:12px; align-items:start; }
+.mp-lista { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+.mp-lista button { width:100%; min-height:56px; text-align:left; border:0; border-radius:var(--nx-r-boton); cursor:pointer;
+  background:var(--nx-superficie); color:var(--nx-tinta); padding:10px 12px; font:inherit; }
+.mp-lista button[aria-current="true"] { background:var(--nx-tinta); color:var(--nx-tinta-clara); }
+.mp-lista b { display:block; font-size:15px; font-weight:800; }
+.mp-lista small { font-size:12px; font-weight:700; opacity:.75; }
+.mp-detalle h3 { margin:0; font:800 30px/1 var(--nx-display); }
+.mp-reproductor { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.mp-reproductor .nx-btn { min-height:44px; font-size:14px; }
+.mp-pasos { list-style:none; margin:0; padding:0; counter-reset:paso; }
+.mp-pasos li { counter-increment:paso; position:relative; padding:0 0 16px 46px; }
+.mp-pasos li::before { content:counter(paso); position:absolute; left:0; top:0; width:32px; height:32px; border-radius:50%;
+  display:grid; place-items:center; font:800 18px/1 var(--nx-display); background:var(--nx-tinta); color:var(--nx-tinta-clara); }
+.mp-pasos li:not(:last-child)::after { content:''; position:absolute; left:15px; top:34px; bottom:2px; border-left:2px dashed var(--nx-linea); }
+.mp-pasos p { margin:5px 0 6px; font-size:15px; font-weight:600; line-height:1.4; }
+.mp-pasos li.dim { opacity:.35; }
+.mp-pasos li.now::before { background:var(--nx-lampara); color:var(--nx-tinta); }
+.mp-etiquetas { display:flex; flex-wrap:wrap; gap:4px; }
+
+/* ---------- Tablas y tarjetas ---------- */
+.mp-tabla { overflow-x:auto; border-radius:var(--nx-r-tarjeta); background:var(--nx-superficie); }
+.mp-tabla table { border-collapse:collapse; width:100%; font-size:14px; }
+.mp-tabla th, .mp-tabla td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--nx-linea); vertical-align:top; }
+.mp-tabla th { font-size:12px; font-weight:800; color:var(--nx-suave); background:var(--nx-campo); }
+.mp-tabla tr:last-child td { border-bottom:0; }
+.mp-tabla td:first-child { font-weight:800; white-space:nowrap; }
+.mp-tarjetas { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:10px; }
+.mp-tarjetas .nx-tarjeta { gap:6px; }
+.mp-tarjetas h3 { margin:0; font:800 22px/1.05 var(--nx-display); overflow-wrap:anywhere; }
+.mp-tarjetas p { margin:0; font-size:14px; font-weight:600; line-height:1.4; }
+.mp-cols { font-size:12px; font-weight:700; color:var(--nx-suave); overflow-wrap:anywhere; }
+.mp-mod { font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--nx-azul); }
+
+@media (max-width:720px) {
+  .mp-flujos { grid-template-columns:1fr; }
+  .mp-lista { flex-direction:row; overflow-x:auto; padding-bottom:4px; }
+  .mp-lista li { flex:0 0 min(240px, 72%); }
+  /* los filtros en una sola fila que se desliza, para ver los flujos sin bajar */
+  #filtro-comp, #filtro-modulo { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; }
+  #filtro-comp::-webkit-scrollbar, #filtro-modulo::-webkit-scrollbar { display:none; }
+  #filtro-comp > button, #filtro-modulo > button { flex:0 0 auto; white-space:nowrap; }
+}
