@@ -27,10 +27,12 @@
      aviso rojo si falla de verdad). La lista se guarda en el móvil entre aperturas (antes se perdía al cerrar).
      v3.11.4 (2026-10-25, ronda 54): «Clientes previstos para hoy» al final de la ruta, según la tienda (TRAVESIA /
      GRANVIA). Menú cerrado; la lista se pide al abrirlo. Requiere Embolsado.js de la ronda 54 (clientesPrevistos).
+     v3.11.6 (2026-10-25, ronda 59): Finalizar en segundo plano más rápido y fiable: hasta 2 envíos a la vez,
+     corte a los 100 s si una petición se cuelga, esperas más cortas y se reanuda al volver a la app.
      v3.11.5 (2026-10-25, ronda 56): el ADM puede finalizar (sin o con incidencia) los pedidos de cualquier
      repartidor; el ticket se archiva a nombre del repartidor. Requiere Embolsado.js de la ronda 56.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.11.5">
+<html lang="es" data-pagina="asignar" data-version="v3.11.6">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -302,7 +304,7 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
     <summary><span><span id="prevAsigTit">Clientes previstos para hoy</span><small id="prevAsigSub">Calculado a las 05:00</small></span><svg class="flecha" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></summary>
     <div class="prev-lista" id="prevAsigLista"><div class="prev-nota">Cargando…</div></div>
   </details>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.5</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.6</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
@@ -1039,8 +1041,11 @@ async function confirmarEntrega(id, cobrado, importe, sinCobrar) {
    «ya entregado», así que repetir no duplica nada.
    ══════════════════════════════════════════════════════════════════════════ */
 var COLA_ENT_CLAVE = 'nexo_cola_entregas_v1_' + USUARIO;
-var COLA_ENT_ESPERAS = [5000, 15000, 30000, 60000];
-var colaEntCorriendo = false, colaEntTimer = null;
+/* Ronda 59: esperas más cortas, hasta 2 envíos a la vez, corte a los 100 s si una petición se queda
+   colgada (antes paraba la cola entera) y se reanuda al volver a la app o recuperar la red. */
+var COLA_ENT_ESPERAS = [3000, 8000, 20000, 45000];
+var COLA_ENT_A_LA_VEZ = 2, COLA_ENT_CORTE = 100000;
+var colaEntEnVuelo = {}, colaEntTimer = null, colaEntHubo = false;
 function colaEntLeer() { try { return JSON.parse(localStorage.getItem(COLA_ENT_CLAVE) || '[]'); } catch (e) { return []; } }
 function colaEntGuardar(c) { try { localStorage.setItem(COLA_ENT_CLAVE, JSON.stringify(c)); } catch (e) {} }
 function aplicarColaEnt() {
@@ -1066,64 +1071,86 @@ function encolarEntrega(id, cobrado, importe, sinCobrar) {
   pintarChipEnt();
   procesarColaEnt();
 }
+/** Como api(), pero si el servidor no responde en «ms» se corta y cuenta como sin conexión (se reintenta).
+ *  Si el servidor sí terminó, el reintento recibe «ya entregado»: no se duplica nada. */
+function apiTiempo(accion, datos, ms) {
+  var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  var t = ctl ? setTimeout(function () { ctl.abort(); }, ms) : null;
+  var body = Object.assign({ accion: accion, usuario: USUARIO }, datos || {});
+  return fetch(PROXY + '?url=' + encodeURIComponent(EMBOLSADO_URL), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined
+  }).then(function (r) { return r.json(); }).catch(function (e) {
+    return { ok: false, red: true, error: e && e.name === 'AbortError' ? 'El servidor tarda en responder.' : 'Sin conexión con el servidor.' };
+  }).finally(function () { if (t) clearTimeout(t); });
+}
 async function enviarEntrega(j) {
   var img = '';
   if (j.tieneBox) {
     try {
-      var rf = await api('fotoTicketBase64', { id: j.id });
+      var rf = await apiTiempo('fotoTicketBase64', { id: j.id }, COLA_ENT_CORTE);
       if (rf && rf.red) return rf;   // sin red: se reintenta entero
       if (rf && rf.ok && rf.dataUrl) img = rf.box ? await recortar(rf.dataUrl, rf.box, 1400) : rf.dataUrl;
     } catch (e) { /* si falla el recorte, el servidor sube la foto del pedido tal cual */ }
   }
-  return api('entregarYSubir', {
+  return apiTiempo('entregarYSubir', {
     id: j.id, imagenBase64: img, km: j.km, xr: j.xr, xp: j.xp,
     cobroConfirmado: j.cobrado, cobroImporte: j.importe, cobroSinConfirmar: j.sinCobrar
-  });
+  }, COLA_ENT_CORTE);
 }
 function quitarDeColaEnt(id) { colaEntGuardar(colaEntLeer().filter(function (x) { return x.id !== id; })); }
-async function procesarColaEnt() {
-  if (colaEntCorriendo) return;
-  colaEntCorriendo = true; clearTimeout(colaEntTimer);
-  var hubo = false;
-  try {
-    for (;;) {
-      var ahora = Date.now();
-      var j = colaEntLeer().filter(function (x) { return !x.prox || x.prox <= ahora; })[0];
-      if (!j) break;
-      var r = await enviarEntrega(j);
-      var etiqueta = 'Caja ' + (j.caja || '—') + ' · ticket ' + (j.ticket || '—');
-      if (r && r.ok) {
-        quitarDeColaEnt(j.id); hubo = true;
-        if (r.incidencia) avisoEnt(etiqueta + ': entregado · incidencia abierta a tu nombre por el cobro.', 'err');
-        else if (r.cobroDifiere) avisoEnt(etiqueta + ': entregado · ojo, el importe cobrado no coincide con el del pedido (' + (r.cobroPedido || '') + ').', 'err');
-      } else if (!r || r.red || r.ocupado || r.reintentable) {
-        var c = colaEntLeer();
-        c.forEach(function (x) {
-          if (x.id !== j.id) return;
-          x.intentos = (x.intentos || 0) + 1;
-          x.prox = Date.now() + COLA_ENT_ESPERAS[Math.min(x.intentos - 1, COLA_ENT_ESPERAS.length - 1)];
-          x.error = (r && r.error) || 'Sin conexión con el servidor.';
-        });
-        colaEntGuardar(c);
-      } else {
-        quitarDeColaEnt(j.id); hubo = true;
-        var o = buscarPedidoRuta(j.id);
-        if (o) { o.entregaEstado = 'ASIGNADO'; o.entregaTs = ''; }
-        guardarCache(); actualizarPestanas(); pintar();
-        avisoEnt(etiqueta + ': NO se ha podido finalizar. ' + (r.error || '') + ' El pedido vuelve a tu ruta.', 'err');
-      }
-      pintarChipEnt();
-    }
-  } finally {
-    colaEntCorriendo = false;
-    pintarChipEnt();
-    var resto = colaEntLeer();
-    if (resto.length) {
-      var prox = Math.min.apply(null, resto.map(function (x) { return x.prox || 0; }));
-      colaEntTimer = setTimeout(procesarColaEnt, Math.max(1000, prox - Date.now()));
-    } else if (hubo) cargar(false);   // todo archivado: se confirma con la hoja
+/** Lanza los envíos que tocan (hasta COLA_ENT_A_LA_VEZ a la vez); cada uno, al acabar, vuelve a llamar aquí. */
+function procesarColaEnt() {
+  clearTimeout(colaEntTimer);
+  var ahora = Date.now();
+  var listos = colaEntLeer().filter(function (x) { return !colaEntEnVuelo[x.id] && (!x.prox || x.prox <= ahora); });
+  while (listos.length && Object.keys(colaEntEnVuelo).length < COLA_ENT_A_LA_VEZ) enviarDeColaEnt(listos.shift());
+  pintarChipEnt();
+  var resto = colaEntLeer();
+  if (!resto.length) { if (colaEntHubo && !Object.keys(colaEntEnVuelo).length) { colaEntHubo = false; cargar(false); } return; }   // todo archivado: se confirma con la hoja
+  var espera = resto.filter(function (x) { return !colaEntEnVuelo[x.id]; });
+  if (espera.length) {
+    var prox = Math.min.apply(null, espera.map(function (x) { return x.prox || 0; }));
+    colaEntTimer = setTimeout(procesarColaEnt, Math.max(1000, prox - Date.now()));
   }
 }
+async function enviarDeColaEnt(j) {
+  colaEntEnVuelo[j.id] = true;
+  var r;
+  try { r = await enviarEntrega(j); } catch (e) { r = { ok: false, red: true, error: 'Sin conexión con el servidor.' }; }
+  delete colaEntEnVuelo[j.id];
+  var etiqueta = 'Caja ' + (j.caja || '—') + ' · ticket ' + (j.ticket || '—');
+  if (r && r.ok) {
+    quitarDeColaEnt(j.id); colaEntHubo = true;
+    if (r.incidencia) avisoEnt(etiqueta + ': entregado · incidencia abierta a tu nombre por el cobro.', 'err');
+    else if (r.cobroDifiere) avisoEnt(etiqueta + ': entregado · ojo, el importe cobrado no coincide con el del pedido (' + (r.cobroPedido || '') + ').', 'err');
+  } else if (!r || r.red || r.ocupado || r.reintentable) {
+    var c = colaEntLeer();
+    c.forEach(function (x) {
+      if (x.id !== j.id) return;
+      x.intentos = (x.intentos || 0) + 1;
+      x.prox = Date.now() + COLA_ENT_ESPERAS[Math.min(x.intentos - 1, COLA_ENT_ESPERAS.length - 1)];
+      x.error = (r && r.error) || 'Sin conexión con el servidor.';
+    });
+    colaEntGuardar(c);
+  } else {
+    quitarDeColaEnt(j.id); colaEntHubo = true;
+    var o = buscarPedidoRuta(j.id);
+    if (o) { o.entregaEstado = 'ASIGNADO'; o.entregaTs = ''; }
+    guardarCache(); actualizarPestanas(); pintar();
+    avisoEnt(etiqueta + ': NO se ha podido finalizar. ' + (r.error || '') + ' El pedido vuelve a tu ruta.', 'err');
+  }
+  procesarColaEnt();
+}
+/* Ronda 59: al volver a la app (pantalla encendida, otra app cerrada) o al volver la red, lo que
+   estaba esperando su turno se manda YA, sin esperar al temporizador (en segundo plano el móvil lo frena). */
+function adelantarColaEnt() {
+  var c = colaEntLeer(); if (!c.length) return;
+  c.forEach(function (x) { if (!colaEntEnVuelo[x.id]) x.prox = 0; });
+  colaEntGuardar(c); procesarColaEnt();
+}
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') adelantarColaEnt(); });
+window.addEventListener('online', adelantarColaEnt);
+window.addEventListener('pageshow', adelantarColaEnt);
 function pintarChipEnt() {
   var c = colaEntLeer(), b = document.getElementById('chipEnt');
   if (!c.length) { if (b) b.parentNode.removeChild(b); return; }
