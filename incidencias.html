@@ -21,7 +21,10 @@
        cuánto ha tardado y, si no lee nada, lo dice claramente.
      Requiere Embolsado.js de la ronda 24 (finalizarIncidencia, anadirFotosIncidencia,
      panelIncidencias). -->
-<html lang="es" data-pagina="incidencias" data-version="v3.10.7">
+<!-- v3.10.8 (2026-10-25, ronda 53): filtro por tienda (TRAVESIA · GRANVIA · %DIA · OTROS) en la lista y en el
+     panel; «Qué hacer» al resolver = tarea para Embolsado (sale en su pantalla Pendientes); la lista y el panel
+     se pintan al instante con lo último visto y se actualizan detrás. Requiere Embolsado.js de la ronda 53. -->
+<html lang="es" data-pagina="incidencias" data-version="v3.10.8">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -44,6 +47,13 @@
 body.nx { padding-bottom:40px; }
 .top-tit { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .top-tit .nx-titulo { margin:0; }
+/* Ronda 53: filtro por tienda */
+.f-tiendas { display:flex; gap:6px; overflow-x:auto; padding:2px 0 4px; scrollbar-width:none; }
+.f-tiendas::-webkit-scrollbar { display:none; }
+.f-tiendas button { flex:0 0 auto; min-height:40px; padding:0 14px; border:1.5px solid var(--nx-linea); border-radius:999px; background:var(--nx-superficie);
+  color:var(--nx-tinta); font:700 14px var(--nx-texto); cursor:pointer; }
+.f-tiendas button.on { background:var(--nx-tinta); border-color:var(--nx-tinta); color:var(--nx-tinta-clara); }
+.que-hacer { padding:8px 10px; border-radius:10px; background:var(--nx-ambar-fondo); color:var(--nx-ambar-tinta); font-size:14px; font-weight:700; line-height:1.35; }
 .btn-sec { flex:0 0 auto; min-height:48px; padding:0 14px; border:0; border-radius:12px; background:var(--nx-azul-fondo); color:var(--nx-azul);
   font:800 15px var(--nx-texto); display:inline-flex; align-items:center; gap:8px; cursor:pointer; text-decoration:none; }
 .btn-sec:disabled { opacity:.5; cursor:default; }
@@ -211,6 +221,13 @@ body.nx { padding-bottom:40px; }
       <span id="avisoPushTxt"></span>
       <button type="button" id="btnAvisos" onclick="activarAvisos()">Activar avisos</button>
     </div>
+<div class="f-tiendas" role="group" aria-label="Filtrar por tienda" data-ft hidden>
+      <button type="button" data-g="TODAS" onclick="elegirGrupo('TODAS')">Todas</button>
+      <button type="button" data-g="TRAVESIA" onclick="elegirGrupo('TRAVESIA')">TRAVESIA</button>
+      <button type="button" data-g="GRANVIA" onclick="elegirGrupo('GRANVIA')">GRANVIA</button>
+      <button type="button" data-g="DIA" onclick="elegirGrupo('DIA')">%DIA</button>
+      <button type="button" data-g="OTROS" onclick="elegirGrupo('OTROS')">OTROS</button>
+    </div>
     <div class="nx-pestanas" role="tablist">
       <button class="on" id="fAb" role="tab" onclick="filtro('ABIERTA')">Pendientes</button>
       <button id="fTo" role="tab" onclick="filtro('TODAS')">Todas</button>
@@ -225,6 +242,13 @@ body.nx { padding-bottom:40px; }
       <h1 class="nx-titulo" id="panelTit">Panel de incidencias</h1>
       <button class="btn-sec" onclick="verPanel(false)">Lista</button>
     </div>
+<div class="f-tiendas" role="group" aria-label="Filtrar por tienda" data-ft hidden>
+      <button type="button" data-g="TODAS" onclick="elegirGrupo('TODAS')">Todas</button>
+      <button type="button" data-g="TRAVESIA" onclick="elegirGrupo('TRAVESIA')">TRAVESIA</button>
+      <button type="button" data-g="GRANVIA" onclick="elegirGrupo('GRANVIA')">GRANVIA</button>
+      <button type="button" data-g="DIA" onclick="elegirGrupo('DIA')">%DIA</button>
+      <button type="button" data-g="OTROS" onclick="elegirGrupo('OTROS')">OTROS</button>
+    </div>
     <div class="nx-pestanas" role="tablist">
       <button class="on" id="pMes" role="tab" onclick="periodo('mes')">Mes</button>
       <button id="pAnio" role="tab" onclick="periodo('anio')">Año</button>
@@ -237,7 +261,7 @@ body.nx { padding-bottom:40px; }
     <div id="panelCuerpo"><div class="vacio">Cargando…</div></div>
   </section>
 
-  <div class="nx-version" data-nexo-version="Nexo · Incidencias">Nexo · Incidencias v3.10.2</div>
+  <div class="nx-version" data-nexo-version="Nexo · Incidencias">Nexo · Incidencias v3.10.8</div>
 </main>
 
 <!-- ===== Resolver: responsable y finalizar ===== -->
@@ -255,6 +279,9 @@ body.nx { padding-bottom:40px; }
   </div>
   <div id="resUsuWrap" style="display:none"><label for="resUsu">Qué usuario</label><select id="resUsu"></select></div>
   <div><label for="resSol">Cómo se solucionó</label><textarea id="resSol"></textarea></div>
+  <!-- Ronda 53: tarea para Embolsado. Sale en su pantalla Pendientes hasta que la marquen como concluida. -->
+  <div><label for="resQue">Qué hacer (tarea para Embolsado)</label><textarea id="resQue"></textarea>
+    <p class="nota" style="margin-top:4px">Aparece en Pendientes de Embolsado hasta que se marque como concluida. Vacíalo si no hace falta ninguna tarea.</p></div>
   <div id="resPedWrap" style="display:none">
     <span class="etq">Pedido vinculado</span>
     <div class="opciones una" id="resPedOps">
@@ -358,6 +385,32 @@ document.getElementById('quien').textContent = SESION.nombre || USUARIO;
 
 var filtroAct = 'ABIERTA', datos = [], esAdmin = false, soloPropias = false, puedeFinalizar = false, abiertasPrev = null;
 var USUARIOS = [], NOMBRES = {}, FOTOS_MAX = 10;
+/* Ronda 53: filtro por tienda, compartido por la lista y el panel (se recuerda en este móvil). */
+var GRUPO = 'TODAS';
+try { GRUPO = localStorage.getItem('nexo_inc_grupo') || 'TODAS'; } catch (e) {}
+/* Misma regla que grupoTiendaIncE_ en Embolsado.gs: %DIA por caja «%DIA» o pedido «DIA-…»; sin tienda → OTROS. */
+function grupoInc(i) {
+  var t = String(i['TIENDA'] || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  if (i['CAJA'] === '%DIA' || /^DIA-/.test(String(i['ID RESERVA'] || '')) || /(^|[^A-Z])DIA([^A-Z]|$)/.test(t)) return 'DIA';
+  if (/GRAN\s*VIA/.test(t)) return 'GRANVIA';
+  if (/TRAVESIA/.test(t)) return 'TRAVESIA';
+  return 'OTROS';
+}
+function pintarGrupo() {
+  document.querySelectorAll('[data-ft]').forEach(function (box) {
+    box.hidden = soloPropias;   // el repartidor solo ve las suyas: no necesita filtro
+    box.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-g') === GRUPO); });
+  });
+}
+function elegirGrupo(g) {
+  GRUPO = g;
+  try { localStorage.setItem('nexo_inc_grupo', g); } catch (e) {}
+  pintarGrupo(); pintar();
+  if (el('panel').style.display === 'flex') cargarPanel();
+}
+var CLAVE_INC = 'nexo_inc_cache_v1_' + USUARIO;
+function cacheLeer(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+function cacheGuardar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 
 function llamar(url, accion, extra) {
   return fetch(PROXY + '?url=' + encodeURIComponent(url), {
@@ -401,10 +454,11 @@ function estadoChip(e) {
 }
 function pintar() {
   var l = el('lista');
-  var ab = datos.filter(function (i) { return (i['ESTADO'] || 'ABIERTA') === 'ABIERTA'; });
+  var base = (soloPropias || GRUPO === 'TODAS') ? datos : datos.filter(function (i) { return grupoInc(i) === GRUPO; });   // ronda 53
+  var ab = base.filter(function (i) { return (i['ESTADO'] || 'ABIERTA') === 'ABIERTA'; });
   el('fAb').textContent = 'Pendientes · ' + ab.length;
-  el('fTo').textContent = 'Todas · ' + datos.length;
-  var v = filtroAct === 'TODAS' ? datos : ab;
+  el('fTo').textContent = 'Todas · ' + base.length;
+  var v = filtroAct === 'TODAS' ? base : ab;
   if (!v.length) { l.innerHTML = '<div class="vacio">' + (soloPropias ? 'No tienes incidencias' : 'No hay incidencias') + (filtroAct === 'ABIERTA' ? ' pendientes' : '') + '.</div>'; return; }
   l.innerHTML = v.map(cardHTML).join('');
 }
@@ -429,6 +483,7 @@ function cardHTML(i) {
   var resp = i['RESPONSABLE'] ? i['RESPONSABLE'] + (i['RESPONSABLE USUARIO'] ? ' (' + nombreDe(i['RESPONSABLE USUARIO']) + ')' : '') : '';
   if (resp || pend) h += '<div class="resp">' + IC_PERS + '<span>Responsable: <b>' + esc(resp || 'sin asignar') + '</b></span></div>';
   if (i['SOLUCION']) h += '<div class="linea"><b>Solución:</b> ' + esc(i['SOLUCION']) + '</div>';
+  if (i['QUE HACER']) h += '<div class="que-hacer">Qué hacer: ' + esc(i['QUE HACER']) + '</div>';   // ronda 53
   if (pend && puedeFinalizar) h += '<button class="b-fin" onclick="abrirRes(\'' + id + '\')">' + (resp ? 'Finalizar' : 'Responsable y finalizar') + '</button>';
   if (!pend && i['RESUELTO POR']) {
     var rh = String(i['RESUELTO HORA'] || ''), m = /^(\d{2}\/\d{2})\/\d{4}\s+(\d{1,2}:\d{2})/.exec(rh);
@@ -439,7 +494,12 @@ function cardHTML(i) {
 
 async function cargar() {
   var r = await api('listarIncidencias');
-  if (!r.ok) { el('lista').innerHTML = '<div class="vacio">' + esc(r.error) + '</div>'; return; }
+  if (!r.ok) { if (!datos.length) el('lista').innerHTML = '<div class="vacio">' + esc(r.error) + '</div>'; return; }
+  cacheGuardar(CLAVE_INC, r);   // ronda 53: la próxima vez se pinta al instante
+  aplicarListado(r);
+}
+/* Ronda 53: lo que hacía cargar() con la respuesta, aparte, para poder pintar también lo guardado en el móvil. */
+function aplicarListado(r) {
   esAdmin = !!r.esAdmin; datos = r.incidencias || []; soloPropias = !!r.soloPropias; puedeFinalizar = !!r.puedeFinalizar;
   FOTOS_MAX = r.fotosMax || 10;
   USUARIOS = r.usuarios || [];
@@ -456,7 +516,8 @@ async function cargar() {
   if (abiertasPrev !== null && ab > abiertasPrev) pitido();
   abiertasPrev = ab;
   document.title = (ab ? '(' + ab + ') ' : '') + 'Nexo · Incidencias';
-  if (r.verPanel) revisarAvisos();
+  if (r.verPanel && !r._cache) revisarAvisos();
+  pintarGrupo();
   if (!document.querySelector('.modal.on')) pintar();
 }
 
@@ -477,6 +538,8 @@ function abrirRes(id) {
   }).join('');
   el('resUsu').value = (i['RESPONSABLE USUARIO'] || i['USUARIO'] || '').toLowerCase();
   el('resSol').value = i['SOLUCION'] || '';
+  // Ronda 53: «Qué hacer» viene con lo que se guardó; si nunca se escribió, con la sugerencia.
+  el('resQue').value = i['QUE HACER'] || ('Solucionar incidencia de «' + (i['NOMBRE'] || 'cliente') + '» y coger otro ticket si es necesario.');
   var inv = { 'Usuario': 'USUARIO', 'Cliente': 'CLIENTE', 'Tienda': 'TIENDA', 'No identificado': 'NO_IDENTIFICADO' };
   elegirResp(inv[i['RESPONSABLE']] || '');
   // Pedido vinculado: restaurar / eliminar solo ADM
@@ -523,6 +586,7 @@ async function guardarRes(finalizar) {
   }
   var r = await api('finalizarIncidencia', {
     idIncidencia: RES.id, responsable: RES.resp, responsableUsuario: usu, solucion: el('resSol').value.trim(),
+    queHacer: el('resQue').value.trim(),   // ronda 53
     accionPedido: RES.esDia ? '' : accion, finalizar: !!finalizar
   });
   spin(false);
@@ -531,7 +595,8 @@ async function guardarRes(finalizar) {
     return;
   }
   cerrar('mRes'); RES = null;
-  msg(finalizar ? 'Incidencia finalizada.' : 'Guardado. La incidencia sigue pendiente.', 'ok');
+  msg((finalizar ? 'Incidencia finalizada.' : 'Guardado. La incidencia sigue pendiente.') +
+      ({ creada: ' Tarea creada para Embolsado.', actualizada: ' Tarea de Embolsado actualizada.', anulada: ' Tarea de Embolsado anulada.' }[r.tarea] || ''), 'ok');
   cargar();
 }
 
@@ -659,16 +724,24 @@ async function cargarPanel() {
   var hoy = new Date();
   el('perTxt').textContent = PER.tipo === 'anio' ? String(PER.anio) : MESES[PER.mes - 1] + ' ' + PER.anio;
   el('btnSig').disabled = PER.tipo === 'anio' ? PER.anio >= hoy.getFullYear() : (PER.anio > hoy.getFullYear() || (PER.anio === hoy.getFullYear() && PER.mes >= hoy.getMonth() + 1));
-  el('panelCuerpo').innerHTML = '<div class="vacio">Cargando…</div>';
+  // Ronda 53: lo último visto de este periodo y tienda sale al instante; la respuesta nueva lo sustituye.
+  var claveP = 'nexo_inc_panel_v1_' + USUARIO + '_' + PER.tipo + '_' + PER.anio + '_' + PER.mes + '_' + GRUPO;
+  var cP = cacheLeer(claveP);
+  if (cP && cP.ok) pintarPanel(cP); else el('panelCuerpo').innerHTML = '<div class="vacio">Cargando…</div>';
+  pintarGrupo();
   var n = ++_panelPide;
-  var r = await api('panelIncidencias', { periodo: PER.tipo, anio: PER.anio, mes: PER.mes });
+  var r = await api('panelIncidencias', { periodo: PER.tipo, anio: PER.anio, mes: PER.mes, grupo: GRUPO });
   if (n !== _panelPide) return;
-  if (!r.ok) { el('panelCuerpo').innerHTML = '<div class="vacio">' + esc(r.error) + '</div>'; return; }
+  if (!r.ok) { if (!cP) el('panelCuerpo').innerHTML = '<div class="vacio">' + esc(r.error) + '</div>'; return; }
+  cacheGuardar(claveP, r);
+  pintarPanel(r);
+}
+function pintarPanel(r) {
   var t = r.totales || {};
   var h = '<div class="tiles">' +
     '<div class="tile"><i style="background:var(--nx-lampara)"></i><b>' + (t.pendientes || 0) + '</b><span>Pendientes</span></div>' +
     '<div class="tile"><i style="background:#22C55E"></i><b>' + (t.solucionadas || 0) + '</b><span>Solucionadas</span></div>' +
-    '<div class="tile oscuro"><i style="background:#8A9BB4"></i><b>' + (t.total || 0) + '</b><span>Total del ' + (PER.tipo === 'anio' ? 'año' : 'mes') + '</span></div></div>';
+    '<div class="tile oscuro"><i style="background:#8A9BB4"></i><b>' + (t.total || 0) + '</b><span>Total del ' + (PER.tipo === 'anio' ? 'año' : 'mes') + (GRUPO !== 'TODAS' && !r.soloPropias ? ' · ' + (GRUPO === 'DIA' ? '%DIA' : GRUPO) : '') + '</span></div></div>';
   /* Ronda 47: el panel del repartidor es solo el suyo — sus totales y sus
      motivos. Los rankings de quién acumula incidencias y de responsables son
      de gestión y no se le enseñan. */
@@ -972,6 +1045,7 @@ async function activarAvisos() {
   } catch (e) { spin(false); msg('No se pudieron activar los avisos: ' + (e.message || e), 'err'); }
 }
 
+(function () { var c = cacheLeer(CLAVE_INC); if (c && c.ok) { c._cache = true; abiertasPrev = null; aplicarListado(c); abiertasPrev = null; } })();   // ronda 53
 cargar();
 setInterval(function () { if (el('panel').style.display !== 'flex') cargar(); }, 30000);
 </script>
