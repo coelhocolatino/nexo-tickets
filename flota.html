@@ -13,7 +13,7 @@
          con el estado de cada furgoneta.
      Backend: proyecto Apps Script "NEXO FLOTA" (Flota.gs), por el proxy de
      Cloudflare, igual que el resto de las páginas. -->
-<html lang="es" data-pagina="flota" data-version="v3.10.3">
+<html lang="es" data-pagina="flota" data-version="v3.10.4">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -301,6 +301,8 @@ function postFlota(body) {
 ============================================================ */
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 function num(v) { var n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isNaN(n) ? null : n; }
+/* Ronda 66b: el CCP se muestra solo con el número, sin «€» */
+function num2(v) { return v === null || v === undefined || v === '' ? '—' : Number(v).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function eur(v) { return v === null || v === undefined || v === '' ? '—' : Number(v).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
 function kms(v) { return v === null || v === undefined || v === '' ? '—' : Number(v).toLocaleString('es-ES') + ' km'; }
 function dec(v, d) { return v === null || v === undefined || v === '' ? '—' : Number(v).toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d }); }
@@ -461,7 +463,7 @@ function pintarHistorial(lista) {
   el.innerHTML = lista.map(function (f) {
     return '<div class="fl-item"><span>' + esc(ddmm(f.fecha)) + ' · ' + esc(f.matricula) + ' · ' + esc(f.conductor) + '<br>' +
       '<span class="fl-sub">' + kms(f.recorrido) + ' · ' + dec(f.litros, 2) + ' L · ' + (f.l100 ? dec(f.l100, 2) + ' L/100' : '—') + '</span></span>' +
-      '<span class="der">' + eur(f.valor) + '<br>' + (f.sinCcp ? 'sin CCP' : (f.entregas ? f.entregas + ' entregas · CCP ' + eur(f.ccp) : 'sin entregas')) + '</span></div>';
+      '<span class="der">' + eur(f.valor) + '<br>' + (f.sinCcp ? 'sin CCP' : (f.entregas ? f.entregas + ' entregas · CCP ' + num2(f.ccp) : 'sin entregas')) + '</span></div>';
   }).join('');
 }
 
@@ -607,7 +609,7 @@ function guardarComb(forzar) {
         '<div class="fl-kpi"><b>' + dec(r.l100, 2) + '</b><span>L/100 km</span></div>' +
         '<div class="fl-kpi"><b>' + dec(r.kmL, 2) + '</b><span>km/L</span></div>' +
         '<div class="fl-kpi"><b>' + (r.sinCcp ? '—' : (r.entregas || 0)) + '</b><span>entregas</span></div>' +
-        '<div class="fl-kpi"><b>' + (r.sinCcp ? 'Sin CCP' : eur(r.ccp)) + '</b><span>CCP · € por pedido</span></div>' +
+        '<div class="fl-kpi"><b>' + (r.sinCcp ? 'Sin CCP' : num2(r.ccp)) + '</b><span>CCP</span></div>' +
         '<div class="fl-kpi"><b>' + eur(r.importe) + '</b><span>repostado</span></div>' +
       '</div>' +
       '<div class="fl-sub">Período de entregas: ' + esc(ddmm(r.periodo.inicio)) + ' → ' + esc(ddmm(r.periodo.fin)) +
@@ -801,7 +803,7 @@ function cargarPanel() {
                 : '<div class="fl-sub">Sin vencimientos pendientes.</div>') +
         '<div class="fl-kpis">' +
           '<div class="fl-kpi"><b>' + dec(cb.l100Medio, 2) + '</b><span>L/100 medio</span></div>' +
-          '<div class="fl-kpi"><b>' + eur(cb.ccpMedio) + '</b><span>CCP medio</span></div>' +
+          '<div class="fl-kpi"><b>' + num2(cb.ccpMedio) + '</b><span>CCP medio</span></div>' +
           '<div class="fl-kpi"><b>' + eur(cb.gasto90) + '</b><span>combustible 90 d</span></div>' +
           '<div class="fl-kpi"><b>' + eur(tl.costeTrimestre) + '</b><span>taller trimestre</span></div>' +
           '<div class="fl-kpi"><b>' + eur(tl.coste12meses) + '</b><span>taller 12 meses</span></div>' +
