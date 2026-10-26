@@ -19,6 +19,13 @@ Es una decisión del usuario y manda sobre cualquier skill de diseño.
 - Poca animación. Nada decorativo que retrase una tarea operativa.
 - Cualquier cambio visual nuevo o rediseño de página se presenta primero como lienzo (mockup con el CSS real) y no se programa hasta que Wanderson lo apruebe.
 
+### Excepción: módulo Jessica (decisión de Wanderson, 27/10/2026)
+Solo `jessica.html` y el panel de Jessica tienen estética propia, «Kinetic»: fondo con degradado en movimiento y partículas suaves, tarjetas de cristal (glassmorphism), insignia que late, botones con brillo y efecto imán, y respuesta visual a la voz.
+- Mantiene los colores (`--nx-*`) y las fuentes de Nexo.
+- Textos operativos legibles, botones grandes, ninguna animación que retrase una orden; todo el movimiento se apaga con `prefers-reduced-motion`. Debe ir fluido en móviles sencillos.
+- Del estilo «Kinetic» se toma el aspecto, no textos de marketing.
+- El resto de NEXO sigue con el diseño de siempre y la regla de «poca animación».
+
 ## Skills de diseño instaladas (globales)
 Se instalan en `~/.claude/skills`. Su uso aquí está limitado:
 - **web-design-guidelines (Vercel)**: solo para auditar accesibilidad y consistencia (`archivo:línea`). Los hallazgos se proponen; no se aplican cambios de aspecto sin aprobación. Arreglos de accesibilidad que no cambian el aspecto (etiquetas `aria-label`, foco visible, tamaños de imagen) pueden proponerse en bloque.
