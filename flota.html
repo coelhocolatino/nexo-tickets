@@ -13,7 +13,7 @@
          con el estado de cada furgoneta.
      Backend: proyecto Apps Script "NEXO FLOTA" (Flota.gs), por el proxy de
      Cloudflare, igual que el resto de las páginas. -->
-<html lang="es" data-pagina="flota" data-version="v3.10.2">
+<html lang="es" data-pagina="flota" data-version="v3.10.3">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -85,6 +85,20 @@
 @keyframes nxGira { to { transform:rotate(360deg); } }
 #spinner-text { color:#fff; font-size:15px; font-weight:800; }
 .oculto { display:none !important; }
+/* Ronda 66: tarjeta de puntos de la gasolinera junto al título + botón CCP junto a Notas */
+.fl-titfila { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.fl-tarjeta { display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 8px 4px; border:1.5px solid var(--nx-linea);
+  border-radius:12px; background:#fff; cursor:pointer; font-family:inherit; min-height:44px; }
+.fl-tarjeta svg { display:block; height:30px; width:132px; }
+.fl-tarjeta span { font-size:10px; font-weight:800; color:var(--nx-suave); letter-spacing:.04em; text-transform:uppercase; }
+#tarjetaGrande { position:fixed; inset:0; background:#fff; z-index:1300; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:24px; }
+#tarjetaGrande svg { width:100%; max-width:560px; height:160px; }
+#tarjetaGrande .num { font-size:20px; font-weight:800; letter-spacing:.14em; color:#000; }
+#tarjetaGrande .nx-btn { width:100%; max-width:560px; }
+.fl-notas { display:flex; gap:8px; }
+.fl-notas input { flex:1; min-width:0; }
+.fl-ccpbtn { flex:none; min-width:64px; border:0; border-radius:12px; background:var(--nx-verde); color:#fff; font-family:inherit; font-size:15px; font-weight:800; cursor:pointer; }
+.fl-ccpbtn.off { background:var(--nx-rojo); }
 </style>
 
 <!-- GUARD DE SESIÓN -->
@@ -116,7 +130,19 @@
 </header>
 
 <main class="nx-pag">
-  <h1 class="nx-titulo">Flota</h1>
+  <div class="fl-titfila">
+    <h1 class="nx-titulo">Flota</h1>
+    <button type="button" class="fl-tarjeta" id="btnTarjeta" aria-label="Tarjeta de puntos de la gasolinera: tocar para ampliar">
+      <svg viewBox="0 0 143 60" preserveAspectRatio="none" shape-rendering="crispEdges"><rect x="10" y="0" width="2" height="60"/><rect x="13" y="0" width="1" height="60"/><rect x="16" y="0" width="3" height="60"/><rect x="21" y="0" width="3" height="60"/><rect x="25" y="0" width="2" height="60"/><rect x="29" y="0" width="1" height="60"/><rect x="32" y="0" width="1" height="60"/><rect x="36" y="0" width="2" height="60"/><rect x="40" y="0" width="1" height="60"/><rect x="43" y="0" width="3" height="60"/><rect x="47" y="0" width="1" height="60"/><rect x="50" y="0" width="2" height="60"/><rect x="54" y="0" width="2" height="60"/><rect x="59" y="0" width="1" height="60"/><rect x="62" y="0" width="1" height="60"/><rect x="65" y="0" width="2" height="60"/><rect x="69" y="0" width="1" height="60"/><rect x="72" y="0" width="3" height="60"/><rect x="76" y="0" width="2" height="60"/><rect x="79" y="0" width="2" height="60"/><rect x="82" y="0" width="4" height="60"/><rect x="87" y="0" width="1" height="60"/><rect x="89" y="0" width="4" height="60"/><rect x="94" y="0" width="3" height="60"/><rect x="98" y="0" width="3" height="60"/><rect x="102" y="0" width="1" height="60"/><rect x="105" y="0" width="2" height="60"/><rect x="109" y="0" width="2" height="60"/><rect x="112" y="0" width="1" height="60"/><rect x="116" y="0" width="1" height="60"/><rect x="120" y="0" width="2" height="60"/><rect x="125" y="0" width="3" height="60"/><rect x="129" y="0" width="1" height="60"/><rect x="131" y="0" width="2" height="60"/></svg>
+      <span>Tarjeta puntos</span>
+    </button>
+  </div>
+  <div id="tarjetaGrande" class="oculto" role="dialog" aria-label="Tarjeta de puntos">
+    <div class="fl-sub">Enséñalo en caja · sube el brillo si no lo lee</div>
+    <svg viewBox="0 0 143 60" preserveAspectRatio="none" shape-rendering="crispEdges"><rect x="10" y="0" width="2" height="60"/><rect x="13" y="0" width="1" height="60"/><rect x="16" y="0" width="3" height="60"/><rect x="21" y="0" width="3" height="60"/><rect x="25" y="0" width="2" height="60"/><rect x="29" y="0" width="1" height="60"/><rect x="32" y="0" width="1" height="60"/><rect x="36" y="0" width="2" height="60"/><rect x="40" y="0" width="1" height="60"/><rect x="43" y="0" width="3" height="60"/><rect x="47" y="0" width="1" height="60"/><rect x="50" y="0" width="2" height="60"/><rect x="54" y="0" width="2" height="60"/><rect x="59" y="0" width="1" height="60"/><rect x="62" y="0" width="1" height="60"/><rect x="65" y="0" width="2" height="60"/><rect x="69" y="0" width="1" height="60"/><rect x="72" y="0" width="3" height="60"/><rect x="76" y="0" width="2" height="60"/><rect x="79" y="0" width="2" height="60"/><rect x="82" y="0" width="4" height="60"/><rect x="87" y="0" width="1" height="60"/><rect x="89" y="0" width="4" height="60"/><rect x="94" y="0" width="3" height="60"/><rect x="98" y="0" width="3" height="60"/><rect x="102" y="0" width="1" height="60"/><rect x="105" y="0" width="2" height="60"/><rect x="109" y="0" width="2" height="60"/><rect x="112" y="0" width="1" height="60"/><rect x="116" y="0" width="1" height="60"/><rect x="120" y="0" width="2" height="60"/><rect x="125" y="0" width="3" height="60"/><rect x="129" y="0" width="1" height="60"/><rect x="131" y="0" width="2" height="60"/></svg>
+    <div class="num">2708241120898</div>
+    <button type="button" class="nx-btn tinta grande" id="btnTarjetaCerrar">Cerrar</button>
+  </div>
   <div id="msg" role="alert" aria-live="polite"></div>
 
   <div class="fl-tabs oculto" id="tabs">
@@ -158,7 +184,9 @@
         <div class="fl-campo"><label>KM del último repostaje</label><input type="text" id="c_kmant" value="—" readonly></div>
         <div class="fl-campo" id="c_imp_w"><label for="c_imp">Importe repostado (€)</label><input type="number" id="c_imp" inputmode="decimal" min="0" step="0.01"></div>
         <div class="fl-campo" id="c_lit_w"><label for="c_lit">Litros</label><input type="number" id="c_lit" inputmode="decimal" min="0" step="0.01"></div>
-        <div class="fl-campo ancho"><label for="c_notas">Notas (opcional)</label><input type="text" id="c_notas" placeholder="p. ej. PAGADO, cambio de manguito…"></div>
+        <div class="fl-campo ancho"><label for="c_notas">Notas (opcional)</label>
+          <div class="fl-notas"><input type="text" id="c_notas" placeholder="p. ej. PAGADO, cambio de manguito…"><button type="button" class="fl-ccpbtn" id="c_ccp" aria-pressed="true">CCP</button></div></div>
+        <div class="fl-aviso rojo ancho oculto" id="c_ccp_aviso">Al no seleccionar CCP no se contabilizan los pedidos.</div>
       </div>
       <div class="fl-kpis">
         <div class="fl-kpi"><b id="k_rec">—</b><span>km recorridos</span></div>
@@ -372,7 +400,21 @@ function leerComoDataURL(file) {
    ARRANQUE
 ============================================================ */
 var INICIO = null, VEHICULOS = [], CATEGORIAS = [], ITEMS = [];
-var combFileId = '', combTurno = 'TARDE';
+var combFileId = '', combTurno = 'TARDE', combCcp = true;
+
+/* Ronda 66: botón CCP (verde = cuenta los pedidos; rojo = no los cuenta) */
+function ponCcp(v) {
+  combCcp = !!v;
+  var b = document.getElementById('c_ccp');
+  b.classList.toggle('off', !combCcp);
+  b.setAttribute('aria-pressed', combCcp ? 'true' : 'false');
+  document.getElementById('c_ccp_aviso').classList.toggle('oculto', combCcp);
+}
+document.getElementById('c_ccp').addEventListener('click', function () { ponCcp(!combCcp); });
+
+/* Ronda 66: tarjeta de puntos a pantalla completa */
+document.getElementById('btnTarjeta').addEventListener('click', function () { document.getElementById('tarjetaGrande').classList.remove('oculto'); });
+document.getElementById('btnTarjetaCerrar').addEventListener('click', function () { document.getElementById('tarjetaGrande').classList.add('oculto'); });
 var factFileId = '', factLineas = [];
 
 if (ES_ADMIN) document.getElementById('tabs').classList.remove('oculto');
@@ -419,7 +461,7 @@ function pintarHistorial(lista) {
   el.innerHTML = lista.map(function (f) {
     return '<div class="fl-item"><span>' + esc(ddmm(f.fecha)) + ' · ' + esc(f.matricula) + ' · ' + esc(f.conductor) + '<br>' +
       '<span class="fl-sub">' + kms(f.recorrido) + ' · ' + dec(f.litros, 2) + ' L · ' + (f.l100 ? dec(f.l100, 2) + ' L/100' : '—') + '</span></span>' +
-      '<span class="der">' + eur(f.valor) + '<br>' + (f.entregas ? f.entregas + ' entregas · CCP ' + eur(f.ccp) : 'sin entregas') + '</span></div>';
+      '<span class="der">' + eur(f.valor) + '<br>' + (f.sinCcp ? 'sin CCP' : (f.entregas ? f.entregas + ' entregas · CCP ' + eur(f.ccp) : 'sin entregas')) + '</span></div>';
   }).join('');
 }
 
@@ -464,6 +506,7 @@ function leerTicket(file) {
     document.getElementById('c_notas').value = [d.estacion, d.producto].filter(Boolean).join(' · ');
     if (d.matricula) pintarSelectVeh('c_mat', d.matricula);
     ponTurno(d.turno || 'TARDE');
+    ponCcp(true);
     marcarPedir({ fecha: 'c_fecha_w', hora: 'c_hora_w', matricula: 'c_mat_w', km: 'c_km_w', importe: 'c_imp_w', litros: 'c_lit_w' }, r.faltan);
     pintarAvisos('combAvisos', r.avisos);
     if ((r.faltan || []).length) setMsg('Comprueba los datos marcados en ámbar y guarda.', 'var(--nx-ambar)');
@@ -485,6 +528,7 @@ function abrirManual(aviso) {
   document.getElementById('c_fecha').value = (INICIO && INICIO.hoy) || '';
   document.getElementById('c_hora').value = ('0' + ahora.getHours()).slice(-2) + ':' + ('0' + ahora.getMinutes()).slice(-2);
   ponTurno(ahora.getHours() < 14 ? 'MAÑANA' : 'TARDE');
+  ponCcp(true);
   ['c_km', 'c_imp', 'c_lit', 'c_notas'].forEach(function (id) { document.getElementById(id).value = ''; });
   document.getElementById('c_cond').value = (INICIO && INICIO.conductor) || '';
   if (INICIO && INICIO.sugerida) pintarSelectVeh('c_mat', INICIO.sugerida);
@@ -537,7 +581,8 @@ function guardarComb(forzar) {
     km: document.getElementById('c_km').value,
     importe: document.getElementById('c_imp').value,
     litros: document.getElementById('c_lit').value,
-    notas: document.getElementById('c_notas').value
+    notas: document.getElementById('c_notas').value,
+    ccp: combCcp
   };
   if (!datos.fecha) { setMsg('Falta la fecha.', 'var(--nx-rojo)'); return; }
   if (!datos.matricula) { setMsg('Elige la furgoneta.', 'var(--nx-rojo)'); return; }
@@ -561,8 +606,8 @@ function guardarComb(forzar) {
         '<div class="fl-kpi"><b>' + kms(r.recorrido) + '</b><span>recorrido</span></div>' +
         '<div class="fl-kpi"><b>' + dec(r.l100, 2) + '</b><span>L/100 km</span></div>' +
         '<div class="fl-kpi"><b>' + dec(r.kmL, 2) + '</b><span>km/L</span></div>' +
-        '<div class="fl-kpi"><b>' + (r.entregas || 0) + '</b><span>entregas</span></div>' +
-        '<div class="fl-kpi"><b>' + eur(r.ccp) + '</b><span>CCP · € por pedido</span></div>' +
+        '<div class="fl-kpi"><b>' + (r.sinCcp ? '—' : (r.entregas || 0)) + '</b><span>entregas</span></div>' +
+        '<div class="fl-kpi"><b>' + (r.sinCcp ? 'Sin CCP' : eur(r.ccp)) + '</b><span>CCP · € por pedido</span></div>' +
         '<div class="fl-kpi"><b>' + eur(r.importe) + '</b><span>repostado</span></div>' +
       '</div>' +
       '<div class="fl-sub">Período de entregas: ' + esc(ddmm(r.periodo.inicio)) + ' → ' + esc(ddmm(r.periodo.fin)) +
