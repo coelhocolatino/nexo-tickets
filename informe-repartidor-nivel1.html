@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.29">
+<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.31">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -766,6 +766,11 @@ function App() {
   });
   const [clubMsg, setClubMsg] = useState("");
   const clubKey = clubDates.join(",");
+  /* RONDA 64 — el botón «Generar PDF» vive fuera de React (en la barra de
+     abajo), así que necesita saber qué se está viendo ahora mismo. */
+  useEffect(() => {
+    window.__nxInfSel = { rep: rep, periodoId: periodoId };
+  }, [rep, periodoId]);
 
   /* Qué repartidores puede abrir: él mismo más los autorizados. Fuera de la app
      (vista previa) se dejan todos, para poder revisar la pantalla. */
@@ -2521,7 +2526,16 @@ function App() {
     "aria-hidden": "true"
   }, "\uD83D\uDEAA"), " Salir"))));
 }
-ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
+/* RONDA 64 — una sola raíz de React: si el informe se repinta porque han
+   llegado datos nuevos, se reutiliza la raíz en vez de crear otra.
+   El «key» es la marca de hora de los datos: al cambiar, React rehace la
+   pantalla entera. Hace falta que sea así porque casi todos los números van
+   en useMemo con la tienda, el repartidor y el período como dependencias: si
+   solo se volviera a pintar, los useMemo devolverían el cálculo viejo y se
+   actualizaría la conducción pero NO los totales. El filtro de tienda se
+   guarda en el móvil, así que sobrevive. */
+window.__nxInfRaiz = window.__nxInfRaiz || ReactDOM.createRoot(document.getElementById("root"));
+window.__nxInfRaiz.render(/*#__PURE__*/React.createElement(App, { key: DATA.generado || DATA.snapshot || "1" }));
 }
 
 /* ═══════════════ RONDA 49 · carga de los datos ═══════════════ */
@@ -2559,6 +2573,35 @@ ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.c
   }
 
   var BARRA_ID = 'nxInfBarra';
+  /* RONDA 64 — el PDF lo pueden sacar el ADM y los usuarios de nivel 2. */
+  var NIVEL_SES = ses && ses.nivel ? String(ses.nivel).toUpperCase().trim() : '';
+  var PUEDE_PDF = NIVEL_SES === 'ADMIN' || NIVEL_SES === 'USUARIO 2';
+  var pdfOcupado = false;
+  function pdfAviso(txt, url, nombre) {
+    var z = document.getElementById('nxInfPdfMsg');
+    if (!z) return;
+    if (url) {
+      z.innerHTML = '<a href="' + url + '" target="_blank" rel="noopener" ' +
+        'style="color:var(--brand,#1B4F9C);font-weight:700">Abrir ' + pvEsc(nombre || 'el PDF') + '</a>';
+    } else {
+      z.textContent = txt || '';
+    }
+  }
+  function generarPdf() {
+    if (pdfOcupado) return;
+    pdfOcupado = true;
+    var b = document.getElementById('nxInfPdf');
+    if (b) { b.disabled = true; b.textContent = 'Generando…'; }
+    pdfAviso('Puede tardar unos segundos.');
+    var sel = window.__nxInfSel || {};
+    llamar('informeRepartidorPdfGenerar', { rep: sel.rep || '', periodoId: sel.periodoId || 'act' })
+      .then(function (r) {
+        pdfOcupado = false;
+        if (b) { b.disabled = false; b.textContent = 'Generar PDF'; }
+        if (r && r.ok && r.url) pdfAviso('', r.url, r.nombre);
+        else pdfAviso((r && r.error) || 'No se pudo generar el PDF.');
+      });
+  }
   function barra(generado, estado) {
     var b = document.getElementById(BARRA_ID);
     if (!b) {
@@ -2572,19 +2615,39 @@ ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.c
       colocarB();
       try { new MutationObserver(colocarB).observe(raiz, { childList: true, subtree: true }); } catch (e) {}
     }
+    var estiloBoton = 'min-height:36px;padding:0 12px;border:0;border-radius:10px;' +
+      'font:700 13px var(--texto,system-ui);cursor:pointer';
     b.innerHTML = '<span>Datos de las <b>' + cuando(generado) + '</b>' +
       ' · se actualizan solos cada 3 h desde las 11h</span>' +
-      '<button type="button" id="nxInfAct" style="min-height:36px;padding:0 12px;border:0;border-radius:10px;' +
-      'background:var(--ink,#0B2447);color:#fff;font:700 13px var(--texto,system-ui)">' +
+      '<button type="button" id="nxInfAct" style="' + estiloBoton +
+      ';background:var(--ink,#0B2447);color:#fff">' +
       (estado === 'cargando' ? 'Buscando…' : 'Buscar datos nuevos') + '</button>' +
+      /* RONDA 64 · solo nivel 2 y ADM */
+      (PUEDE_PDF ? '<button type="button" id="nxInfPdf" style="' + estiloBoton +
+        ';background:var(--surface-2,#eef2f8);color:var(--ink,#0B2447);' +
+        'border:1px solid var(--ring,#d7dee8)">Generar PDF</button>' +
+        '<span id="nxInfPdfMsg" style="color:var(--ink-2,#55606e);font-weight:600"></span>' : '') +
       (estado && estado !== 'cargando' ? '<span style="color:var(--s4,#b45309)">' + estado + '</span>' : '');
     var btn = document.getElementById('nxInfAct');
     if (btn) btn.onclick = function () { comprobar(true); };
+    var btnPdf = document.getElementById('nxInfPdf');
+    if (btnPdf) btnPdf.onclick = generarPdf;
   }
 
   var montado = false;
+  var generadoMontado = '';
   function montar(generado) {
-    if (!montado) { arrancarInforme(); montado = true; previstosManana(); }   // ronda 54
+    if (!montado) {
+      arrancarInforme(); montado = true; generadoMontado = generado || '';
+      previstosManana();                                                      // ronda 54
+    } else if ((generado || '') !== generadoMontado) {
+      /* RONDA 64 — el informe ya estaba pintado con la copia del móvil y han
+         llegado datos nuevos. Antes solo cambiaba la hora de la barra y los
+         números se quedaban como estaban (estilo de conducción incluido).
+         Ahora se vuelve a pintar con los datos recién descargados. */
+      generadoMontado = generado || '';
+      arrancarInforme();
+    }
     barra(generado, '');
   }
   /* ══════════════════════════════════════════════════════════════════════════
