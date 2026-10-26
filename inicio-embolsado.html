@@ -10,7 +10,7 @@
      v3.10.2 (2026-10-09): ventana "Qué novedades hay" (nexo-novedades.js), una vez por usuario;
      se vuelve a abrir con el enlace de abajo.
 -->
-<html lang="es" data-pagina="inicio-embolsado" data-version="v3.10.5">
+<html lang="es" data-pagina="inicio-embolsado" data-version="v3.10.6">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -96,6 +96,11 @@ body.nx { display:flex; flex-direction:column; }
     <span class="ico"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 12H5zM9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
     <span class="txt">Embolsado</span><svg class="flecha" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
   </a>
+  <!-- Ronda 67: Jessica (Embolsado por voz). Entra directamente escuchando. -->
+  <a id="btnJessica" href="#">
+    <span class="ico"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span>
+    <span class="txt">Jessica</span><svg class="flecha" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </a>
   <a id="btnInforme" href="informe.html">
     <span class="ico"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span>
     <span class="txt">Informe</span><svg class="flecha" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
@@ -123,6 +128,9 @@ var PROXY_BASE    = 'https://sad-proxy.colatino-ventas-enlinea.workers.dev/';
 // directo, sin volver a pedir contraseña — igual que hace index.html.
 document.getElementById('btnReservas').href  = 'reservas.html?u=' + encodeURIComponent(USUARIO);
 document.getElementById('btnEmbolsado').href = EMBOLSADO_URL + '?u=' + encodeURIComponent(USUARIO);
+// Ronda 67: NEXO - MÓDULO JESSICA; ?jessica=1 abre el panel de voz escuchando.
+var JESSICA_URL = 'https://script.google.com/macros/s/AKfycbzo14OOZrwPqfXjPd1xjIn5EXr7EoFmLd6YdATo5QrC4piPaByEVrC4pUX9jpBwMl--/exec';
+document.getElementById('btnJessica').href = JESSICA_URL + '?u=' + encodeURIComponent(USUARIO) + '&jessica=1';
 
 function cerrarSesion() {
   if (confirm('¿Cerrar sesión?')) {
