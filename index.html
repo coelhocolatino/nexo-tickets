@@ -14,7 +14,7 @@
      Los globos de %DIA e Incidencias los sigue calculando nexo-nav.js: aquí
      solo se copian a los botones, sin pedir nada más al servidor.
      El departamento EMBOLSADO (sin ser ADM) sigue yendo a inicio-embolsado.html. -->
-<html lang="es" data-pagina="index" data-version="v3.11.3">
+<html lang="es" data-pagina="index" data-version="v3.11.4">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -201,7 +201,8 @@ var BOTONES = [
   { k: 'embolsado', t: 'Embolsado', sub: 'Leer tickets y preparar', href: EMBOLSADO_URL + '?u=' + USR, target: '_top',
     ic: '<path d="M6 8h12l1 12H5zM9 8V6a3 3 0 0 1 6 0v2"/>',
     ok: ES_ADMIN || ES_EMB },
-  { k: 'jessica', t: 'Jessica', sub: 'Embolsado por voz', href: JESSICA_URL + '?u=' + USR + '&jessica=1', target: '_top',
+  // Ronda 68: abre jessica.html (fuera de Apps Script: el micrófono funciona directo y escucha al entrar).
+  { k: 'jessica', t: 'Jessica', sub: 'Embolsado por voz', href: 'jessica.html',
     ic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
     ok: ES_ADMIN || ES_EMB },
   { k: 'actualizar', t: 'Actualizar pedidos', sub: 'Reconstruir el control de tickets', accion: 'nexoActualizarPedidos', ancho: true,

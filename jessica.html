@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<!-- Nexo Tickets — jessica.html
+     Ronda 68 (2026-10-27): «Centro de mando» de Jessica, embolsado por voz. Va fuera de Apps Script
+     para que el micrófono funcione directo (dentro del marco de Google no hay permiso). Habla con
+     NEXO - MÓDULO JESSICA por doPost (jesPanel / jesHacer / jesInterpretar / jesVoz, ver Jessica.gs),
+     que usa las MISMAS funciones que los botones de Embolsado. Estética propia (excepción en CLAUDE.md).
+     v3.10.1: primera versión (lienzo C «Pulso» v4 aprobado).
+-->
+<html lang="es" data-pagina="jessica" data-version="v3.10.1">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050E1F">
+<link rel="manifest" href="manifest.json?v=5">
+<link rel="icon" href="nexo-icon-192.png">
+<link rel="apple-touch-icon" href="nexo-icon-192.png">
+<title>Nexo · Jessica</title>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="nexo-version.js?v=1"></script>
+<style>
+
+/* Ronda 68: estética «Kinetic/Pulso» SOLO para Jessica (excepción aprobada en CLAUDE.md). Tokens de nexo-tema.css. */
+:root {
+  --nx-tinta:#0B2447; --nx-azul:#17409E; --nx-verde:#15803D; --nx-lampara:#FBBF24; --nx-rojo:#B42318;
+  --nx-display:'Big Shoulders Display','Arial Narrow',sans-serif;
+  --nx-texto:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --p-fondo:#050E1F; --p-texto:#F3F7FC; --p-suave:rgba(243,247,252,.68); --p-panel:rgba(243,247,252,.05); --p-borde:rgba(243,247,252,.12);
+  --vivo:#22C55E; --rojo:#EF4444; --frio:#67E8F9;
+}
+* { box-sizing:border-box; }
+body { margin:0; min-height:100dvh; color:var(--p-texto); font-family:var(--nx-texto); -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  background-color:#050E1F; background-image:radial-gradient(80% 40% at 50% 0%, rgba(23,64,158,.55), transparent 70%); }
+body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity:.35; background-image:linear-gradient(rgba(243,247,252,.05) 1px, transparent 1px); background-size:100% 4px; }
+
+.pag { position:relative; max-width:600px; margin:0 auto; padding:calc(12px + env(safe-area-inset-top)) 12px calc(24px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:12px; }
+.cab { display:flex; align-items:center; gap:10px; min-height:48px; }
+.cab .marca { font-family:var(--nx-display); font-weight:800; font-size:28px; letter-spacing:1px; color:#fff; text-decoration:none; }
+.cab .usu { margin-left:auto; display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:var(--p-suave); }
+.cab .usu b { color:#fff; }
+.cab button { min-height:44px; padding:0 12px; border:1px solid var(--p-borde); border-radius:12px; background:var(--p-panel); color:#fff; font:800 13px var(--nx-texto); cursor:pointer; }
+.titulo { margin:0; display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-family:var(--nx-display); font-weight:800; font-size:clamp(32px, 9vw, 46px); line-height:1; }
+.en-vivo { display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:8px; background:rgba(239,68,68,.15); border:1px solid rgba(239,68,68,.5); font:800 12px var(--nx-texto); letter-spacing:1.5px; color:#FCA5A5; }
+.en-vivo i { width:8px; height:8px; border-radius:50%; background:var(--rojo); animation:parpa 1s steps(1) infinite; }
+@keyframes parpa { 50% { opacity:.2; } }
+
+/* ── Contadores ── */
+.stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.stat { position:relative; padding:12px; border-radius:16px; background:var(--p-panel); border:1px solid var(--p-borde); overflow:hidden; }
+.stat .val { font-family:var(--nx-display); font-weight:800; font-size:40px; line-height:1; display:flex; align-items:baseline; flex-wrap:wrap; gap:2px; }
+.stat .val small { font-size:20px; color:var(--p-suave); white-space:nowrap; }
+.stat .eti { margin-top:6px; font-size:12.5px; font-weight:700; color:var(--p-suave); line-height:1.25; }
+.stat .eti b { color:#fff; }
+.stat .ind { position:absolute; top:10px; right:10px; font-size:13px; }
+.stat .senal { position:absolute; left:0; bottom:0; height:3px; width:100%; transform-origin:left; background:linear-gradient(90deg, var(--nx-azul), #22D3EE); transition:transform .8s; }
+.stat.ancho { grid-column:1 / -1; }
+.stat.ancho .val { font-size:52px; } .stat.ancho .eti { font-size:15px; }
+.stat.bajo { display:flex; align-items:center; gap:12px; } .stat.bajo .val { font-size:40px; } .stat.bajo .eti { margin:0; }
+.stat.verde .val { color:#4ADE80; } .stat.ambar .val { color:var(--nx-lampara); } .stat.frio .val { color:var(--frio); }
+.punto { position:relative; display:block; width:10px; height:10px; border-radius:50%; background:var(--vivo); }
+.punto::after { content:''; position:absolute; inset:0; border-radius:50%; border:2px solid var(--vivo); animation:onda 1.6s ease-out infinite; }
+@keyframes onda { 0% { transform:scale(1); opacity:.9; } 100% { transform:scale(3); opacity:0; } }
+/* Aviso del pedido que lleva más tiempo sin fríos (desde que se puso la caja) */
+.reloj { grid-column:1 / -1; display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; font-size:14px; font-weight:700; line-height:1.3;
+  background:rgba(103,232,249,.08); border:1px solid rgba(103,232,249,.4); }
+.reloj .min { font-family:var(--nx-display); font-weight:800; font-size:28px; line-height:1; color:var(--frio); white-space:nowrap; }
+.reloj b { color:#fff; }
+.reloj.tarde { background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.6); animation:alerta 1.6s ease-in-out infinite; }
+.reloj.tarde .min { color:#FCA5A5; }
+@keyframes alerta { 50% { box-shadow:0 0 22px rgba(239,68,68,.35); } }
+.reloj[hidden] { display:none; }
+
+/* Odómetro */
+.odo { display:inline-flex; overflow:hidden; height:1em; line-height:1; font-variant-numeric:tabular-nums; }
+.odo .col { display:flex; flex-direction:column; transition:transform .9s cubic-bezier(.2,.8,.2,1); }
+.odo .col span { height:1em; text-align:center; }
+
+/* ── Tramos horarios (también filtran las tarjetas) ── */
+.tramos { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; }
+.tramo { min-height:84px; padding:8px 6px; border-radius:14px; background:var(--p-panel); border:1.5px solid var(--p-borde); color:#fff; font:inherit; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; gap:4px; }
+.tramo .h { font-size:12px; font-weight:800; color:var(--p-suave); }
+.tramo .n { font-family:var(--nx-display); font-weight:800; font-size:28px; line-height:1; }
+.tramo .n small { font-size:15px; color:var(--p-suave); }
+.tramo .pips { display:grid; gap:2px; width:100%; padding:0 2px; }
+.tramo .pips i { display:block; height:7px; border-radius:2px; background:rgba(243,247,252,.15); }
+.tramo .pips i.on { background:#4ADE80; }
+.tramo .est { font-size:11px; font-weight:800; color:var(--p-suave); }
+.tramo.lleno .pips i.on { background:var(--rojo); } .tramo.lleno .est { color:#FCA5A5; }
+.tramo.ahora { border-color:rgba(251,191,36,.6); box-shadow:0 0 18px rgba(251,191,36,.18); }
+.tramo.ahora .est { color:var(--nx-lampara); }
+.tramo[aria-pressed="true"] { background:rgba(251,191,36,.16); border-color:var(--nx-lampara); }
+
+/* ── Voz: texto a la izquierda, micrófono a la derecha ── */
+.voz { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:center; padding:14px; border-radius:18px; background:var(--p-panel); border:1px solid var(--p-borde); }
+.orbe { position:relative; width:84px; height:84px; border-radius:50%; border:0; cursor:pointer; color:#fff; display:grid; place-items:center;
+  background:radial-gradient(circle at 35% 30%, #FCA5A5, #EF4444 50%, #7F1D1D); box-shadow:0 0 30px rgba(239,68,68,.45); }
+.orbe svg { width:36px; height:36px; }
+.orbe::before, .orbe::after { content:''; position:absolute; inset:0; border-radius:50%; border:2px solid rgba(239,68,68,.6); animation:onda 1.8s ease-out infinite; }
+.orbe::after { animation-delay:.9s; }
+.voz .estado { font-family:var(--nx-display); font-weight:800; font-size:24px; line-height:1; }
+.voz .oido { margin-top:4px; font-size:15px; font-weight:700; color:var(--p-suave); min-height:20px; }
+
+/* ── Atajos ── */
+.atajos { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
+.atajo { position:relative; min-height:68px; padding:10px 6px; border-radius:16px; background:var(--p-panel); border:1px solid var(--p-borde); color:#fff; text-decoration:none;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; text-align:center; font-size:13px; font-weight:800; line-height:1.15; }
+.atajo svg { width:26px; height:26px; color:var(--nx-lampara); }
+.atajo:active { transform:scale(.96); }
+.atajo .globo { position:absolute; top:6px; right:8px; min-width:22px; height:22px; padding:0 6px; border-radius:11px; background:var(--nx-rojo); color:#fff; font-size:12px; display:grid; place-items:center; }
+
+/* ── Feed ── */
+.sec { display:flex; align-items:center; justify-content:space-between; margin-top:4px; font-size:12px; font-weight:800; letter-spacing:2px; color:var(--p-suave); }
+.sec button { min-height:36px; padding:0 10px; border-radius:10px; border:1px solid var(--p-borde); background:var(--p-panel); color:#fff; font:800 12px var(--nx-texto); cursor:pointer; letter-spacing:0; }
+.sec button[hidden] { display:none; }
+.feed { height:200px; overflow:hidden; border-radius:18px; background:var(--p-panel); border:1px solid var(--p-borde); -webkit-mask-image:linear-gradient(to bottom, #000 70%, transparent); mask-image:linear-gradient(to bottom, #000 70%, transparent); }
+.ev { display:grid; grid-template-columns:24px minmax(0,1fr) auto; gap:8px; align-items:start; padding:10px 12px; border-bottom:1px solid var(--p-borde); font-size:13.5px; font-weight:600; line-height:1.35; }
+.ev b { font-weight:800; color:#fff; } .ev .quien { color:#93C5FD; font-weight:800; }
+.ev .hace { font-size:12px; font-weight:700; color:var(--p-suave); white-space:nowrap; }
+.ev.nuevo { animation:entra .5s cubic-bezier(.2,1.2,.4,1); background:rgba(251,191,36,.10); }
+@keyframes entra { 0% { opacity:0; transform:translateY(-20px); } 100% { opacity:1; transform:none; } }
+
+/* ── Tarjetas pequeñas: 3 por fila, mismos datos que Embolsado ── */
+.cards { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
+.mc { position:relative; display:flex; flex-direction:column; gap:5px; padding:8px; border-radius:14px; background:var(--p-panel); border:1px solid var(--p-borde); cursor:pointer; min-width:0; transition:box-shadow .3s, border-color .3s; }
+.mc .top { display:flex; align-items:center; justify-content:space-between; gap:4px; }
+.mc .fr { font-size:11px; font-weight:800; padding:2px 5px; border-radius:6px; background:rgba(243,247,252,.12); }
+.mc .led { width:9px; height:9px; border-radius:50%; background:#5B6B84; flex:none; }
+.mc .led.wait { background:var(--nx-lampara); } .mc .led.ok { background:#4ADE80; }
+.mc .ped { font-family:var(--nx-display); font-weight:800; font-size:30px; line-height:1; text-align:center; padding:6px 0; border-radius:10px; background:#0B2447; }
+.mc .ped.sin { font-size:16px; color:var(--p-suave); padding:12px 0; }
+.mc .cli { font-size:12px; font-weight:800; line-height:1.2; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; min-height:2.4em; }
+.mc .dir { font-size:11px; font-weight:600; color:var(--p-suave); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mc .fila { display:flex; justify-content:space-between; gap:4px; font-size:11.5px; font-weight:700; color:var(--p-suave); }
+.mc .fila b { color:#fff; }
+.mc .nfc.falta b { color:var(--nx-lampara); }
+.mc .estado { font-size:11px; font-weight:800; text-align:center; padding:4px 2px; border-radius:7px; background:rgba(243,247,252,.08); color:var(--p-suave); }
+.mc .estado.ok { background:rgba(74,222,128,.15); color:#4ADE80; } .mc .estado.wait { background:rgba(251,191,36,.12); color:var(--nx-lampara); }
+.mc.marca { border-color:var(--nx-lampara); box-shadow:0 0 18px rgba(251,191,36,.35); }
+.vacio { grid-column:1 / -1; padding:16px; text-align:center; font-size:13px; font-weight:700; color:var(--p-suave); }
+
+.nota { font-size:12px; font-weight:600; color:var(--p-suave); line-height:1.45; }
+:focus-visible { outline:3px solid var(--nx-lampara); outline-offset:3px; }
+.cab .marca:focus-visible, .cab button:focus-visible { outline:3px solid var(--nx-lampara); }
+/* Escuchando: el orbe se ilumina */
+.orbe.escucha { background:radial-gradient(circle at 35% 30%, #FDE68A, var(--nx-lampara) 50%, #92400E); box-shadow:0 0 40px rgba(251,191,36,.6); }
+.orbe.escucha::before, .orbe.escucha::after { border-color:rgba(251,191,36,.7); animation-duration:1s; }
+.orbe.piensa svg { animation:parpa .8s steps(1) infinite; }
+.voz .resp { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:8px; }
+.voz .resp:empty { display:none; }
+.voz .resp button { min-height:48px; padding:8px 14px; border-radius:12px; border:1px solid var(--p-borde); background:rgba(243,247,252,.10); color:#fff; font:800 14px var(--nx-texto); cursor:pointer; text-align:left; }
+.voz .resp button.si { background:var(--nx-verde); border-color:var(--nx-verde); }
+.voz .resp button.foto { background:var(--nx-azul); border-color:var(--nx-azul); }
+.voz .estado.ok { color:#4ADE80; } .voz .estado.duda { color:var(--nx-lampara); }
+.escribe { grid-column:1 / -1; display:flex; gap:8px; }
+.escribe input { flex:1; min-width:0; min-height:44px; padding:0 12px; border-radius:12px; border:1px solid var(--p-borde); background:rgba(5,14,31,.6); color:#fff; font:600 15px var(--nx-texto); }
+.escribe input::placeholder { color:var(--p-suave); }
+.escribe button { min-height:44px; padding:0 14px; border-radius:12px; border:0; background:var(--nx-lampara); color:var(--nx-tinta); font:800 14px var(--nx-texto); cursor:pointer; }
+.aviso { padding:10px 12px; border-radius:12px; background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.5); font-size:13px; font-weight:700; }
+.aviso[hidden] { display:none; }
+.ajustes { font-size:13px; font-weight:700; color:var(--p-suave); }
+.ajustes summary { min-height:44px; display:flex; align-items:center; cursor:pointer; }
+.ajustes .fila2 { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:6px 0 4px; }
+.ajustes select, .ajustes button { min-height:44px; padding:0 10px; border-radius:12px; border:1px solid var(--p-borde); background:var(--p-panel); color:#fff; font:700 14px var(--nx-texto); }
+.ajustes select option { color:#0B2447; }
+.ajustes label { display:flex; align-items:center; gap:6px; min-height:44px; }
+.ver { text-align:center; font-size:12px; font-weight:700; color:var(--p-suave); }
+/* Fiesta: listo para reparto */
+.fiesta { position:fixed; inset:0; pointer-events:none; z-index:50; display:grid; place-items:center; }
+.fiesta[hidden] { display:none; }
+.fiesta .cartel { width:max-content; max-width:90vw; padding:18px 22px; border-radius:20px; text-align:center; background:var(--nx-verde); color:#fff; box-shadow:0 20px 60px rgba(0,0,0,.5); animation:sube .5s cubic-bezier(.2,1.4,.4,1); }
+.fiesta .cartel b { display:block; font-family:var(--nx-display); font-weight:800; font-size:34px; line-height:1; }
+.fiesta .cartel span { display:block; margin-top:6px; font-size:15px; font-weight:700; }
+.fiesta i { position:absolute; top:-12px; width:9px; height:14px; border-radius:2px; animation:cae 1.6s ease-in forwards; }
+@keyframes sube { 0% { transform:scale(.6); opacity:0; } 100% { transform:none; opacity:1; } }
+@keyframes cae { 100% { transform:translateY(105vh) rotate(540deg); opacity:.8; } }
+@media (min-width:560px) { .cards { grid-template-columns:repeat(4, minmax(0,1fr)); } }
+@media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation:none !important; transition-duration:.01ms !important; } }
+</style>
+</head>
+<body>
+<div class="pag">
+  <header class="cab">
+    <a class="marca" href="index.html" aria-label="Ir al inicio">NEXO</a>
+    <div class="usu"><b id="nombre">—</b><button type="button" id="salir">Salir</button></div>
+  </header>
+
+  <h1 class="titulo">Centro de mando <span class="en-vivo"><i aria-hidden="true"></i>EN VIVO</span></h1>
+
+  <div class="tramos" id="tramos" role="group" aria-label="Tramos horarios (tocar para filtrar)"></div>
+
+  <div class="voz">
+    <div><div class="estado" id="estado" role="status">Te escucho…</div><div class="oido" id="oido">Di: «Ana Rodal en la caja 8»</div></div>
+    <button type="button" class="orbe" id="orbe" aria-label="Hablar con Jessica"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <div class="resp" id="resp"></div>
+    <form class="escribe" id="escribe" autocomplete="off">
+      <input id="frase" type="text" enterkeyhint="send" placeholder="…o escríbelo aquí" aria-label="Escribe la orden para Jessica">
+      <button type="submit">Enviar</button>
+    </form>
+  </div>
+
+  <div class="aviso" id="aviso" hidden></div>
+
+  <div class="stats">
+    <div class="stat verde ancho"><span class="ind"><span class="punto" aria-hidden="true"></span></span>
+      <div class="val"><span class="odo" id="oListos"></span><small>&nbsp;de&nbsp;</small><span id="tFranja">0</span></div>
+      <div class="eti">pedidos listos de <b id="fAhora"></b> para reparto</div><span class="senal" id="sListos"></span></div>
+    <div class="stat ambar"><span class="ind">📦</span>
+      <div class="val"><span class="odo" id="oPend"></span></div><div class="eti">Pedidos pendientes</div></div>
+    <div class="stat frio"><span class="ind">🧊</span>
+      <div class="val"><small>Faltan&nbsp;</small><span class="odo" id="oFrios"></span></div><div class="eti">pedidos para guardar los fríos</div></div>
+    <!-- Desde que se pone la caja hasta que se apuntan nevera y fríos; siempre el que más tiempo lleva -->
+    <div class="reloj" id="reloj" role="status" hidden><span class="min" id="rMin"></span><span id="rTxt"></span></div>
+    <div class="stat ancho bajo"><span class="ind">⚡</span>
+      <div class="val" id="tMedio">—</div><div class="eti">Tiempo medio en caja</div></div>
+  </div>
+
+  <nav class="atajos" aria-label="Ir a">
+    <a id="aEmb" href="#" target="_top" class="atajo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 12H5zM9 8V6a3 3 0 0 1 6 0v2"/></svg>Embolsado</a>
+    <a id="aPend" href="#" target="_top" class="atajo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Pedidos pendientes</a>
+    <a href="incidencias.html" class="atajo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4M12 17v.5"/></svg>Incidencias<span class="globo" id="gInc" hidden></span></a>
+  </nav>
+
+  <div class="sec"><span>ACTIVIDAD DE LA TIENDA</span><span>hoy</span></div>
+  <div class="feed" aria-live="polite"><div id="lista"></div></div>
+
+  <div class="sec"><span id="tituloCards">PEDIDOS DE HOY</span><button type="button" id="verTodos" hidden>Ver todos</button></div>
+  <div class="cards" id="cards"></div>
+
+  <details class="ajustes">
+    <summary>⚙ Voz de Jessica</summary>
+    <div class="fila2">
+      <select id="voz" aria-label="Voz de Jessica">
+        <option value="Aoede">Aoede · desenfadada</option>
+        <option value="Achernar">Achernar · dulce</option>
+        <option value="Laomedeia">Laomedeia · juguetona</option>
+        <option value="Vindemiatrix">Vindemiatrix · tierna</option>
+        <option value="Sulafat">Sulafat · cálida</option>
+        <option value="Despina">Despina</option>
+        <option value="Leda">Leda</option>
+        <option value="movil">Voz del móvil · la más rápida</option>
+      </select>
+      <button type="button" id="probar">Probar</button>
+      <label><input type="checkbox" id="habla"> Que hable</label>
+    </div>
+  </details>
+  <div class="ver nx-version" data-nexo-version="Nexo · Jessica">Nexo · Jessica v3.10.1</div>
+</div>
+<div class="fiesta" id="fiesta" hidden aria-live="assertive"></div>
+
+<script>
+/* ============================================================
+   SESIÓN — solo ADM y departamento EMBOLSADO
+============================================================ */
+var sesion = {};
+try { sesion = JSON.parse(sessionStorage.getItem('sad_user') || '{}'); } catch (e) {}
+if (!sesion.usuario) window.location.replace('login.html');
+var ES_ADMIN = String(sesion.nivel || '').toLowerCase().trim() === 'admin';
+var ES_EMB = String(sesion.departamento || '').toUpperCase().trim() === 'EMBOLSADO';
+if (sesion.usuario && !ES_ADMIN && !ES_EMB) window.location.replace('index.html');
+var USUARIO = String(sesion.usuario || '').toLowerCase();
+var USR = encodeURIComponent(USUARIO);
+
+// NEXO - MÓDULO JESSICA (copia de Embolsado). Las órdenes usan sus mismas funciones (jesHacer en Jessica.gs).
+var JESSICA_URL = 'https://script.google.com/macros/s/AKfycbzo14OOZrwPqfXjPd1xjIn5EXr7EoFmLd6YdATo5QrC4piPaByEVrC4pUX9jpBwMl--/exec';
+var EMBOLSADO_URL = 'https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoDisEn4qrGWh0tEGfGHn4NXoEqP1ShODyIWQ1bzYyWfcuz_Pqh/exec';
+var PROXY = 'https://sad-proxy.colatino-ventas-enlinea.workers.dev/';
+
+function el(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function api(accion, extra) {
+  return fetch(PROXY + '?url=' + encodeURIComponent(JESSICA_URL), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign({ accion: accion, usuario: USUARIO }, extra || {}))
+  }).then(function (r) {
+    return r.text().then(function (t) {
+      try { return JSON.parse(t); }
+      catch (e) { return { ok: false, error: 'Respuesta inesperada (' + r.status + ')' + (/autoriz|403/i.test(t + r.status) ? ': falta autorizar el módulo Jessica (ejecutar probarJessica).' : '.') }; }
+    });
+  }).catch(function () { return { ok: false, error: 'Sin conexión con el servidor.' }; });
+}
+function hacer(op, args) { return api('jesHacer', { op: op, args: args }); }
+
+el('nombre').textContent = sesion.nombre ? String(sesion.nombre).split(' ')[0] : USUARIO;
+el('salir').onclick = function () { window.location.href = 'index.html'; };
+el('aEmb').href = EMBOLSADO_URL + '?u=' + USR;
+el('aPend').href = JESSICA_URL + '?u=' + USR + '&ir=pendientes';
+
+/* ============================================================
+   DATOS DEL CENTRO DE MANDO (jesPanel, cada 30 s y tras cada orden)
+============================================================ */
+var D = { hoy: '', reservas: [], pendientes: [], porFranja: {}, limites: {}, cerradas: [], actividad: [] };
+var FRANJAS = ['10-13H', '13-16H', '16-19H', '19-22H'];
+var filtro = '', marcada = '', primera = true;
+
+function hoyISO() { return D.hoy || isoDe_(new Date()); }
+function isoDe_(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+/** Tramo en curso según la hora (antes de las 10, el primero; después de las 22, el último). */
+function tramoAhora() { var h = new Date().getHours(); return h < 13 ? '10-13H' : h < 16 ? '13-16H' : h < 19 ? '16-19H' : '19-22H'; }
+function tieneCaja(r) { return !!r.caja && r.caja !== '000'; }
+function tienePedido(r) { return !!String(r.pedido || '').trim(); }
+function nfcCompleto(r) { return ['nevera', 'frios', 'congelados'].every(function (k) { return r[k] !== '' && r[k] != null; }); }
+function listo(r) { return r.estado === 'CONFIRMADO' && nfcCompleto(r); }
+function sinFrios(r) { return tieneCaja(r) && !nfcCompleto(r); }
+/** "dd/MM/yyyy HH:mm" → ms */
+function tsDe(t) { var m = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})/.exec(String(t || '')); return m ? new Date(+m[3], m[2] - 1, +m[1], +m[4], +m[5]).getTime() : 0; }
+
+function cargar() {
+  return api('jesPanel', { tienda: sesion.tiendaPre || '' }).then(function (d) {
+    if (!d || !d.ok) { aviso((d && d.error) || 'No se han podido cargar los pedidos.'); return; }
+    aviso('');
+    D = d; pintarTodo(); primera = false;
+  });
+}
+function aviso(t) { var a = el('aviso'); a.textContent = t || ''; a.hidden = !t; }
+function pintarTodo() { pintaStats(); pintaTramos(); pintaCards(); pintaFeed(); var g = el('gInc'); g.textContent = D.incidencias || ''; g.hidden = !D.incidencias; }
+
+/* ── Odómetro ── */
+function odo(id, v) {
+  var e = el(id), s = String(v);
+  if (e.children.length !== s.length) e.innerHTML = s.split('').map(function () { return '<span class="col">' + '0123456789'.split('').map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</span>'; }).join('');
+  s.split('').forEach(function (x, i) { e.children[i].style.transform = 'translateY(-' + x + 'em)'; });
+  e.setAttribute('aria-label', s);
+}
+
+function pintaStats() {
+  var ah = tramoAhora(), deAhora = D.reservas.filter(function (r) { return r.franja === ah; });
+  var nL = deAhora.filter(listo).length;
+  odo('oListos', nL); el('tFranja').textContent = deAhora.length; el('fAhora').textContent = ah;
+  el('sListos').style.transform = 'scaleX(' + (deAhora.length ? nL / deAhora.length : 0) + ')';
+  odo('oPend', D.pendientes.length);
+  odo('oFrios', D.reservas.filter(sinFrios).length);
+  // Tiempo medio en caja: desde que se pone la caja hasta que queda listo (confirmado), pedidos de hoy.
+  var t = D.reservas.map(function (r) { var c = tsDe(r.hrConfirmado); return r.estado === 'CONFIRMADO' && r.horaCajaTs && c > r.horaCajaTs ? (c - r.horaCajaTs) / 60000 : null; })
+    .filter(function (x) { return x != null && x < 600; });
+  el('tMedio').innerHTML = t.length ? Math.round(t.reduce(function (a, b) { return a + b; }, 0) / t.length) + '<small>min</small>' : '—';
+  pintaReloj();
+}
+/* El pedido que más tiempo lleva sin fríos: se recalcula cada segundo */
+function pintaReloj() {
+  var sf = D.reservas.filter(function (r) { return sinFrios(r) && r.horaCajaTs; }).sort(function (a, b) { return a.horaCajaTs - b.horaCajaTs; })[0], e = el('reloj');
+  if (!sf) { e.hidden = true; return; }
+  e.hidden = false;
+  var m = Math.max(0, Math.floor((Date.now() - sf.horaCajaTs) / 60000));
+  el('rMin').textContent = m + ' min';
+  el('rTxt').innerHTML = 'El pedido <b>' + esc(sf.pedido || corto(sf)) + '</b> (caja ' + esc(sf.caja) + ') está a <b>' + m + ' minuto' + (m === 1 ? '' : 's') + '</b> sin guardar los fríos';
+  e.classList.toggle('tarde', m >= 20);
+}
+setInterval(pintaReloj, 1000);
+
+function pintaTramos() {
+  var ah = tramoAhora();
+  el('tramos').innerHTML = FRANJAS.map(function (f) {
+    var pf = D.porFranja[f] || {}, n = pf.usadas || 0, l = pf.limite || (D.limites || {})[f] || 0, lleno = l > 0 && n >= l;
+    var cerr = (D.cerradas || []).indexOf(f) !== -1;
+    var est = cerr ? '🔒 Cerrado' : f === ah ? '● Ahora' : lleno ? 'Completo' : 'Quedan ' + Math.max(0, l - n);
+    var pips = Math.max(l, n, 1);
+    return '<button type="button" class="tramo' + (lleno ? ' lleno' : '') + (f === ah ? ' ahora' : '') + '" aria-pressed="' + (filtro === f) + '" data-f="' + f + '">' +
+      '<span class="h">' + f.replace('H', 'h') + '</span><span class="n">' + n + '<small>/' + l + '</small></span>' +
+      '<span class="pips" style="grid-template-columns:repeat(' + pips + ',1fr)">' + Array.from({ length: pips }, function (_, i) { return '<i' + (i < n ? ' class="on"' : '') + '></i>'; }).join('') + '</span>' +
+      '<span class="est">' + est + '</span></button>';
+  }).join('');
+  document.querySelectorAll('.tramo').forEach(function (b) { b.onclick = function () { filtro = filtro === b.dataset.f ? '' : b.dataset.f; pintaTramos(); pintaCards(); }; });
+}
+
+function pintaCards() {
+  var l = D.reservas.filter(function (r) { return !filtro || r.franja === filtro; });
+  el('tituloCards').textContent = (filtro ? 'PEDIDOS ' + filtro : 'PEDIDOS DE HOY') + ' · ' + l.length;
+  el('verTodos').hidden = !filtro;
+  el('cards').innerHTML = l.length ? l.map(function (r) {
+    var st = r.estado === 'CONFIRMADO' ? 'ok' : tieneCaja(r) ? 'wait' : '';
+    var txt = listo(r) ? '✓ Listo para reparto' : r.estado === 'CONFIRMADO' ? 'Faltan fríos' : !tieneCaja(r) ? 'Sin caja' : !tienePedido(r) ? 'Falta nº' : !nfcCompleto(r) ? 'Faltan fríos' : 'Para finalizar';
+    var nfc = nfcCompleto(r) ? [r.nevera, r.frios, r.congelados].join('-') : '—';
+    return '<article class="mc' + (String(r.id) === String(marcada) ? ' marca' : '') + '" tabindex="0" data-id="' + esc(r.id) + '" aria-label="' + esc(corto(r)) + ', ' + esc(txt) + '">' +
+      '<div class="top"><span class="fr">' + esc(String(r.franja || '').replace('H', 'h')) + '</span><span class="led ' + st + '" aria-hidden="true"></span></div>' +
+      '<div class="ped' + (tienePedido(r) ? '' : ' sin') + '">' + esc(tienePedido(r) ? r.pedido : 'sin nº') + '</div>' +
+      '<div class="cli">' + esc(r.nombre || corto(r)) + '</div><div class="dir">' + esc(r.clienteDireccion || '') + '</div>' +
+      '<div class="fila"><span>Caja <b>' + esc(r.caja || '000') + '</b></span><span>Cj <b>' + esc(r.nCajas || '—') + '</b></span></div>' +
+      '<div class="fila nfc' + (nfcCompleto(r) ? '' : ' falta') + '"><span>N-F-C</span><b>' + esc(nfc) + '</b></div>' +
+      '<div class="estado ' + st + '">' + txt + '</div></article>';
+  }).join('') : '<div class="vacio">' + (primera ? 'Cargando pedidos…' : 'No hay pedidos en ese tramo.') + '</div>';
+  // Tocar una tarjeta = «de este hablo»: la siguiente orden va para ella.
+  document.querySelectorAll('.mc').forEach(function (c) {
+    c.onclick = c.onkeydown = function (ev) {
+      if (ev.type === 'keydown' && ev.key !== 'Enter' && ev.key !== ' ') return;
+      var r = buscar(c.dataset.id); if (!r) return;
+      JES.ultimo = r; marcar(r.id);
+      decir('Vale, ' + corto(r) + '. ¿Qué hago?', '', null, true);
+    };
+  });
+}
+el('verTodos').onclick = function () { filtro = ''; pintaTramos(); pintaCards(); };
+function marcar(id) {
+  marcada = id; pintaCards();
+  var c = document.querySelector('.mc[data-id="' + CSS.escape(String(id)) + '"]');
+  if (c) c.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  setTimeout(function () { if (marcada === id) { marcada = ''; pintaCards(); } }, 4000);
+}
+
+/* ── Actividad de la tienda (AUDITORIA de hoy) ── */
+var IC_ACC = [[/^CONFIRMADO/, '🚀'], [/TICKET_GRABADO/, '📷'], [/JESSICA/, '🎙️'], [/CONTEO/, '🧊'], [/EDITADO CAJA/, '⚡'], [/EDITADO PEDIDO/, '🧾'], [/INCIDENCIA/, '⚠️'], [/ENTREGA|ASIGNADO|REASIGNADO/, '🚚'], [/EXCLUIDO|ELIMINADO/, '✖️'], [/RESERVA|EDITADO FECHA/, '📅']];
+function txtAcc(a) {
+  var acc = String(a.accion || ''), que = (a.ticket ? ' <b>' + esc(a.ticket) + '</b>' : '') + (a.caja && a.caja !== '000' ? ' · caja <b>' + esc(a.caja) + '</b>' : '');
+  if (/^CONFIRMADO/.test(acc)) return 'dejó listo para reparto' + (que || ' un pedido');
+  if (/TICKET_GRABADO/.test(acc)) return 'fotografió el ticket' + que;
+  if (/JESSICA/.test(acc)) { var m = /«(.*)»/.exec(a.detalle || ''); return 'a Jessica: <b>«' + esc(m ? m[1] : '') + '»</b>'; }
+  if (/CONTEO/.test(acc)) return 'guardó los fríos' + que;
+  return esc(acc.toLowerCase()) + que;
+}
+function hace(hhmmss) {
+  var p = String(hhmmss || '').split(':'); if (p.length < 2) return '';
+  var d = new Date(); d.setHours(+p[0], +p[1], +(p[2] || 0), 0);
+  var s = Math.max(0, Math.round((Date.now() - d.getTime()) / 1000));
+  return s < 60 ? 'hace ' + s + ' s' : s < 3600 ? 'hace ' + Math.round(s / 60) + ' min' : p[0] + ':' + p[1];
+}
+var vistos = {};
+function pintaFeed() {
+  var l = D.actividad || [];
+  el('lista').innerHTML = l.length ? l.map(function (a) {
+    var k = a.hora + a.accion + a.id, nuevo = !primera && !vistos[k]; vistos[k] = 1;
+    var ic = (IC_ACC.filter(function (x) { return x[0].test(a.accion); })[0] || [0, '•'])[1];
+    return '<div class="ev' + (nuevo ? ' nuevo' : '') + '" data-h="' + esc(a.hora) + '"><span aria-hidden="true">' + ic + '</span><span><span class="quien">' + esc(a.quien) + '</span> ' + txtAcc(a) + '</span><span class="hace">' + hace(a.hora) + '</span></div>';
+  }).join('') : '<div class="ev"><span></span><span>Aún no hay movimiento hoy.</span><span></span></div>';
+}
+setInterval(function () { document.querySelectorAll('#lista .ev[data-h]').forEach(function (d) { d.querySelector('.hace').textContent = hace(d.dataset.h); }); }, 15000);
+
+/* ============================================================
+   JESSICA: VOZ
+============================================================ */
+var JES = { voz: 'Aoede', habla: true, ultimo: null, audio: null, rec: null };
+try { JES.voz = localStorage.getItem('jes_voz') || 'Aoede'; JES.habla = localStorage.getItem('jes_habla') !== '0'; } catch (e) {}
+el('voz').value = JES.voz; el('habla').checked = JES.habla;
+el('voz').onchange = el('habla').onchange = function () {
+  JES.voz = el('voz').value; JES.habla = el('habla').checked;
+  try { localStorage.setItem('jes_voz', JES.voz); localStorage.setItem('jes_habla', JES.habla ? '1' : '0'); } catch (e) {}
+};
+el('probar').onclick = function () { var h = JES.habla; JES.habla = true; hablar('¡Hola! Soy Jessica. ¿Qué hacemos?'); JES.habla = h; };
+
+/* Sin internet o con «Voz del móvil»: la mejor voz femenina en español del teléfono. */
+function vozMovil(texto) {
+  if (!window.speechSynthesis) return;
+  var fem = /m[oó]nica|elvira|luc[ií]a|helena|laura|paulina|marisol|ximena|isabela|female|mujer|google espa[nñ]ol$/i;
+  var vs = speechSynthesis.getVoices().filter(function (v) { return /^es/i.test(v.lang); });
+  function p(v) { return (fem.test(v.name) ? 4 : 0) + (/natural|neural|online|premium|enhanced/i.test(v.name) ? 3 : 0) + (/es-ES/i.test(v.lang) ? 2 : 0); }
+  vs.sort(function (a, b) { return p(b) - p(a); });
+  var u = new SpeechSynthesisUtterance(texto); u.lang = 'es-ES'; if (vs[0]) u.voice = vs[0];
+  u.pitch = 1.15; u.rate = 1.05; speechSynthesis.cancel(); speechSynthesis.speak(u);
+}
+/* Gemini devuelve audio PCM de 16 bits: se le pone cabecera WAV. */
+function wav(b64, rate) {
+  var bin = atob(b64), pcm = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) pcm[i] = bin.charCodeAt(i);
+  var buf = new ArrayBuffer(44 + pcm.length), v = new DataView(buf);
+  function s(o, t) { for (var k = 0; k < t.length; k++) v.setUint8(o + k, t.charCodeAt(k)); }
+  s(0, 'RIFF'); v.setUint32(4, 36 + pcm.length, true); s(8, 'WAVE'); s(12, 'fmt '); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true); s(36, 'data'); v.setUint32(40, pcm.length, true);
+  new Uint8Array(buf, 44).set(pcm);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+function hablar(texto) {
+  if (!JES.habla || !texto) return;
+  texto = String(texto).replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu, '').trim();
+  if (JES.voz === 'movil') return vozMovil(texto);
+  api('jesVoz', { texto: texto, voz: JES.voz }).then(function (r) {
+    if (!r || !r.ok) return vozMovil(texto);
+    try { if (JES.audio) JES.audio.pause(); JES.audio = new Audio(wav(r.audio, r.rate || 24000)); JES.audio.play().catch(function () { vozMovil(texto); }); }
+    catch (e) { vozMovil(texto); }
+  });
+}
+
+/** Jessica contesta: texto grande + voz. botones = [{t, cls, fn}] */
+function decir(texto, tipo, botones, callada) {
+  var e = el('estado'); e.textContent = texto; e.className = 'estado ' + (tipo || '');
+  var r = el('resp'); r.innerHTML = '';
+  (botones || []).forEach(function (b) {
+    var x = document.createElement('button'); x.type = 'button'; x.className = b.cls || ''; x.textContent = b.t;
+    x.onclick = function () { r.innerHTML = ''; b.fn(); }; r.appendChild(x);
+  });
+  if (!callada) hablar(texto);
+}
+function oido(t) { el('oido').textContent = t; }
+
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+function escuchar() {
+  if (!SR) { el('frase').focus(); decir('Este móvil no deja dictar aquí. Escribe la orden o usa el 🎤 del teclado.', 'duda', null, true); return; }
+  try { if (JES.rec) JES.rec.abort(); } catch (e) {}
+  if (JES.audio) try { JES.audio.pause(); } catch (e) {}
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  var r = new SR(); JES.rec = r; r.lang = 'es-ES'; r.interimResults = true; r.maxAlternatives = 1;
+  var orbe = el('orbe'), fin = '';
+  orbe.classList.add('escucha'); decir('Te escucho…', '', null, true);
+  r.onresult = function (ev) {
+    var t = Array.from(ev.results).map(function (x) { return x[0].transcript; }).join(' ');
+    oido('«' + t + '»');
+    if (ev.results[ev.results.length - 1].isFinal) fin = t;
+  };
+  r.onerror = function (ev) {
+    orbe.classList.remove('escucha');
+    if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') decir('Necesito permiso para el micrófono. Tócalo y acepta, o escribe abajo.', 'duda', null, true);
+    else if (ev.error === 'no-speech') decir('No te he oído. Toca el micrófono y habla.', 'duda', null, true);
+  };
+  r.onend = function () { orbe.classList.remove('escucha'); if (fin) orden(fin); };
+  try { r.start(); } catch (e) { orbe.classList.remove('escucha'); }
+}
+el('orbe').onclick = escuchar;
+el('escribe').onsubmit = function (ev) { ev.preventDefault(); var f = el('frase').value; el('frase').value = ''; if (f.trim()) { oido('«' + f + '»'); orden(f); } };
+
+/* ============================================================
+   JESSICA: RESERVAS QUE CONOCE (hoy + pendientes de cualquier día)
+============================================================ */
+function reservas() {
+  var v = {}, out = [];
+  [D.reservas, D.pendientes].forEach(function (arr) {
+    (arr || []).forEach(function (r) { if (r && r.id && !v[r.id] && r.estado !== 'EXCLUIDO') { v[r.id] = 1; out.push(r); } });
+  });
+  return out;
+}
+function buscar(id) { return reservas().filter(function (r) { return String(r.id) === String(id); })[0] || null; }
+/** Cambia la reserva en las dos listas (hoy y pendientes) para que todo se vea al momento. */
+function cambiar(id, c) { [D.reservas, D.pendientes].forEach(function (arr) { (arr || []).forEach(function (r) { if (String(r.id) === String(id)) Object.assign(r, c); }); }); }
+/** Nombre corto para decirlo en voz alta (sin la dirección). */
+function corto(r) {
+  var t = String((r && (r.nombre || r.clienteDireccion)) || '').toUpperCase();
+  t = t.split(/[,·(]|\s-\s|\s(?:C\/|CL\.?|CALLE|AVDA?\.?|AV\.|AVENIDA|PZA\.?|PLAZA|PASEO|CTRA\.?)\s|\s\d/)[0].trim();
+  return t.split(/\s+/).slice(0, 3).join(' ') || 'esa reserva';
+}
+function c3_(n) { return ('00' + Number(n)).slice(-3); }
+var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+function fechaTxt(f) { var d = new Date(f + 'T12:00:00'); return (f === hoyISO() ? 'hoy, ' : '') + DIAS[d.getDay()] + ' ' + d.getDate(); }
+function tramoTxt(f) { return String(f || '').replace('-', ' a ').replace('H', ''); }
+
+/* ── Entender con reglas (al instante); lo raro va a Gemini ── */
+var NUM = { un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12, ninguno: 0, ninguna: 0, cero: 0 };
+var NUMR = '(\\d+|' + Object.keys(NUM).join('|') + ')';
+var FR = { 10: '10-13H', 1: '13-16H', 13: '13-16H', 4: '16-19H', 16: '16-19H', 7: '19-22H', 19: '19-22H' };
+var RELLENO = /^(calle|avenida|plaza|paseo|bajo|piso|puerta|portal|escalera|izquierda|derecha|centro|numero|del|las|los|una|uno|para|por)$/;
+function sa_(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+function n_(w) { return /^\d+$/.test(w) ? +w : NUM[w]; }
+function franjaDe(t) {
+  var m = new RegExp(NUMR + ' a ' + NUMR).exec(t);
+  if (m && FR[n_(m[1])]) return FR[n_(m[1])];
+  if ((m = /por la (manana|tarde|noche)|a mediodia/.exec(t))) return { manana: '10-13H', tarde: '16-19H', noche: '19-22H' }[m[1]] || '13-16H';
+  return '';
+}
+function fechaDe(t) {
+  var d = new Date(hoyISO() + 'T12:00:00'), m;
+  if (/pasado manana/.test(t)) { d.setDate(d.getDate() + 2); return isoDe_(d); }
+  if (/\bmanana\b/.test(t.replace(/por la manana/g, ''))) { d.setDate(d.getDate() + 1); return isoDe_(d); }
+  if ((m = /\b(lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.exec(t))) {
+    var obj = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].indexOf(m[1]);
+    if (obj === d.getDay()) return 'DUDA';   // «el viernes» dicho un viernes: que lo resuelva Gemini
+    d.setDate(d.getDate() + ((obj - d.getDay() + 7) % 7)); return isoDe_(d);
+  }
+  return /\bhoy\b/.test(t) ? hoyISO() : '';
+}
+function candidatos(t) {
+  var lista = reservas(), max = 0;
+  var pts = lista.map(function (r) {
+    var pal = sa_((r.clienteDireccion || '') + ' ' + (r.nombre || '')).split(/[^a-z0-9ñ]+/)
+      .filter(function (w, i, a) { return w.length > 2 && !/^\d+$/.test(w) && !RELLENO.test(w) && a.indexOf(w) === i; });
+    var n = pal.filter(function (w) { return new RegExp('\\b' + w + '\\b').test(t); }).length;
+    max = Math.max(max, n); return n;
+  });
+  var l = max ? lista.filter(function (r, i) { return pts[i] === max; }) : [];
+  function afinar(f) { var x = l.filter(f); if (l.length > 1 && x.length) l = x; }
+  var fr = franjaDe(t), mc = new RegExp('caja ' + NUMR).exec(t);
+  if (fr) afinar(function (r) { return r.franja === fr; });
+  if (mc) afinar(function (r) { return r.caja === c3_(n_(mc[1])); });
+  afinar(function (r) { return r.fecha === hoyISO(); });
+  afinar(function (r) { return r.estado !== 'CONFIRMADO'; });
+  return l;
+}
+function conId(cmd, t, valeUltimo) {
+  var m = /\b(\d{4,6})\b/.exec(t), l = [];
+  if (m) l = reservas().filter(function (r) { return String(r.pedido || '').trim() === m[1]; });
+  if (!l.length) l = candidatos(t);
+  if (!l.length && valeUltimo && JES.ultimo) l = [JES.ultimo];
+  if (l.length === 1) { cmd.id = l[0].id; return cmd; }
+  if (!l.length) return null;   // no la encuentro: que pruebe Gemini
+  return { accion: 'preguntar', opciones: l.slice(0, 4).map(function (r) { return r.id; }), pendiente: cmd, respuesta: 'Hay ' + l.length + ' posibles. ¿Cuál?' };
+}
+/** Devuelve la orden, o null si no está clara (entonces pregunta a Gemini). */
+function reglas(frase) {
+  var t = ' ' + sa_(frase).replace(/^\s*(oye |hola )?jessica[, ]*/, '').replace(/[.,:;¿?¡!]/g, ' ').replace(/\s+/g, ' ') + ' ', m;
+  if (/equivo|no es |corrig|perdon|mejor dicho/.test(t)) return null;
+  if (/cuant|disponib|quedan|hueco/.test(t)) { var fd = fechaDe(t); return fd === 'DUDA' ? null : { accion: 'disponibilidad', fecha: fd || hoyISO(), franja: franjaDe(t) }; }
+  if (/\bfoto\b/.test(t)) return conId({ accion: 'foto' }, t, true);
+  if (/finaliz|conclu|listo para (cargar|reparto)|lista para (cargar|reparto)|terminad|esta list[oa]/.test(t)) return conId({ accion: 'finalizar' }, t, true);
+  if (/nevera|frio|congelad/.test(t)) {
+    var cmd = { accion: 'frios', n_cajas: (m = new RegExp(NUMR + ' cajas\\b').exec(t)) ? n_(m[1]) : null };
+    if (/sin frio|no lleva frio|nada de frio/.test(t)) { cmd.nevera = 0; cmd.frios = 0; cmd.congelados = 0; }
+    else {
+      cmd.nevera = (m = new RegExp('nevera ' + NUMR).exec(t)) ? n_(m[1]) : 0;
+      cmd.frios = (m = new RegExp(NUMR + ' (bolsas? de frio|frios?|de frio)\\b').exec(t)) ? n_(m[1]) : 0;
+      cmd.congelados = (m = new RegExp(NUMR + ' (bolsas? de )?congelados?').exec(t)) ? n_(m[1]) : 0;
+    }
+    return conId(cmd, t, true);
+  }
+  if (/cambi|pas[oa]|mueve|move/.test(t) && /(hora|franja|tramo)/.test(t) && franjaDe(t)) return conId({ accion: 'franja', franja: franjaDe(t) }, t.replace(new RegExp(NUMR + ' a ' + NUMR), ' '));
+  var nums = t.match(/\b\d{4,6}\b/g);
+  if (nums && !/reserv[ae]r? (un|una)|nueva reserva/.test(t) && candidatos(t.replace(/\b\d{4,6}\b/g, ' ')).length) return conId({ accion: 'pedido', pedido: nums[nums.length - 1] }, t.replace(/\b\d{4,6}\b/g, ' '));
+  // «es el número 6672» justo después de hablar de una reserva (o de tocar su tarjeta)
+  if (nums && JES.ultimo && /numero|ticket|es el/.test(t) && !/reserv/.test(t)) return { accion: 'pedido', pedido: nums[nums.length - 1], id: JES.ultimo.id };
+  if ((m = new RegExp('caja ' + NUMR).exec(t)) && !/reserv[ae]r? (un|una)|nueva reserva/.test(t)) return conId({ accion: 'caja', caja: n_(m[1]) }, t);
+  if (/reserv/.test(t)) {
+    var fe = fechaDe(t); if (fe === 'DUDA') return null;
+    var cli = t.replace(new RegExp('(de )?' + NUMR + ' a ' + NUMR), ' ').replace(/caja \d+/g, ' ')
+      .replace(/\b(reserv[ae]r?|reserva|un|una|nueva|pedido|para|hoy|manana|pasado|lunes|martes|miercoles|jueves|viernes|sabado|domingo|por|tarde|noche|mediodia|de|el|la|haz|hazme|guarda|crea|apunta|pon)\b/g, ' ')
+      .replace(/\s+/g, ' ').trim().toUpperCase();
+    var fr = franjaDe(t);
+    if (!cli || !fr) return null;
+    return { accion: 'reservar', fecha: fe || hoyISO(), franja: fr, cliente: cli, caja: (m = new RegExp('caja ' + NUMR).exec(t)) ? n_(m[1]) : 0 };
+  }
+  return null;
+}
+
+function orden(frase) {
+  frase = String(frase || '').trim(); if (!frase) return;
+  var cmd = reglas(frase);
+  if (cmd) { api('jesRegistrar', { frase: frase, accion: cmd.accion, id: cmd.id || '' }); return ejecutar(cmd, ''); }
+  var orbe = el('orbe'); orbe.classList.add('piensa'); decir('Pensando…', '', null, true);
+  var ctx = {
+    hoy: hoyISO(), dia_semana: DIAS[new Date().getDay()], hora: new Date().toTimeString().slice(0, 5),
+    ultima_reserva_hablada: JES.ultimo ? JES.ultimo.id : null,
+    reservas: reservas().slice(0, 80).map(function (r) {
+      return { id: r.id, fecha: r.fecha, franja: r.franja, cliente: corto(r), texto: r.clienteDireccion, caja: r.caja, pedido: r.pedido,
+               nfc: [r.nevera, r.frios, r.congelados], estado: r.estado };
+    })
+  };
+  api('jesInterpretar', { frase: frase, contexto: ctx }).then(function (res) {
+    orbe.classList.remove('piensa');
+    if (!res || !res.ok) return decir((res && res.error) || 'No te he entendido. ¿Me lo repites?', 'duda');
+    ejecutar(res.orden || {}, 'gemini');
+  });
+}
+
+function siNo(texto, alSi) {
+  decir(texto, 'duda', [{ t: 'Sí', cls: 'si', fn: alSi }, { t: 'No', fn: function () { decir('Vale, no hago nada.', '', null, true); } }]);
+}
+/** Hecho, con botón Deshacer. Luego recarga el centro de mando para que todo cuadre con la hoja. */
+function hecho(texto, deshacer) {
+  decir(texto, 'ok', deshacer ? [{ t: 'Deshacer', fn: deshacer }] : null);
+  pintarTodo(); setTimeout(cargar, 800);
+}
+function fallo(res) { decir((res && res.error) || 'No se ha podido hacer.', 'duda'); }
+
+function fiesta(titulo, sub) {
+  var f = el('fiesta'), col = ['#FBBF24', '#4ADE80', '#67E8F9', '#F472B6', '#FFFFFF'], h = '';
+  var quieto = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!quieto) for (var i = 0; i < 40; i++) h += '<i style="left:' + (Math.random() * 100).toFixed(1) + '%;background:' + col[i % col.length] + ';animation-delay:' + (Math.random() * .5).toFixed(2) + 's"></i>';
+  f.innerHTML = h + '<div class="cartel"><b>' + esc(titulo) + '</b><span>' + esc(sub) + '</span></div>';
+  f.hidden = false;
+  try { if (navigator.vibrate) navigator.vibrate([30, 40, 30]); } catch (e) {}
+  clearTimeout(fiesta.t); fiesta.t = setTimeout(function () { f.hidden = true; }, 2600);
+}
+var FRASES = ['A la furgoneta 🚚', 'Buen trabajo 🙌', 'Uno más 💪', 'Así se trabaja 👏', 'Vas volando 🚀'], nF = 0;
+
+function ejecutar(c, via) {
+  var dicho = c.respuesta;
+  switch (c.accion) {
+    case 'preguntar':
+      var ops = (c.opciones || []).map(buscar).filter(Boolean);
+      if (!ops.length) return decir(dicho || '¿Me lo repites?', 'duda');
+      return decir(dicho || '¿Cuál?', 'duda', ops.map(function (x) {
+        return { t: corto(x) + ' · ' + x.franja + (x.fecha !== hoyISO() ? ' · ' + fechaTxt(x.fecha) : ''), fn: function () { var p = Object.assign({}, c.pendiente || {}); p.id = x.id; p.respuesta = ''; ejecutar(p, via); } };
+      }));
+    case 'disponibilidad':
+      var fe = c.fecha || hoyISO();
+      return hacer('disponibilidad', { fecha: fe }).then(function (d) {
+        if (!d || !d.ok) return fallo(d);
+        var frs = c.franja ? [c.franja] : (d.franjas || FRANJAS), cerr = d.cerradas || [];
+        decir((fe === hoyISO() ? 'Hoy' : 'El ' + fechaTxt(fe)) + ': ' + frs.map(function (f) {
+          var x = (d.porFranja || {})[f] || {};
+          if (cerr.indexOf(f) !== -1) return 'de ' + tramoTxt(f) + ' ya está cerrado';
+          return (x.restante > 0 ? 'quedan ' + x.restante + (x.restante === 1 ? ' hueco' : ' huecos') : 'está completo') + ' de ' + tramoTxt(f);
+        }).join('; ') + '.');
+      });
+    case 'reservar':
+      if (/GRAN\s*V/i.test(D.tienda || '')) return decir('GRANVIA no usa reservas: los pedidos entran al leer el ticket.', 'duda');
+      if (!c.franja || !c.cliente) return decir('Me falta ' + (!c.franja ? 'la franja, por ejemplo «de 1 a 4».' : 'el nombre.'), 'duda');
+      var crear = function (forzar) {
+        var fecha = c.fecha || hoyISO(), cli = String(c.cliente).toUpperCase();
+        hacer('crear', { fecha: fecha, franja: c.franja, clienteDireccion: cli, caja: c3_(c.caja || 0), forzarCompleto: !!forzar }).then(function (res) {
+          if (res && res.ok) {
+            JES.ultimo = { id: res.id, fecha: fecha, franja: c.franja, clienteDireccion: cli, caja: c3_(c.caja || 0) };
+            return hecho(dicho || 'Reservado: ' + corto({ clienteDireccion: cli }) + ', ' + fechaTxt(fecha) + ', de ' + tramoTxt(c.franja) + '.', function () {
+              hacer('excluir', { id: res.id }).then(function (r2) { if (r2 && r2.ok) hecho('Reserva quitada.'); else fallo(r2); });
+            });
+          }
+          if (res && res.requiereConfirmacion) return siNo('Ese tramo está completo' + (res.detalle ? ' (' + res.detalle + ')' : '') + '. ¿La apunto igual?', function () { crear(true); });
+          fallo(res);
+        });
+      };
+      return crear(false);
+    case 'no_entiendo':
+      return decir(dicho || 'No te he entendido. ¿Me lo repites?', 'duda');
+  }
+  var r = buscar(c.id);
+  if (!r) return decir('No encuentro esa reserva. Dime el nombre o el número de ticket.', 'duda');
+  var nom = corto(r);
+  JES.ultimo = r;
+  switch (c.accion) {
+    case 'caja':
+    case 'pedido':
+      var campo = c.accion, valor = campo === 'caja' ? c3_(c.caja) : String(c.pedido || '').replace(/\D/g, '');
+      if (!valor || (campo === 'caja' && !(Number(c.caja) >= 0 && Number(c.caja) <= 99))) return decir(campo === 'caja' ? '¿Qué caja? Del 0 al 99.' : '¿Qué número de ticket es?', 'duda');
+      var antes = String(r[campo] || '');
+      var guardar = function (v, alOk) {
+        hacer('campo', { id: r.id, campo: campo, valor: v }).then(function (res) {
+          if (!res || !res.ok) return fallo(res);
+          var cm = {}; cm[campo] = v;
+          if (campo === 'caja') cm.horaCajaTs = res.horaCajaTs !== undefined ? res.horaCajaTs : Date.now();
+          cambiar(r.id, cm); alOk();
+        });
+      };
+      return guardar(valor, function () {
+        hecho(dicho || (campo === 'caja' ? 'Vale: ' + nom + ' en la caja ' + valor + '.' : 'Apuntado: ' + nom + ', ticket ' + valor + '.'), function () {
+          guardar(antes, function () { hecho('Deshecho: ' + nom + ' queda como estaba.'); });
+        });
+        marcar(r.id);
+      });
+    case 'franja':
+    case 'fecha':
+      var nf = c.accion === 'fecha' ? c.fecha : (r.fecha || hoyISO()), nfr = c.accion === 'franja' ? c.franja : r.franja;
+      var antesF = r.fecha, antesFr = r.franja;
+      var mover = function (f, fr, forzar, alOk) {
+        hacer('franja', { id: r.id, fecha: f, franja: fr, forzar: !!forzar }).then(function (res) {
+          if (res && res.ok) { cambiar(r.id, { fecha: f, franja: fr }); return alOk(); }
+          if (res && res.requiereConfirmacion) return siNo((res.error || 'Ese tramo está completo.') + ' ¿La paso igual?', function () { mover(f, fr, true, alOk); });
+          fallo(res);
+        });
+      };
+      return mover(nf, nfr, false, function () {
+        hecho(dicho || 'Hecho: ' + nom + ' pasa al ' + fechaTxt(nf) + ', de ' + tramoTxt(nfr) + '.', function () {
+          mover(antesF, antesFr, true, function () { hecho('Deshecho: ' + nom + ' vuelve a ' + tramoTxt(antesFr) + '.'); });
+        });
+        marcar(r.id);
+      });
+    case 'frios':
+      var prev = { n_cajas: r.nCajas, nevera: r.nevera, frios: r.frios, congelados: r.congelados };
+      var txt = function (x) { return String(x == null ? '' : x); };
+      var conteo = function (d, alOk) {
+        d.reservaId = r.id;
+        hacer('conteo', d).then(function (res) {
+          if (!res || !res.ok) return fallo(res);
+          cambiar(r.id, { nCajas: res.nCajas, nevera: res.nevera, frios: res.frios, congelados: res.congelados });
+          alOk();
+        });
+      };
+      var nv = +c.nevera || 0, f2 = +c.frios || 0, cg = +c.congelados || 0;
+      // Hay que mandar también el nº de cajas: si va vacío, la hoja lo borra.
+      return conteo({ n_cajas: c.n_cajas != null && c.n_cajas !== '' ? txt(c.n_cajas) : txt(r.nCajas), nevera: txt(nv), frios: txt(f2), congelados: txt(cg) }, function () {
+        hecho(dicho || 'Guardado en ' + nom + ': nevera ' + nv + ', ' + f2 + ' de frío y ' + cg + ' congelado' + (cg === 1 ? '' : 's') + '.', function () {
+          conteo({ n_cajas: txt(prev.n_cajas), nevera: txt(prev.nevera), frios: txt(prev.frios), congelados: txt(prev.congelados) },
+            function () { hecho('Deshecho: los fríos de ' + nom + ' quedan como estaban.'); });
+        });
+        marcar(r.id);
+      });
+    case 'finalizar':
+      // Misma regla que Embolsado: listo = caja + nº de ticket + N-F-C apuntados.
+      if (r.estado === 'CONFIRMADO') return decir(nom + ' ya estaba listo para cargar. 😉', 'ok');
+      if (!tieneCaja(r) || !tienePedido(r)) return decir('A ' + nom + ' le falta ' + (!tieneCaja(r) ? 'la caja' : 'el número de ticket') + '.', 'duda');
+      if (!nfcCompleto(r)) return decir('A ' + nom + ' le faltan los fríos. Dime nevera, fríos y congelados, o «sin frío».', 'duda');
+      return hacer('confirmar', { id: r.id, pedido: r.pedido }).then(function (res) {
+        if (!res || !res.ok) return fallo(res);
+        cambiar(r.id, { estado: 'CONFIRMADO' });
+        hecho(dicho || '¡Hecho! ' + nom + ' lista para cargar. 💪');
+        fiesta('¡LISTO PARA REPARTO!', nom + ' · ' + FRASES[nF++ % FRASES.length]);
+        marcar(r.id);
+      });
+    case 'foto':
+      // La foto del ticket se guarda en Embolsado (lectura del ticket + archivo): se abre allí.
+      marcar(r.id);
+      return decir('La foto de ' + nom + ' se saca en Embolsado. Toca el botón.', '', [{ t: '📷 Abrir Embolsado · ' + nom, cls: 'foto', fn: function () { window.top.location.href = JESSICA_URL + '?u=' + USR; } }]);
+  }
+  decir('No te he entendido. ¿Me lo repites?', 'duda');
+}
+
+/* ============================================================
+   ARRANQUE: carga los pedidos y escucha sin tocar nada
+============================================================ */
+odo('oListos', 0); odo('oPend', 0); odo('oFrios', 0);
+pintaTramos(); pintaCards();
+if (window.speechSynthesis) try { speechSynthesis.getVoices(); } catch (e) {}
+if (sesion.usuario) {
+  cargar();
+  setInterval(function () { if (!document.hidden) cargar(); }, 30000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) cargar(); });
+  setTimeout(escuchar, 400);
+}
+</script>
+</body>
+</html>

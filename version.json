@@ -1,8 +1,8 @@
 {
-  "app": "v3.10.50",
-  "index": "v3.11.3",
+  "app": "v3.10.51",
+  "index": "v3.11.4",
   "auto": "v3.11.1",
-  "inicio-embolsado": "v3.10.6",
+  "inicio-embolsado": "v3.10.7",
   "asignar": "v3.11.6",
   "dia": "v3.10.8",
   "incidencias": "v3.10.8",
@@ -10,5 +10,6 @@
   "reservas": "v3.10.2",
   "flota": "v3.10.4",
   "informe-repartidor": "v3.10.31",
-  "mapa": "v3.10.1"
+  "mapa": "v3.10.1",
+  "jessica": "v3.10.1"
 }

@@ -10,7 +10,7 @@
      v3.10.2 (2026-10-09): ventana "Qué novedades hay" (nexo-novedades.js), una vez por usuario;
      se vuelve a abrir con el enlace de abajo.
 -->
-<html lang="es" data-pagina="inicio-embolsado" data-version="v3.10.6">
+<html lang="es" data-pagina="inicio-embolsado" data-version="v3.10.7">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -130,7 +130,7 @@ document.getElementById('btnReservas').href  = 'reservas.html?u=' + encodeURICom
 document.getElementById('btnEmbolsado').href = EMBOLSADO_URL + '?u=' + encodeURIComponent(USUARIO);
 // Ronda 67: NEXO - MÓDULO JESSICA; ?jessica=1 abre el panel de voz escuchando.
 var JESSICA_URL = 'https://script.google.com/macros/s/AKfycbzo14OOZrwPqfXjPd1xjIn5EXr7EoFmLd6YdATo5QrC4piPaByEVrC4pUX9jpBwMl--/exec';
-document.getElementById('btnJessica').href = JESSICA_URL + '?u=' + encodeURIComponent(USUARIO) + '&jessica=1';
+document.getElementById('btnJessica').href = 'jessica.html';   // ronda 68: página propia, micrófono directo
 
 function cerrarSesion() {
   if (confirm('¿Cerrar sesión?')) {
