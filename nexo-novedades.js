@@ -6,6 +6,8 @@
    Después se puede volver a abrir con cualquier enlace/botón que tenga
    el atributo data-nexo-novedades (o llamando a NexoNovedades.abrir()).
    Para una edición nueva: cambiar EDICION y el contenido de NOVEDADES.
+   Ronda 69 (2026-10-27): FLOTA (botón CCP + tarjeta de puntos que se pasa SIEMPRE al repostar)
+     y JESSICA (qué es y cómo usarla, solo ADM y Embolsado). Se retira la edición de la ronda 47.
    Ronda 47 (2026-10-24): GRANVIA deja de contar los pedidos dos veces (la foto del lote ya no se
      archiva como ticket); «Finalizar sin / con incidencia» en Pedidos asignados; el repartidor
      informa las incidencias desde el pedido y tiene su propio panel; aviso de versión nueva de la
@@ -14,7 +16,7 @@
    Ronda 31 (2026-10-16): %DIA, finalizar con/sin incidencia.
    ============================================================= */
 (function () {
-  var EDICION = '2026-10-ronda47';
+  var EDICION = '2026-10-ronda69';
   var TITULO_FECHA = 'Octubre 2026';
 
   function ic(d) { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>'; }
@@ -36,6 +38,8 @@
     surtidor: ic('<path d="M4 20V5a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v15M3 20h12M6 7h5M16 9h3l1.5 2v7a1.5 1.5 0 0 1-3 0v-4h-1.5"/>'),
     llave: ic('<path d="M15 3a4 4 0 0 0-3.4 6.1L4 16.7V20h3.3l7.6-7.6A4 4 0 1 0 15 3z"/><circle cx="16" cy="7" r="1.1"/>'),
     furgoneta: ic('<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>'),
+    tarjeta: ic('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9v6M10 9v6M12.5 9v6M15 9v6M17 9v6"/>'),
+    micro: ic('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
     cuenta: ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 12l4-2.5"/><path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2"/>')
   };
 
@@ -45,56 +49,28 @@
       titulo: 'Atención',
       aviso: true,
       items: [
-        [I.campana, 'GRANVIA: LOS PEDIDOS SE CUENTAN AL ENTREGAR', 'La foto de la hoja con varios tickets ya NO cuenta pedidos. Cada pedido cuenta cuando lo entregas, uno a uno. Antes se contaba dos veces.']
+        [I.tarjeta, 'PASA LA TARJETA DE PUNTOS SIEMPRE', 'Cada vez que repostes, en la caja de la gasolinera. Sin excepción. Abre Flota, toca la tarjeta que está al lado del título y enséñala al lector.']
       ]
     },
-    granvia: {
-      titulo: 'GRANVIA · la foto de los tickets',
+    flota: {
+      titulo: 'Flota · al repostar',
       items: [
-        [I.foto, 'Sacas la foto igual que siempre', 'Auto-Asignar, foto de la hoja con los tickets. La diferencia es que esa foto ya no se archiva como ticket: pasa directa a "Pedidos asignados" para repartirla.'],
-        [I.mas, 'El número de "Pedidos (P)" es solo un aviso', 'Pon cuántos tickets hay en la foto. Ya no suma pedidos: sirve para avisarte si se leen más o menos de los que dijiste.'],
-        [I.ok, 'Si el desglose no cuadra, te lo dice', 'Si dijiste 7 y se leen 5, sale en rojo y puedes añadir los que falten con "Añadir un ticket que falta".'],
-        [I.rayo, 'Sin internet, igual', 'La foto se queda guardada en el móvil y los tickets se leen solos cuando vuelva la red. No se pierde nada.']
+        [I.tarjeta, 'La tarjeta, en el móvil', 'Al lado del título «Flota» está el código de barras de la tarjeta de puntos. Tócalo: se abre grande, en fondo blanco, para que lo lea la caja. «Cerrar» y sigues.'],
+        [I.surtidor, 'Después, registra el repostaje', 'Como siempre: foto del ticket, litros, importe y KM. La tarjeta no sustituye al registro: son las dos cosas, cada vez.'],
+        [I.cuenta, 'Botón CCP, al lado de Notas', 'Sale VERDE: los pedidos de ese período cuentan para el CCP (lo que cuesta el combustible por pedido). Déjalo en verde en un repostaje normal.'],
+        [I.campana, 'En ROJO, no cuentan los pedidos', 'Tócalo solo si ese repostaje no tiene que ver con los repartos. Se pone rojo y avisa: «Al no seleccionar CCP no se contabilizan los pedidos». Otro toque lo vuelve a verde.'],
+        [I.reloj, 'Lo ves en «Últimos repostajes»', 'Cada repostaje enseña sus entregas y su CCP, o «sin CCP» si se guardó en rojo.']
       ]
     },
-    finalizar: {
-      titulo: 'Pedidos asignados · dos botones',
+    jessica: {
+      titulo: 'Jessica · embolsado por voz',
       items: [
-        [I.ok, 'Finalizar sin incidencia', 'Lo de siempre: el pedido se entrega y se sube su ticket.'],
-        [I.campana, 'Finalizar con incidencia', 'El pedido se entrega igual (cuenta como entrega) y justo después se abre el registro de la incidencia. Igual que en %DIA.'],
-        [I.mano, 'Llegaste al cliente, se computa', 'Aunque haya incidencia, si llegaste al cliente la entrega cuenta para ti. La incidencia queda apuntada para gestionarla después.']
-      ]
-    },
-    incidencias: {
-      titulo: 'Incidencias',
-      items: [
-        [I.mano, 'Se informan desde el pedido', 'Ya no se informa desde el botón de Incidencias: se hace desde la tarjeta del pedido, con "Finalizar con incidencia".'],
-        [I.panel, 'Tienes tu propio panel', 'Al entrar en Incidencias lo primero que ves es tu panel: cuántas tienes pendientes, cuántas resueltas y por qué motivos.'],
-        [I.filtro, 'Y la lista, para consultar', 'Desde el panel pasas a la lista con el botón "Lista" y ves el detalle de tus incidencias.']
-      ]
-    },
-    incidenciasGestion: {
-      titulo: 'Incidencias',
-      items: [
-        [I.mano, 'Tú sigues informando desde aquí', 'El botón "Informar incidencia" de la página de Incidencias se queda para ADM y Embolsado, igual que siempre.'],
-        [I.campana, 'Los repartidores, desde el pedido', 'Ellos ya no informan desde esa página: lo hacen en la tarjeta del pedido, al finalizarlo. Así cada incidencia queda pegada a su pedido y a su entrega.'],
-        [I.panel, 'Cada repartidor ve su panel', 'Al entrar en Incidencias le sale su propio panel, solo con sus números. Los rankings de repartidores y responsables siguen siendo vuestros.']
-      ]
-    },
-    adm: {
-      titulo: 'Solo ADM',
-      items: [
-        [I.deshacer, '%DIA queda limpio', 'Un pedido con la incidencia ya finalizada desaparece de "Cerrados". Antes se quedaba ahí para siempre (el caso de MARIA DEL MAR del 16/10).'],
-        [I.surtidor, 'Combustible sin #ERROR!', 'El enlace al ticket de la hoja COMBUSTIBLE ya no da error: se graba como enlace, no como fórmula, así que no depende del idioma de la planilla.'],
-        [I.campana, 'Las incidencias directas son tuyas', 'Informar una incidencia desde la página de Incidencias queda para ADM y Embolsado. Los repartidores lo hacen desde el pedido.']
-      ]
-    },
-    actualizar: {
-      titulo: 'La app se actualiza sola',
-      items: [
-        [I.rayo, 'Aviso de versión nueva', 'Cuando haya una versión nueva, sale un aviso abajo. Pulsa "Actualizar ahora" y se ponen al día TODAS las páginas y módulos de tu móvil de golpe.'],
-        [I.reloj, 'O "Más tarde"', 'Si estás en medio de un reparto, pulsa "Más tarde" y no te vuelve a molestar hasta la próxima vez que abras la app.'],
-        [I.panel, 'La versión, en el login', 'En la pantalla de entrada se ve abajo qué versión de Nexo tiene este móvil. Si está atrasada, lo dice y se actualiza con un toque.']
+        [I.micro, 'Qué es', 'Jessica es tu ayudante de voz para embolsar: le hablas y ella apunta en el pedido lo mismo que harías con los botones. Te contesta en voz alta.'],
+        [I.mano, 'Cómo entrar', 'Botón «Jessica» del inicio (ADM y Embolsado). Al entrar ya te escucha: la primera vez el móvil pide permiso para el micrófono, dale a «Permitir».'],
+        [I.diseno, 'Qué le puedes decir', '«Ana Rodal en la caja 8», «el ticket es el 6672», «nevera 1, fríos 2, congelados 0» o «sin frío», «franja de 1 a 4», «confirma», «borra la reserva de Juan».'],
+        [I.ok, 'Toca una tarjeta y habla de ella', 'Si tocas el pedido de un cliente, la siguiente orden va para ese pedido. Si no te entiende, te lo dice: repítelo más claro o escríbelo abajo.'],
+        [I.foto, 'La foto del ticket, en el módulo', 'Para la foto, Jessica te deja un botón que abre el módulo. Cuando la foto se guarda, el pedido queda «¡LISTO PARA REPARTO!» y Jessica lo celebra.'],
+        [I.campana, 'Está en pruebas', 'Trabaja en una copia del Embolsado: si algo no sale bien, hazlo como siempre en el Embolsado y avisa de qué le dijiste.']
       ]
     }
   };
@@ -107,9 +83,8 @@
     return 'repartidor';
   }
   function secciones(p) {
-    if (p === 'repartidor') return ['aviso', 'granvia', 'finalizar', 'incidencias', 'actualizar'];
-    if (p === 'embolsado')  return ['aviso', 'incidenciasGestion', 'actualizar'];   // no reparten: lo de entregar no les toca
-    return ['aviso', 'granvia', 'finalizar', 'incidenciasGestion', 'adm', 'actualizar'];   // ADM lo ve todo
+    if (p === 'repartidor') return ['aviso', 'flota'];
+    return ['aviso', 'flota', 'jessica'];   // ADM y Embolsado: también Jessica
   }
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
