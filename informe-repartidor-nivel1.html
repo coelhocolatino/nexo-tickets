@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.31">
+<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.32">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -192,6 +192,12 @@ table.hm td{width:26px;height:24px;border-radius:4px;text-align:center;font-size
 .hm td.on{cursor:pointer}
 .mapagrid{display:grid;gap:16px;grid-template-columns:1fr}
 @media (min-width:900px){.mapagrid{grid-template-columns:minmax(0,1fr) 320px}}
+/* Ronda 70: los filtros (repartidor · tienda · período) lado a lado, en una fila, con su nombre encima */
+.filtros{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;width:100%}
+.filtro-campo{display:flex;flex-direction:column;gap:3px;min-width:0}
+.filtro-campo>label,.filtro-campo>.filtro-tit{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.filtro-campo select{width:100%;min-height:40px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
+.filtro-campo .filtro-fijo{min-height:40px;padding:0 10px;border-radius:10px;color:var(--ink);font-size:13px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .navbtn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;
   font:inherit;font-size:15px;font-weight:700;border:1px solid var(--ring);border-radius:12px;padding:14px 12px;
   background:var(--surface-2);color:var(--ink);cursor:pointer;transition:transform .12s ease,background .18s ease}
@@ -740,8 +746,16 @@ function App() {
       vivo = false;
     };
   }, []);
-  const [periodoId, setPeriodoId] = useState("act");
-  const [rep, setRep] = useState(REP_INICIAL);
+  /* Ronda 70: los datos se ponen al día solos mientras el informe está abierto.
+     Al repintar se conserva lo que se estaba viendo (período y repartidor). */
+  const [periodoId, setPeriodoId] = useState(() => {
+    const s = window.__nxInfSel;
+    return s && s.periodoId && DATA.periodos.some(p => p.id === s.periodoId) ? s.periodoId : "act";
+  });
+  const [rep, setRep] = useState(() => {
+    const s = window.__nxInfSel;
+    return s && s.rep && (s.rep === "*" ? ES_ADM : DATA.reps.indexOf(s.rep) >= 0) ? s.rep : REP_INICIAL;
+  });
   const [vista, setVista] = useState("diario"); // diario | acumulado
   const [compMode, setCompMode] = useState("mio"); // mio | op
   const [drillDay, setDrillDay] = useState(null);
@@ -782,7 +796,9 @@ function App() {
   }, [autorizados]);
   const puedeElegir = PUEDE_ELEGIR || opciones.length > 1;
   const VE_OPERACION = PUEDE_ELEGIR; // ADM (o vista previa fuera de la app)
-  const periodo = DATA.periodos.find(p => p.id === periodoId);
+  /* Ronda 70: el ADM elige cualquier período (los antiguos llegan aparte, ver cargarHistorico). */
+  const periodosElegibles = DATA.periodos.filter(p => p.selectable || ES_ADM && p.soloAdm);
+  const periodo = DATA.periodos.find(p => p.id === periodoId) || DATA.periodos[0];
   const prevPeriodo = DATA.periodos.find(p => p.id === periodo.prev) || periodo;
   const yearPeriodo = DATA.periodos.find(p => p.id === periodo.year);
   const agg = useMemo(() => aggregate(periodo, rep, tiendaF), [periodoId, repKey]);
@@ -1031,9 +1047,12 @@ function App() {
       color: "var(--ink-2)"
     }
   }, "Nexo \xB7 ", periodo.label, " \xB7 datos al ", fmtDay(SNAPSHOT), " de 2026"))), /*#__PURE__*/React.createElement("div", {
-    className: "flex flex-wrap items-center gap-2"
-  }, puedeElegir ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
-    className: "sr-only",
+    className: "filtros",
+    role: "group",
+    "aria-label": "Filtros del informe"
+  }, puedeElegir ? /*#__PURE__*/React.createElement("div", {
+    className: "filtro-campo"
+  }, /*#__PURE__*/React.createElement("label", {
     htmlFor: "selRep"
   }, "Repartidor"), /*#__PURE__*/React.createElement("select", {
     id: "selRep",
@@ -1042,8 +1061,17 @@ function App() {
   }, opciones.map(o => /*#__PURE__*/React.createElement("option", {
     key: o,
     value: o
-  }, o === "*" ? "Toda la operación (ADM)" : o))), ES_ADM && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
-    className: "sr-only",
+  }, o === "*" ? "Toda la operación (ADM)" : o)))) : /*#__PURE__*/React.createElement("div", {
+    className: "filtro-campo"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "filtro-tit"
+  }, "Repartidor"), /*#__PURE__*/React.createElement("span", {
+    className: "pill filtro-fijo"
+  }, /*#__PURE__*/React.createElement("span", {
+    "aria-hidden": "true"
+  }, "\uD83D\uDC64"), SESION.nombre || rep)), puedeElegir && ES_ADM && /*#__PURE__*/React.createElement("div", {
+    className: "filtro-campo"
+  }, /*#__PURE__*/React.createElement("label", {
     htmlFor: "selTienda"
   }, "Tienda"), /*#__PURE__*/React.createElement("select", {
     id: "selTienda",
@@ -1065,25 +1093,18 @@ function App() {
       key: t,
       value: t
     }, "\xA0\xA0" + t))];
-  })()))) : /*#__PURE__*/React.createElement("span", {
-    className: "pill",
-    style: {
-      color: "var(--ink)",
-      padding: "7px 12px"
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    "aria-hidden": "true"
-  }, "\uD83D\uDC64"), SESION.nombre || rep), /*#__PURE__*/React.createElement("label", {
-    className: "sr-only",
+  })())), /*#__PURE__*/React.createElement("div", {
+    className: "filtro-campo"
+  }, /*#__PURE__*/React.createElement("label", {
     htmlFor: "selPer"
   }, "Per\xEDodo"), /*#__PURE__*/React.createElement("select", {
     id: "selPer",
-    value: periodoId,
+    value: periodo.id,
     onChange: e => setPeriodoId(e.target.value)
-  }, DATA.periodos.filter(p => p.selectable).map(p => /*#__PURE__*/React.createElement("option", {
+  }, periodosElegibles.map(p => /*#__PURE__*/React.createElement("option", {
     key: p.id,
     value: p.id
-  }, p.label))))))), /*#__PURE__*/React.createElement("main", {
+  }, p.label)))))))), /*#__PURE__*/React.createElement("main", {
     className: "wrap",
     style: {
       paddingBlock: "20px 44px",
@@ -2535,7 +2556,7 @@ function App() {
    actualizaría la conducción pero NO los totales. El filtro de tienda se
    guarda en el móvil, así que sobrevive. */
 window.__nxInfRaiz = window.__nxInfRaiz || ReactDOM.createRoot(document.getElementById("root"));
-window.__nxInfRaiz.render(/*#__PURE__*/React.createElement(App, { key: DATA.generado || DATA.snapshot || "1" }));
+window.__nxInfRaiz.render(/*#__PURE__*/React.createElement(App, { key: (DATA.generado || DATA.snapshot || "1") + "|" + (DATA.__hist || "") }));   // ronda 70: + períodos antiguos
 }
 
 /* ═══════════════ RONDA 49 · carga de los datos ═══════════════ */
@@ -2617,8 +2638,9 @@ window.__nxInfRaiz.render(/*#__PURE__*/React.createElement(App, { key: DATA.gene
     }
     var estiloBoton = 'min-height:36px;padding:0 12px;border:0;border-radius:10px;' +
       'font:700 13px var(--texto,system-ui);cursor:pointer';
+    /* Ronda 70: en directo de 10h a 23h (al abrir y cada 10 min con la página abierta). */
     b.innerHTML = '<span>Datos de las <b>' + cuando(generado) + '</b>' +
-      ' · se actualizan solos cada 3 h desde las 11h</span>' +
+      ' · de 10h a 23h se ponen al día solos cada 10 min</span>' +
       '<button type="button" id="nxInfAct" style="' + estiloBoton +
       ';background:var(--ink,#0B2447);color:#fff">' +
       (estado === 'cargando' ? 'Buscando…' : 'Buscar datos nuevos') + '</button>' +
@@ -2753,49 +2775,153 @@ window.__nxInfRaiz.render(/*#__PURE__*/React.createElement(App, { key: DATA.gene
     });
   }
 
-  /* Pide solo la marca de hora; descarga el objeto únicamente si hace falta. */
+  /* ══════════════════════════════════════════════════════════════════════════
+     RONDA 70 · DATOS EN DIRECTO
+     Antes «Buscar datos nuevos» solo volvía a leer el archivo que el servidor
+     prepara a las 11, 14, 17, 20 y 23h: a las 20:55 seguía enseñando las 17h.
+     Ahora:
+       · al abrir (de 10h a 23h), si los datos tienen más de 10 min, el servidor
+         los rehace (informeRepartidorDatosFrescos) mientras se ve lo guardado;
+       · con la página abierta, se vuelve a mirar cada 10 min;
+       · el botón los rehace si tienen más de 2 min, a cualquier hora.
+     Lo que se pregunta primero sigue siendo solo la marca de hora (unos bytes).
+     ══════════════════════════════════════════════════════════════════════════ */
+  function aplicar(r) {
+    DATA = r.datos;
+    guardar(r.generado || r.datos.generado || '', r.datos);
+    var h = historico();
+    if (h) fusionarHistorico(h);
+    montar(r.generado || r.datos.generado || '');
+    cargarHistorico();
+  }
+  function frescos(manual) {
+    return llamar('informeRepartidorDatosFrescos', { manual: !!manual }).then(function (r) {
+      if (r && r.ok && r.datos && r.datos.rows) {
+        var antes = (guardado() || {}).generado || '';
+        aplicar(r);
+        if (manual && (r.generado || '') === antes) barra(antes, 'ya tenías los últimos');
+        return true;
+      }
+      return r || { ok: false, error: 'Sin conexión.' };
+    });
+  }
+  function conLoGuardado(local, txt) {
+    DATA = local.datos;
+    var h = historico();
+    if (h) fusionarHistorico(h);
+    montar(local.generado);
+    if (txt) barra(local.generado, txt);
+    cargarHistorico();
+  }
   function comprobar(manual) {
     var local = guardado();
-    if (manual) barra(local && local.generado, 'cargando');
+    if (manual) {
+      barra(local && local.generado, 'cargando');
+      return frescos(true).then(function (r) {
+        if (r === true) return;
+        if (local) conLoGuardado(local, (r && r.red) ? 'sin conexión: datos guardados en este móvil' : ((r && r.error) || 'No se pudieron traer datos nuevos.'));
+        else aviso('No se pudieron cargar los datos del informe.<br><span style="font-weight:500">' + ((r && r.error) || '') + '</span>');
+      });
+    }
     return llamar('informeRepartidorDatosVersion').then(function (v) {
+      if (v && v.ok && v.viejo) {                // ronda 70: horario en directo y datos de hace más de 10 min
+        return frescos(false).then(function (r) {
+          if (r === true) return;
+          if (local) conLoGuardado(local, '');
+          else return descargar(local);
+        });
+      }
       if (v && v.ok && v.generado && local && local.generado === v.generado) {
-        DATA = local.datos;                      // nada que descargar
-        montar(local.generado);
-        if (manual) barra(local.generado, 'ya tenías los últimos');
+        if (!montado) conLoGuardado(local, '');   // nada que descargar
         return;
       }
       if (v && !v.ok && !v.red) {                // el backend contesta pero dice que no
-        if (local) { DATA = local.datos; montar(local.generado); barra(local.generado, v.error || ''); return; }
+        if (local) { conLoGuardado(local, v.error || ''); return; }
         aviso('No se pudieron cargar los datos del informe.<br><span style="font-weight:500">' +
           (v.error || '') + '</span>');
         return;
       }
-      return llamar('informeRepartidorDatos').then(function (r) {
-        if (r && r.ok && r.datos && r.datos.rows) {
-          DATA = r.datos;
-          guardar(r.generado || r.datos.generado || '', r.datos);
-          montar(r.generado || r.datos.generado || '');
-          return;
-        }
-        if (local) {                             // sin red: se sigue con lo que hay en el móvil
-          DATA = local.datos;
-          montar(local.generado);
-          barra(local.generado, 'sin conexión: datos guardados en este móvil');
-          return;
-        }
-        aviso('No se pudieron cargar los datos del informe.<br><span style="font-weight:500">' +
-          ((r && r.error) || 'Sin conexión.') + '</span><br><br>' +
-          '<button type="button" onclick="location.reload()" style="min-height:44px;padding:0 16px;border:0;' +
-          'border-radius:12px;background:#0B2447;color:#fff;font:700 15px system-ui">Volver a intentarlo</button>');
-      });
+      return descargar(local);
     });
   }
+  function descargar(local) {
+    return llamar('informeRepartidorDatos').then(function (r) {
+      if (r && r.ok && r.datos && r.datos.rows) { aplicar(r); return; }
+      if (local) {                               // sin red: se sigue con lo que hay en el móvil
+        conLoGuardado(local, 'sin conexión: datos guardados en este móvil');
+        return;
+      }
+      aviso('No se pudieron cargar los datos del informe.<br><span style="font-weight:500">' +
+        ((r && r.error) || 'Sin conexión.') + '</span><br><br>' +
+        '<button type="button" onclick="location.reload()" style="min-height:44px;padding:0 16px;border:0;' +
+        'border-radius:12px;background:#0B2447;color:#fff;font:700 15px system-ui">Volver a intentarlo</button>');
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     RONDA 70 · TODOS LOS PERÍODOS PARA EL ADM
+     Los períodos antiguos (Mes_Operativo de UNIFICADA) van en su propio archivo
+     y solo se descargan para el ADM, una vez: se guardan en el móvil y solo se
+     vuelven a pedir si cambian (DATA.histVersion).
+     ══════════════════════════════════════════════════════════════════════════ */
+  var CLAVE_HIST = 'nexo_informe_historico';
+  var ES_ADM_SES = NIVEL_SES === 'ADMIN';
+  function historico() {
+    if (!ES_ADM_SES) return null;
+    try {
+      var h = JSON.parse(localStorage.getItem(CLAVE_HIST) || 'null');
+      return h && h.hist && h.version && h.version === DATA.histVersion ? h : null;
+    } catch (e) { return null; }
+  }
+  /* Mismo trabajo que idFusionarHistorico_ del servidor: los índices de tienda,
+     repartidor y franja del histórico se pasan a los de DATA. */
+  function fusionarHistorico(h) {
+    if (!h || !h.hist || !h.hist.rows || DATA.__hist === h.version) return;
+    var d = h.hist;
+    function indice(lista, nombre) {
+      var i = lista.indexOf(nombre);
+      if (i === -1) { lista.push(nombre); i = lista.length - 1; }
+      return i;
+    }
+    var ya = {};
+    DATA.periodos.forEach(function (x) { ya[x.id] = true; });
+    d.periodos.forEach(function (x) { if (!ya[x.id]) DATA.periodos.push(x); });
+    d.rows.forEach(function (r) {
+      DATA.rows.push([r[0], indice(DATA.tiendas, d.tiendas[r[1]]), indice(DATA.reps, d.reps[r[2]]),
+                      indice(DATA.franjas, d.franjas[r[3]]), r[4], r[5], r[6], r[7]]);
+    });
+    DATA.__hist = h.version;
+  }
+  var histPidiendo = false;
+  function cargarHistorico() {
+    if (!ES_ADM_SES || histPidiendo || !DATA.histVersion || DATA.__hist === DATA.histVersion) return;
+    histPidiendo = true;
+    llamar('informeRepartidorHistorico').then(function (r) {
+      histPidiendo = false;
+      if (!r || !r.ok || !r.hist || !r.hist.rows) return;
+      var h = { version: r.version || DATA.histVersion, hist: r.hist };
+      try { localStorage.setItem(CLAVE_HIST, JSON.stringify(h)); } catch (e) {}
+      if (h.version !== DATA.histVersion) return;   // llegaron datos nuevos entretanto: ya se pedirá otra vez
+      fusionarHistorico(h);
+      arrancarInforme();                           // la clave de React cambia (DATA.__hist): se repinta con los períodos
+      barra(DATA.generado, '');
+    });
+  }
+
+  /* Ronda 70: con la página abierta y a la vista, se vuelve a mirar cada 10 min. */
+  setInterval(function () {
+    if (document.visibilityState === 'visible' && montado) comprobar(false);
+  }, 10 * 60 * 1000);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState !== 'visible' || !montado) return;
+    var t = Date.now();
+    if (t - (comprobar._ultima || 0) > 5 * 60 * 1000) { comprobar._ultima = t; comprobar(false); }
+  });
 
   if (!ses || !ses.usuario) return;              // el guard de sesión ya manda al login
   var hay = guardado();
   if (hay && hay.datos && hay.datos.rows && hay.datos.rows.length) {
-    DATA = hay.datos;                            // se pinta al instante con lo guardado
-    montar(hay.generado);
+    conLoGuardado(hay, '');                      // se pinta al instante con lo guardado
     comprobar(false);                            // y se comprueba por detrás
   } else {
     aviso('Cargando los datos del informe…');
