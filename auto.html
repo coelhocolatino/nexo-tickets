@@ -63,7 +63,7 @@
      v3.10.2 (2026-10-09): ventana "Qué novedades hay" (nexo-novedades.js), una vez por usuario;
      se vuelve a abrir con el enlace de abajo.
 -->
-<html lang="es" data-pagina="auto" data-version="v3.11.2">
+<html lang="es" data-pagina="auto" data-version="v3.11.3">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -104,6 +104,7 @@ input[type="date"].control { -webkit-appearance:none; appearance:none; text-alig
 .row-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
 .row-3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
 .group { min-width:0; }
+#btnSubir:disabled { opacity:.45; cursor:not-allowed; }   /* ronda 71: TRAVESIA bloqueada */
 .lock-hint { font-size:12px; font-weight:700; color:var(--nx-suave); margin-top:-6px; display:flex; align-items:center; gap:4px; }
 .tienda-row { display:flex; align-items:center; gap:8px; }
 .tienda-row select { flex:1; min-width:0; }
@@ -231,6 +232,8 @@ input[type="date"].control { -webkit-appearance:none; appearance:none; text-alig
         </select>
         <a class="btn-asignar" id="btnAsignar" href="asignar.html" title="Pedidos asignados" aria-label="Pedidos asignados"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></svg></a>
       </div>
+      <!-- Ronda 71: Auto-Asignar bloqueado en TRAVESIA (se activa en Config) -->
+      <div class="lock-hint" id="hintAutoTrav" role="alert" style="display:none;margin-top:8px;padding:10px 12px;border-radius:10px;font-size:13px;color:var(--nx-rojo);background:var(--nx-rojo-fondo)">TRAVESIA no se sube por Auto-Asignar: los pedidos se cuentan al entregarlos en «Pedidos asignados».</div>
     </div>
 
     <div>
@@ -1150,6 +1153,11 @@ async function enviarTicketConReintentos(payload, intentos = 3, esperaBaseMs = 1
 document.getElementById('ticketForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   if (_submitting) return;
+  if (autoTravBloqueado()) {   // ronda 71
+    alert('Auto-Asignar está bloqueado para TRAVESIA. Los pedidos de TRAVESIA se cuentan al entregarlos en «Pedidos asignados».');
+    avisoAutoTrav();
+    return;
+  }
 
   const foto = fotoInput.files[0];
   if (!foto) { alert('Por favor, selecciona una foto del ticket.'); return; }
@@ -1396,7 +1404,30 @@ function esTravesia(v) { return /trav[eé]s[ií]a/i.test(String(v || '')); }
 function actualizarBtnAsignar() {
   btnAsignar.style.display = (esTravesia(tiendaSel.value) || esGranvia(tiendaSel.value)) ? 'block' : 'none';
   avisarPedidosGranvia();
+  avisoAutoTrav();   // ronda 71
 }
+/* ============================================================
+   RONDA 71 — AUTO-ASIGNAR BLOQUEADO EN TRAVESIA
+   Mientras el ADM no lo active en Config («Permitir Auto-Asignar en TRAVESIA»),
+   con la tienda TRAVESIA no se puede subir: esos pedidos se cuentan al
+   entregarlos en Pedidos asignados. Sin respuesta del servidor vale lo último
+   guardado en el móvil y, si no hay nada, bloqueado.
+============================================================ */
+var AUTO_TRAV_OK = false;
+try { AUTO_TRAV_OK = localStorage.getItem('nexo_auto_trav_ok') === '1'; } catch (e) {}
+function autoTravBloqueado() { return !AUTO_TRAV_OK && esTravesia(tiendaSel.value); }
+function avisoAutoTrav() {
+  var h = document.getElementById('hintAutoTrav'), b = document.getElementById('btnSubir');
+  var bloq = autoTravBloqueado();
+  if (h) h.style.display = bloq ? 'flex' : 'none';
+  if (b) b.disabled = bloq;
+}
+postProxy(EMBOLSADO_URL, { accion: 'autoAsignarConfig', usuario: sesion && sesion.usuario }).then(function (r) {
+  if (!r || !r.ok) return;
+  AUTO_TRAV_OK = !!r.travesiaPermitida;
+  try { localStorage.setItem('nexo_auto_trav_ok', AUTO_TRAV_OK ? '1' : '0'); } catch (e) {}
+  avisoAutoTrav();
+}).catch(function () {});
 /* Ronda 47: en GRANVIA el nº de «Pedidos (P)» ya no cuenta nada — los pedidos se
    cuentan de uno en uno al entregarlos. Aquí solo sirve para avisar si el OCR
    lee más o menos tickets de los que dice el repartidor. Se explica en pantalla

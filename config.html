@@ -19,7 +19,7 @@
      guardarReservaAuto, borrarReservaAuto; disparador generarReservasAuto).
      Se mantienen: Pedidos diarios emitidos (NEXO SCRIPT, PEDIDOS_TOTALES; GRANVIA en su
      columna) y Límites por franja (Módulo Embolsado, hoja LIMITES). -->
-<html lang="es" data-pagina="config" data-version="v3.10.12">
+<html lang="es" data-pagina="config" data-version="v3.10.13">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -264,7 +264,30 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
     <div class="msg" id="msgIrc"></div>
   </section>
 
-  <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.12</div>
+  <!-- Tiendas por usuario (Ronda 71) -->
+  <section class="sec">
+    <h2>Tiendas por usuario</h2>
+    <p class="nota">Cada usuario trabaja en su tienda predefinida. Marca otra tienda para que, en
+      Pedidos asignados, también pueda elegirla y asignarse sus pedidos (TRAVESIA / GRANVIA).</p>
+    <div id="tpuCuerpo"><div class="ra-vacio">Cargando…</div></div>
+    <div class="fila-btn">
+      <button class="btn-s" id="btnTpuDeshacer" type="button" disabled>Deshacer</button>
+      <button class="btn-p" id="btnTpuGuardar" type="button" disabled>Guardar</button>
+    </div>
+    <div class="msg" id="msgTpu"></div>
+  </section>
+
+  <!-- Auto-Asignar (Ronda 71) -->
+  <section class="sec">
+    <h2>Auto-Asignar</h2>
+    <label class="sw-fila" for="swAutoTrav">
+      <span><b>Permitir Auto-Asignar en TRAVESIA</b><span class="nota" style="display:block;margin-top:2px">Apagado: nadie puede subir un ticket con la tienda TRAVESIA desde Auto-Asignar (los pedidos de TRAVESIA se cuentan al entregarlos en Pedidos asignados). Vale para todos los usuarios.</span></span>
+      <input type="checkbox" id="swAutoTrav" disabled />
+    </label>
+    <div class="msg" id="msgAuto"></div>
+  </section>
+
+  <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.13</div>
 </main>
 <script>
 /* Ronda 27: secciones plegables (solo se abre una) + sección de teléfonos útiles. */
@@ -285,7 +308,9 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
       if (typeof IRC === 'undefined' || !IRC.datos.length) return 'PDF por repartidor';
       var on = IRC.datos.filter(function (r) { return r.activo; }).length;
       return on + ' de ' + IRC.datos.length + ' repartidores con envío automático';
-    }
+    },
+    'Tiendas por usuario': 'Quién puede asignar en otra tienda',   // ronda 71
+    'Auto-Asignar': 'TRAVESIA: bloqueado o permitido'              // ronda 71
   };
   var CHEV = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
   var secs = Array.prototype.slice.call(document.querySelectorAll('main.nx-pag > section.sec'));
@@ -786,7 +811,7 @@ el('btnCfgGuardar').addEventListener('click', function () {
   });
 });
 
-if (String(sesion.nivel || '').toLowerCase() === 'admin') { cargar(); cargarLimites(); cargarRA(); cargarCfgInformes(); ircCargar(); }
+if (String(sesion.nivel || '').toLowerCase() === 'admin') { cargar(); cargarLimites(); cargarRA(); cargarCfgInformes(); ircCargar(); tpuCargar(); autoCargar(); }
 else el('ircCuerpo').innerHTML = '<div class="ra-vacio">Solo el ADM.</div>';
 /* ================= INFORME DEL REPARTIDOR (Ronda 45) =================
    Por repartidor: si se le envía su informe en PDF, cada cuánto, a qué hora
@@ -944,6 +969,86 @@ el('btnIrcDeshacer').addEventListener('click', function () {
 });
 
 
+
+/* ================= RONDA 71 · TIENDAS POR USUARIO ================= */
+var TPU = { usuarios: [], tiendas: ['TRAVESIA', 'GRANVIA'], original: '' };
+function tpuExtra() {
+  var o = {};
+  TPU.usuarios.forEach(function (u) { if (u.extra.length) o[u.usuario] = u.extra.slice(); });
+  return o;
+}
+function tpuPintar() {
+  if (!TPU.usuarios.length) { el('tpuCuerpo').innerHTML = '<div class="ra-vacio">No hay usuarios.</div>'; return; }
+  var h = '';
+  TPU.usuarios.forEach(function (u) {
+    TPU.tiendas.forEach(function (t) {
+      if (t === u.tienda) return;
+      var on = u.extra.indexOf(t) !== -1, id = 'tpu_' + u.usuario + '_' + t;
+      h += '<div class="cfg-campo' + (on ? '' : ' off') + '">' +
+             '<input type="checkbox" id="' + esc(id) + '" data-tpu="' + esc(u.usuario) + '" data-tienda="' + esc(t) + '"' +
+               (on ? ' checked' : '') + ' onchange="tpuMarcar(this)">' +
+             '<label class="nom" for="' + esc(id) + '">' + esc(u.usuario) +
+               '<span class="nx-nivel">' + esc(u.nivel || '') + '</span>' +
+               '<span class="nota" style="display:block;font-weight:600">' + esc(u.tienda) + ' · también ' + esc(t) + '</span></label>' +
+           '</div>';
+    });
+  });
+  el('tpuCuerpo').innerHTML = h;
+}
+function tpuMarcar(c) {
+  c.parentNode.classList.toggle('off', !c.checked);
+  var u = TPU.usuarios.filter(function (x) { return x.usuario === c.getAttribute('data-tpu'); })[0];
+  if (!u) return;
+  var t = c.getAttribute('data-tienda'), i = u.extra.indexOf(t);
+  if (c.checked && i === -1) u.extra.push(t);
+  if (!c.checked && i !== -1) u.extra.splice(i, 1);
+  var cambio = JSON.stringify(tpuExtra()) !== TPU.original;
+  el('btnTpuGuardar').disabled = !cambio; el('btnTpuDeshacer').disabled = !cambio;
+  aviso('msgTpu', '');
+}
+function tpuCargar() {
+  postEmbolsado({ accion: 'tiendasUsuariosObtener' }).then(function (r) {
+    if (!r || !r.ok) { el('tpuCuerpo').innerHTML = '<div class="ra-vacio">' + esc((r && r.error) || 'No se pudo leer.') + '</div>'; return; }
+    TPU.usuarios = r.usuarios || []; TPU.tiendas = r.tiendas || TPU.tiendas;
+    TPU.original = JSON.stringify(tpuExtra());
+    tpuPintar();
+  });
+}
+el('btnTpuGuardar').addEventListener('click', function () {
+  spin(true);
+  postEmbolsado({ accion: 'tiendasUsuariosGuardar', extra: tpuExtra() }).then(function (r) {
+    spin(false);
+    if (!r || !r.ok) { aviso('msgTpu', (r && r.error) || 'No se pudo guardar.', 'err'); return; }
+    TPU.original = JSON.stringify(tpuExtra());
+    el('btnTpuGuardar').disabled = true; el('btnTpuDeshacer').disabled = true;
+    aviso('msgTpu', 'Guardado. Lo verá la próxima vez que abra Pedidos asignados.', 'ok');
+  });
+});
+el('btnTpuDeshacer').addEventListener('click', function () {
+  var o = JSON.parse(TPU.original || '{}');
+  TPU.usuarios.forEach(function (u) { u.extra = (o[u.usuario] || []).slice(); });
+  el('btnTpuGuardar').disabled = true; el('btnTpuDeshacer').disabled = true;
+  aviso('msgTpu', '');
+  tpuPintar();
+});
+
+/* ================= RONDA 71 · AUTO-ASIGNAR EN TRAVESIA ================= */
+function autoCargar() {
+  postEmbolsado({ accion: 'autoAsignarConfig' }).then(function (r) {
+    var sw = el('swAutoTrav');
+    if (!r || !r.ok) { aviso('msgAuto', (r && r.error) || 'No se pudo leer.', 'err'); return; }
+    sw.checked = !!r.travesiaPermitida; sw.disabled = false;
+  });
+}
+el('swAutoTrav').addEventListener('change', function () {
+  var sw = this, quiere = sw.checked;
+  sw.disabled = true; aviso('msgAuto', '');
+  postEmbolsado({ accion: 'autoAsignarConfigGuardar', travesiaPermitida: quiere }).then(function (r) {
+    sw.disabled = false;
+    if (!r || !r.ok) { sw.checked = !quiere; aviso('msgAuto', (r && r.error) || 'No se pudo guardar.', 'err'); return; }
+    aviso('msgAuto', r.travesiaPermitida ? 'Activado: se puede usar Auto-Asignar en TRAVESIA.' : 'Bloqueado: Auto-Asignar no deja subir tickets de TRAVESIA.', 'ok');
+  });
+});
 </script>
 </body>
 </html>

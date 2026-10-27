@@ -27,12 +27,14 @@
      aviso rojo si falla de verdad). La lista se guarda en el móvil entre aperturas (antes se perdía al cerrar).
      v3.11.4 (2026-10-25, ronda 54): «Clientes previstos para hoy» al final de la ruta, según la tienda (TRAVESIA /
      GRANVIA). Menú cerrado; la lista se pide al abrirlo. Requiere Embolsado.js de la ronda 54 (clientesPrevistos).
+     v3.11.7 (2026-10-27, ronda 71): un usuario que el ADM autoriza en otra tienda (Config → «Tiendas por usuario»)
+     tiene el selector TRAVESIA / GRANVIA para Disponibles. Requiere Embolsado.js de la ronda 71 (misTiendas).
      v3.11.6 (2026-10-25, ronda 59): Finalizar en segundo plano más rápido y fiable: hasta 2 envíos a la vez,
      corte a los 100 s si una petición se cuelga, esperas más cortas y se reanuda al volver a la app.
      v3.11.5 (2026-10-25, ronda 56): el ADM puede finalizar (sin o con incidencia) los pedidos de cualquier
      repartidor; el ticket se archiva a nombre del repartidor. Requiere Embolsado.js de la ronda 56.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.11.6">
+<html lang="es" data-pagina="asignar" data-version="v3.11.7">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -244,6 +246,9 @@ details.entregados[open] > summary .flecha { transform:rotate(180deg); }
 .filtros .nx-pestanas { margin:0; }
 .filtros select { min-height:52px; width:100%; }
 .filtros select:disabled { opacity:.45; }
+/* Ronda 71: un usuario autorizado en otra tienda ve solo el selector de tienda (sin el de repartidor) */
+.filtros.solo-tienda { grid-template-columns:minmax(0,1fr); }
+.filtros.solo-tienda select { display:none; }
 select.nx-input { -webkit-appearance:none; appearance:none; padding-right:36px; font-weight:800;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%230B2447' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E");
   background-repeat:no-repeat; background-position:right 10px center; }
@@ -304,7 +309,7 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
     <summary><span><span id="prevAsigTit">Clientes previstos para hoy</span><small id="prevAsigSub">Calculado a las 05:00</small></span><svg class="flecha" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></summary>
     <div class="prev-lista" id="prevAsigLista"><div class="prev-nota">Cargando…</div></div>
   </details>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.6</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.7</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
@@ -419,23 +424,53 @@ var ES_ADMIN = String(SESION.nivel || '').toLowerCase().trim() === 'admin';
 var TIENDA_PRE = String(SESION.tiendaPre || '').trim();   // ronda 28: tienda predefinida del usuario
 /* Ronda 29: el ADM elige la tienda que ve (se recuerda); el resto, siempre la suya. */
 var TIENDA_SEL = '';
+/* Ronda 71: el ADM puede autorizar a un usuario en otra tienda (Config → «Tiendas por usuario»).
+   Entonces también elige tienda aquí. Lo dice el servidor (misTiendas) y se guarda en el móvil. */
+var CLAVE_TIENDAS = 'nexo_tiendas_perm_' + String(USUARIO || '').toLowerCase();
+var TIENDAS_PERM = [];
+try { TIENDAS_PERM = JSON.parse(localStorage.getItem(CLAVE_TIENDAS) || '[]') || []; } catch (e) { TIENDAS_PERM = []; }
+function eligeTienda() { return ES_ADMIN || TIENDAS_PERM.length > 1; }
+var CLAVE_TIENDA_SEL = ES_ADMIN ? 'nexo_tienda_adm' : 'nexo_tienda_sel_' + String(USUARIO || '').toLowerCase();
 (function () {
   var pre = /granv[ií]a/i.test(TIENDA_PRE) ? 'GRANVIA' : (TIENDA_PRE ? 'TRAVESIA' : 'TRAVESIA');
   TIENDA_SEL = pre;
-  if (ES_ADMIN) { try { var g = localStorage.getItem('nexo_tienda_adm'); if (g === 'TRAVESIA' || g === 'GRANVIA') TIENDA_SEL = g; } catch (e) {} }
+  if (eligeTienda()) { try { var g = localStorage.getItem(CLAVE_TIENDA_SEL); if ((g === 'TRAVESIA' || g === 'GRANVIA') && (ES_ADMIN || TIENDAS_PERM.indexOf(g) !== -1)) TIENDA_SEL = g; } catch (e) {} }
 })();
-function tiendaAct() { return ES_ADMIN ? TIENDA_SEL : TIENDA_PRE; }
+function tiendaAct() { return eligeTienda() ? TIENDA_SEL : TIENDA_PRE; }
 function pintarSelTienda() {
   var s = document.getElementById('selTienda'); if (!s) return;
-  var fl = document.getElementById('filtros'); if (fl) fl.style.display = ES_ADMIN ? 'grid' : 'none';
-  ['TRAVESIA', 'GRANVIA'].forEach(function (t) { var b = document.getElementById('ti' + t); if (b) b.classList.toggle('on', t === TIENDA_SEL); });
+  var fl = document.getElementById('filtros');
+  if (fl) { fl.style.display = eligeTienda() ? 'grid' : 'none'; fl.classList.toggle('solo-tienda', !ES_ADMIN); }
+  ['TRAVESIA', 'GRANVIA'].forEach(function (t) {
+    var b = document.getElementById('ti' + t); if (!b) return;
+    b.classList.toggle('on', t === TIENDA_SEL);
+    b.hidden = !ES_ADMIN && TIENDAS_PERM.indexOf(t) === -1;
+  });
+}
+/* Ronda 71: pregunta al servidor en qué tiendas puede trabajar (si cambió, se repinta). */
+function comprobarTiendas() {
+  if (ES_ADMIN) return;
+  api('misTiendas').then(function (r) {
+    if (!r || !r.ok || !Array.isArray(r.tiendas)) return;
+    var antes = JSON.stringify(TIENDAS_PERM);
+    TIENDAS_PERM = r.tiendas;
+    try { localStorage.setItem(CLAVE_TIENDAS, JSON.stringify(TIENDAS_PERM)); } catch (e) {}
+    if (JSON.stringify(TIENDAS_PERM) === antes) return;
+    var propia = /granv[ií]a/i.test(TIENDA_PRE) ? 'GRANVIA' : 'TRAVESIA';
+    if (!eligeTienda() || TIENDAS_PERM.indexOf(TIENDA_SEL) === -1) {
+      if (TIENDA_SEL !== propia) { TIENDA_SEL = propia; disp = []; dispTs = 0; dispCargado = false; sel = {}; }
+    }
+    pintarSelTienda(); actualizarBarra(); actualizarPestanas(); pintar();
+    if (tab === 'disp') cargarDisp(true);
+  });
 }
 var DISP = {};   // ronda 30: disponibles guardados por tienda (cambiar de tienda no mezcla ni recarga)
 function elegirTiendaAdm(t) {
-  if (!ES_ADMIN || t === TIENDA_SEL) return;
+  if (!eligeTienda() || t === TIENDA_SEL) return;
+  if (!ES_ADMIN && TIENDAS_PERM.indexOf(t) === -1) return;   // ronda 71: solo las autorizadas
   DISP[TIENDA_SEL] = { disp: disp, ts: dispTs, tramos: tramos, ok: dispCargado };
   TIENDA_SEL = t;
-  try { localStorage.setItem('nexo_tienda_adm', t); } catch (e) {}
+  try { localStorage.setItem(CLAVE_TIENDA_SEL, t); } catch (e) {}
   var c = DISP[t];
   if (c) { disp = c.disp; dispTs = c.ts; tramos = c.tramos; dispCargado = c.ok; } else { disp = []; dispTs = 0; dispCargado = false; }
   sel = {};
@@ -1211,7 +1246,7 @@ function pvFilasHTML(lista, conTienda) {
 function pvHora(generado) { var m = /(\d{1,2}:\d{2})/.exec(String(generado || '')); return m ? m[1] : '05:00'; }
 var PV_CLAVE_ASIG = 'nexo_prev_crf_' + USUARIO, PV_ASIG_ULT = null, _pvAsigPedido = false;
 /* El servidor manda TRAVESIA y GRANVIA juntas: aquí se enseña la tienda que se está viendo. */
-function pvTiendaVista() { return ES_ADMIN ? TIENDA_SEL : (normTiendaC(TIENDA_PRE) || 'TRAVESIA'); }
+function pvTiendaVista() { return eligeTienda() ? TIENDA_SEL : (normTiendaC(TIENDA_PRE) || 'TRAVESIA'); }   // ronda 71
 function pintarPrevistosAsig(r) {
   var t = pvTiendaVista();
   var tit = document.getElementById('prevAsigTit'), lis = document.getElementById('prevAsigLista');
@@ -1648,6 +1683,7 @@ else {
   }
   cambiarTab('ruta');
   cargar(true);
+  comprobarTiendas();   // ronda 71
   pintarChipEnt(); procesarColaEnt();   // ronda 52: tickets que quedaron por archivar la última vez
   procesarPendientes().then(function (hubo) { if (hubo) cargar(false); });
 }

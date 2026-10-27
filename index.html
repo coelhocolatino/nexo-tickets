@@ -15,7 +15,7 @@
      Los globos de %DIA e Incidencias los sigue calculando nexo-nav.js: aquí
      solo se copian a los botones, sin pedir nada más al servidor.
      El departamento EMBOLSADO (sin ser ADM) sigue yendo a inicio-embolsado.html. -->
-<html lang="es" data-pagina="index" data-version="v3.11.5">
+<html lang="es" data-pagina="index" data-version="v3.11.6">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -131,6 +131,7 @@ var ES_EMB   = DEPTO === 'EMBOLSADO';
 var TIENDA   = String(sesion.tiendaPre || '');
 var ES_TRAV  = /trav[eé]s[ií]a/i.test(TIENDA);
 var ES_GRAN  = /granv[ií]a/i.test(TIENDA);
+var ES_NIVEL2 = NIVEL === 'usuario 2' || NIVEL === 'usuario2';   // ronda 71: el nivel 2 también ve Reservas
 var USR      = encodeURIComponent(sesion.usuario || '');
 
 document.getElementById('badgeNombre').textContent = sesion.nombre || sesion.usuario || '—';
@@ -192,7 +193,7 @@ var BOTONES = [
     ok: true },
   { k: 'reservas', t: 'Reservas', sub: 'Franjas y cupos', href: 'reservas.html?u=' + USR,
     ic: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
-    ok: ES_ADMIN || ES_TRAV },
+    ok: ES_ADMIN || ES_TRAV || ES_NIVEL2 },
   { k: 'informe', t: 'Informe', sub: 'Tus pedidos del período', href: 'informe-repartidor-nivel1.html',
     ic: '<path d="M5 20V10M12 20V4M19 20v-7"/>',
     ok: true },

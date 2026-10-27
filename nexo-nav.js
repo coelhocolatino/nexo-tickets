@@ -4,7 +4,7 @@
    ese usuario tiene permitidas; si no caben, se deslizan hacia los lados.
    Reglas (las mismas que los botones del inicio):
      · Inicio, %DIA, Incidencias e Informe: todos.
-     · Asignar: ADM o tienda TRAVESIA/GRANVIA. Reservas: ADM o TRAVESIA.
+     · Asignar: ADM o tienda TRAVESIA/GRANVIA. Reservas: ADM, TRAVESIA o nivel 2 (ronda 71).
      · Embolsado: ADM o departamento EMBOLSADO.
      · Config: solo ADM.
    Se coloca solo tras <header class="nx-cab">. Estilos en nexo-tema.css (.nx-nav).
@@ -23,6 +23,7 @@
   var emb = depto === 'EMBOLSADO';
   var trav = /trav[eé]s[ií]a/i.test(tienda);
   var gran = /granv[ií]a/i.test(tienda);
+  var nivel2 = nivel === 'usuario 2' || nivel === 'usuario2';   // ronda 71: el nivel 2 también ve Reservas
   var usr = encodeURIComponent(u.usuario);
   var EMBOLSADO_URL = 'https://script.google.com/macros/s/AKfycbxvyzpNQObvloq0tuoDisEn4qrGWh0tEGfGHn4NXoEqP1ShODyIWQ1bzYyWfcuz_Pqh/exec';
 
@@ -32,7 +33,7 @@
     { k: 'dia', t: '%DIA', href: 'dia.html', ic: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/>', ok: true },
     { k: 'incidencias', t: 'Incidencias', href: 'incidencias.html', ic: '<path d="M12 4l9 16H3zM12 10v4M12 17v.5"/>', ok: true },
     { k: 'asignar', t: 'Asignar', href: 'asignar.html', ic: '<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>', ok: admin || trav || gran },
-    { k: 'reservas', t: 'Reservas', href: 'reservas.html?u=' + usr, ic: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>', ok: admin || trav },
+    { k: 'reservas', t: 'Reservas', href: 'reservas.html?u=' + usr, ic: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>', ok: admin || trav || nivel2 },
     { k: 'embolsado', t: 'Embolsado', href: EMBOLSADO_URL + '?u=' + usr, ic: '<path d="M6 8h12l1 12H5zM9 8V6a3 3 0 0 1 6 0v2"/>', ok: admin || emb },
     { k: 'informe', t: 'Informe', href: 'informe-repartidor-nivel1.html', ic: '<path d="M5 20V10M12 20V4M19 20v-7"/>', ok: true },
     { k: 'actualizar', t: 'Actualizar', accion: true, ic: '<path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5"/>', ok: admin && (document.documentElement.getAttribute('data-pagina') === 'index') },
