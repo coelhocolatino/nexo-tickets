@@ -5,8 +5,9 @@
      NEXO - MÓDULO JESSICA por doPost (jesPanel / jesHacer / jesInterpretar / jesVoz, ver Jessica.gs),
      que usa las MISMAS funciones que los botones de Embolsado. Estética propia (excepción en CLAUDE.md).
      v3.10.1: primera versión (lienzo C «Pulso» v4 aprobado).
+     v3.10.2: «elimina / borra / quita la reserva de X» = quitarla (pregunta antes); antes creaba una reserva nueva.
 -->
-<html lang="es" data-pagina="jessica" data-version="v3.10.1">
+<html lang="es" data-pagina="jessica" data-version="v3.10.2">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -243,7 +244,7 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity
       <label><input type="checkbox" id="habla"> Que hable</label>
     </div>
   </details>
-  <div class="ver nx-version" data-nexo-version="Nexo · Jessica">Nexo · Jessica v3.10.1</div>
+  <div class="ver nx-version" data-nexo-version="Nexo · Jessica">Nexo · Jessica v3.10.2</div>
 </div>
 <div class="fiesta" id="fiesta" hidden aria-live="assertive"></div>
 
@@ -596,6 +597,8 @@ function reglas(frase) {
     }
     return conId(cmd, t, true);
   }
+  // Borrar va ANTES que todo lo demás: «elimina la reserva de X» no es una reserva nueva (ronda 68c).
+  if (/\b(elimin\w*|borra(r|la|lo)?|quita(r|la|lo)?|anula(r|la|lo)?|cancela(r|la|lo)?|exclu\w*|suprim\w*)\b/.test(t)) return conId({ accion: 'excluir' }, t.replace(/\b(elimin\w*|borra(r|la|lo)?|quita(r|la|lo)?|anula(r|la|lo)?|cancela(r|la|lo)?|exclu\w*|suprim\w*|reservas?|pedidos?)\b/g, ' '), true);
   if (/cambi|pas[oa]|mueve|move/.test(t) && /(hora|franja|tramo)/.test(t) && franjaDe(t)) return conId({ accion: 'franja', franja: franjaDe(t) }, t.replace(new RegExp(NUMR + ' a ' + NUMR), ' '));
   var nums = t.match(/\b\d{4,6}\b/g);
   if (nums && !/reserv[ae]r? (un|una)|nueva reserva/.test(t) && candidatos(t.replace(/\b\d{4,6}\b/g, ' ')).length) return conId({ accion: 'pedido', pedido: nums[nums.length - 1] }, t.replace(/\b\d{4,6}\b/g, ' '));
@@ -755,6 +758,17 @@ function ejecutar(c, via) {
             function () { hecho('Deshecho: los fríos de ' + nom + ' quedan como estaban.'); });
         });
         marcar(r.id);
+      });
+    case 'excluir':
+      if (r.estado === 'CONFIRMADO') return decir(nom + ' ya está listo para reparto: no lo quito por voz. Hazlo desde Embolsado.', 'duda');
+      return siNo('¿Quito la reserva de ' + nom + ' (' + fechaTxt(r.fecha || hoyISO()) + ', de ' + tramoTxt(r.franja) + ')?', function () {
+        hacer('excluir', { id: r.id }).then(function (res) {
+          if (!res || !res.ok) return fallo(res);
+          D.reservas = D.reservas.filter(function (x) { return String(x.id) !== String(r.id); });
+          D.pendientes = D.pendientes.filter(function (x) { return String(x.id) !== String(r.id); });
+          JES.ultimo = null;
+          hecho('Quitada: la reserva de ' + nom + '.');
+        });
       });
     case 'finalizar':
       // Misma regla que Embolsado: listo = caja + nº de ticket + N-F-C apuntados.

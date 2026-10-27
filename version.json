@@ -1,5 +1,5 @@
 {
-  "app": "v3.10.51",
+  "app": "v3.10.52",
   "index": "v3.11.4",
   "auto": "v3.11.1",
   "inicio-embolsado": "v3.10.7",
@@ -11,5 +11,5 @@
   "flota": "v3.10.4",
   "informe-repartidor": "v3.10.31",
   "mapa": "v3.10.1",
-  "jessica": "v3.10.1"
+  "jessica": "v3.10.2"
 }
