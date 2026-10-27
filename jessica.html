@@ -5,9 +5,10 @@
      NEXO - MÓDULO JESSICA por doPost (jesPanel / jesHacer / jesInterpretar / jesVoz, ver Jessica.gs),
      que usa las MISMAS funciones que los botones de Embolsado. Estética propia (excepción en CLAUDE.md).
      v3.10.1: primera versión (lienzo C «Pulso» v4 aprobado).
+     v3.10.3: «listo para reparto» solo con la foto del ticket (antes bastaba confirmar con fríos).
      v3.10.2: «elimina / borra / quita la reserva de X» = quitarla (pregunta antes); antes creaba una reserva nueva.
 -->
-<html lang="es" data-pagina="jessica" data-version="v3.10.2">
+<html lang="es" data-pagina="jessica" data-version="v3.10.3">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -244,7 +245,7 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity
       <label><input type="checkbox" id="habla"> Que hable</label>
     </div>
   </details>
-  <div class="ver nx-version" data-nexo-version="Nexo · Jessica">Nexo · Jessica v3.10.2</div>
+  <div class="ver nx-version" data-nexo-version="Nexo · Jessica">Nexo · Jessica v3.10.3</div>
 </div>
 <div class="fiesta" id="fiesta" hidden aria-live="assertive"></div>
 
@@ -300,7 +301,8 @@ function tramoAhora() { var h = new Date().getHours(); return h < 13 ? '10-13H' 
 function tieneCaja(r) { return !!r.caja && r.caja !== '000'; }
 function tienePedido(r) { return !!String(r.pedido || '').trim(); }
 function nfcCompleto(r) { return ['nevera', 'frios', 'congelados'].every(function (k) { return r[k] !== '' && r[k] != null; }); }
-function listo(r) { return r.estado === 'CONFIRMADO' && nfcCompleto(r); }
+// Listo para reparto = ya tiene la FOTO del ticket (ronda 68d, regla de Wanderson). Guardar fríos o confirmar no basta.
+function listo(r) { return !!r.fotoId; }
 function sinFrios(r) { return tieneCaja(r) && !nfcCompleto(r); }
 /** "dd/MM/yyyy HH:mm" → ms */
 function tsDe(t) { var m = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})/.exec(String(t || '')); return m ? new Date(+m[3], m[2] - 1, +m[1], +m[4], +m[5]).getTime() : 0; }
@@ -368,8 +370,8 @@ function pintaCards() {
   el('tituloCards').textContent = (filtro ? 'PEDIDOS ' + filtro : 'PEDIDOS DE HOY') + ' · ' + l.length;
   el('verTodos').hidden = !filtro;
   el('cards').innerHTML = l.length ? l.map(function (r) {
-    var st = r.estado === 'CONFIRMADO' ? 'ok' : tieneCaja(r) ? 'wait' : '';
-    var txt = listo(r) ? '✓ Listo para reparto' : r.estado === 'CONFIRMADO' ? 'Faltan fríos' : !tieneCaja(r) ? 'Sin caja' : !tienePedido(r) ? 'Falta nº' : !nfcCompleto(r) ? 'Faltan fríos' : 'Para finalizar';
+    var st = listo(r) ? 'ok' : tieneCaja(r) ? 'wait' : '';
+    var txt = listo(r) ? '✓ Listo para reparto' : !tieneCaja(r) ? 'Sin caja' : !tienePedido(r) ? 'Falta nº' : !nfcCompleto(r) ? 'Faltan fríos' : 'Falta foto';
     var nfc = nfcCompleto(r) ? [r.nevera, r.frios, r.congelados].join('-') : '—';
     return '<article class="mc' + (String(r.id) === String(marcada) ? ' marca' : '') + '" tabindex="0" data-id="' + esc(r.id) + '" aria-label="' + esc(corto(r)) + ', ' + esc(txt) + '">' +
       '<div class="top"><span class="fr">' + esc(String(r.franja || '').replace('H', 'h')) + '</span><span class="led ' + st + '" aria-hidden="true"></span></div>' +
@@ -753,7 +755,7 @@ function ejecutar(c, via) {
       var nv = +c.nevera || 0, f2 = +c.frios || 0, cg = +c.congelados || 0;
       // Hay que mandar también el nº de cajas: si va vacío, la hoja lo borra.
       return conteo({ n_cajas: c.n_cajas != null && c.n_cajas !== '' ? txt(c.n_cajas) : txt(r.nCajas), nevera: txt(nv), frios: txt(f2), congelados: txt(cg) }, function () {
-        hecho(dicho || 'Guardado en ' + nom + ': nevera ' + nv + ', ' + f2 + ' de frío y ' + cg + ' congelado' + (cg === 1 ? '' : 's') + '.', function () {
+        hecho('Guardado en ' + nom + ': nevera ' + nv + ', ' + f2 + ' de frío y ' + cg + ' congelado' + (cg === 1 ? '' : 's') + '.' + (listo(r) ? '' : ' Falta la foto del ticket.'), function () {
           conteo({ n_cajas: txt(prev.n_cajas), nevera: txt(prev.nevera), frios: txt(prev.frios), congelados: txt(prev.congelados) },
             function () { hecho('Deshecho: los fríos de ' + nom + ' quedan como estaban.'); });
         });
@@ -772,14 +774,14 @@ function ejecutar(c, via) {
       });
     case 'finalizar':
       // Misma regla que Embolsado: listo = caja + nº de ticket + N-F-C apuntados.
-      if (r.estado === 'CONFIRMADO') return decir(nom + ' ya estaba listo para cargar. 😉', 'ok');
+      if (r.estado === 'CONFIRMADO') return decir(listo(r) ? nom + ' ya está listo para reparto. 😉' : nom + ' ya está confirmado. Falta la foto del ticket para dejarlo listo.', listo(r) ? 'ok' : 'duda', listo(r) ? null : [{ t: '📷 Abrir Embolsado · ' + nom, cls: 'foto', fn: function () { window.top.location.href = JESSICA_URL + '?u=' + USR; } }]);
       if (!tieneCaja(r) || !tienePedido(r)) return decir('A ' + nom + ' le falta ' + (!tieneCaja(r) ? 'la caja' : 'el número de ticket') + '.', 'duda');
       if (!nfcCompleto(r)) return decir('A ' + nom + ' le faltan los fríos. Dime nevera, fríos y congelados, o «sin frío».', 'duda');
       return hacer('confirmar', { id: r.id, pedido: r.pedido }).then(function (res) {
         if (!res || !res.ok) return fallo(res);
         cambiar(r.id, { estado: 'CONFIRMADO' });
-        hecho(dicho || '¡Hecho! ' + nom + ' lista para cargar. 💪');
-        fiesta('¡LISTO PARA REPARTO!', nom + ' · ' + FRASES[nF++ % FRASES.length]);
+        if (listo(r)) { hecho('¡Hecho! ' + nom + ' listo para reparto. 💪'); fiesta('¡LISTO PARA REPARTO!', nom + ' · ' + FRASES[nF++ % FRASES.length]); }
+        else hecho('Confirmado: ' + nom + '. Para dejarlo listo para reparto falta la foto del ticket.');
         marcar(r.id);
       });
     case 'foto':
