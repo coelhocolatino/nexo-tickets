@@ -24,7 +24,9 @@
 <!-- v3.10.8 (2026-10-25, ronda 53): filtro por tienda (TRAVESIA · GRANVIA · %DIA · OTROS) en la lista y en el
      panel; «Qué hacer» al resolver = tarea para Embolsado (sale en su pantalla Pendientes); la lista y el panel
      se pintan al instante con lo último visto y se actualizan detrás. Requiere Embolsado.js de la ronda 53. -->
-<html lang="es" data-pagina="incidencias" data-version="v3.10.8">
+<!-- v3.10.9 (2026-10-31, ronda 81): el ADM puede «Editar» las incidencias ya cerradas (responsable, solución, qué hacer);
+     queda «Editada por…». Requiere Embolsado.js de la ronda 81. -->
+<html lang="es" data-pagina="incidencias" data-version="v3.10.9">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -86,6 +88,10 @@ body.nx { padding-bottom:40px; }
 .resp svg { flex:0 0 auto; margin-top:1px; }
 .b-fin { width:100%; min-height:52px; border:0; border-radius:12px; background:var(--nx-verde); color:#fff; font:800 16px var(--nx-texto); cursor:pointer; }
 .fin-por { font-size:13px; font-weight:600; color:var(--nx-suave); }
+/* Ronda 81: el ADM edita incidencias cerradas */
+.b-editar { width:100%; min-height:48px; border:0; border-radius:12px; background:var(--nx-azul-fondo); color:var(--nx-azul); font:800 15px var(--nx-texto); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; }
+.editada-por { font-size:12.5px; font-weight:700; color:var(--nx-azul); }
+.aviso-adm { background:#FFF1CC; color:#7A4A05; border-radius:10px; padding:8px 10px; font-size:13px; font-weight:800; }
 
 /* Panel */
 #panel { display:none; flex-direction:column; gap:12px; }
@@ -266,8 +272,9 @@ body.nx { padding-bottom:40px; }
 
 <!-- ===== Resolver: responsable y finalizar ===== -->
 <div class="modal" id="mRes"><div class="box">
-  <h2>Resolver incidencia</h2>
+  <h2 id="resTitulo">Resolver incidencia</h2>
   <div class="info-box"><b id="resTipo"></b><span id="resSub"></span></div>
+  <p class="aviso-adm" id="resAvisoAdm" style="display:none">Incidencia ya cerrada: estás editándola como ADM.</p>
   <div>
     <span class="etq">Responsable</span>
     <div class="opciones" id="resOps">
@@ -432,6 +439,7 @@ var IC_IMG = svg('<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 1
 var IC_MAS = svg('<path d="M12 5v14M5 12h14"/>');
 var IC_PERS = svg('<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-3.5 3.8-5 7-5s6 1.5 7 5"/>');
 var IC_OK = svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>');
+var IC_LAPIZ = svg('<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M14 6l4 4"/>');   // ronda 81
 
 function pitido() {
   try {
@@ -489,6 +497,12 @@ function cardHTML(i) {
     var rh = String(i['RESUELTO HORA'] || ''), m = /^(\d{2}\/\d{2})\/\d{4}\s+(\d{1,2}:\d{2})/.exec(rh);
     h += '<div class="fin-por">' + (i['FINALIZADA'] ? 'Finalizó ' : 'Resolvió ') + esc(nombreDe(i['RESUELTO POR'])) + (m ? ', ' + m[1] + ' a las ' + m[2] : (rh ? ', ' + esc(rh) : '')) + '</div>';
   }
+  // Ronda 81: el ADM puede editar las cerradas (responsable, solución, qué hacer)
+  if (i['EDITADA POR']) {
+    var eh = String(i['EDITADA HORA'] || ''), me = /^(\d{2}\/\d{2})\/\d{4}\s+(\d{1,2}:\d{2})/.exec(eh);
+    h += '<div class="editada-por">Editada por ' + esc(nombreDe(i['EDITADA POR'])) + (me ? ', ' + me[1] + ' a las ' + me[2] : (eh ? ', ' + esc(eh) : '')) + '</div>';
+  }
+  if (!pend && esAdmin) h += '<button class="b-editar" onclick="abrirRes(\'' + id + '\')">' + IC_LAPIZ + 'Editar</button>';
   return h + '</article>';
 }
 
@@ -527,7 +541,12 @@ function incPorId(id) { return datos.filter(function (i) { return i['ID INCIDENC
 function abrirRes(id) {
   var i = incPorId(id); if (!i) return;
   var idRes = i['ID RESERVA'] || '';
-  RES = { id: id, inc: i, resp: '', accion: '', esDia: /^DIA-/.test(idRes), vinculada: !!idRes, diaHecho: false };
+  var cerrada = (i['ESTADO'] || 'ABIERTA') !== 'ABIERTA' || !!i['FINALIZADA'];   // ronda 81: solo ADM llega aquí con una cerrada
+  RES = { id: id, inc: i, resp: '', accion: '', esDia: /^DIA-/.test(idRes), vinculada: !!idRes && !cerrada, diaHecho: false, edicion: cerrada };
+  el('resTitulo').textContent = cerrada ? 'Editar incidencia' : 'Resolver incidencia';
+  el('resAvisoAdm').style.display = cerrada ? 'block' : 'none';
+  el('btnResGuardar').style.display = cerrada ? 'none' : '';
+  el('btnResFin').innerHTML = cerrada ? IC_OK + 'Guardar cambios' : IC_OK + 'Finalizar';
   // Ronda 31: %DIA entregado igualmente (computa) → no hay pedido que restaurar ni eliminar.
   var entregadoDia = RES.esDia && /^\[Entregado\]/.test(String(i['OBSERVACIONES'] || ''));
   if (entregadoDia) RES.vinculada = false;
@@ -539,14 +558,14 @@ function abrirRes(id) {
   el('resUsu').value = (i['RESPONSABLE USUARIO'] || i['USUARIO'] || '').toLowerCase();
   el('resSol').value = i['SOLUCION'] || '';
   // Ronda 53: «Qué hacer» viene con lo que se guardó; si nunca se escribió, con la sugerencia.
-  el('resQue').value = i['QUE HACER'] || ('Solucionar incidencia de «' + (i['NOMBRE'] || 'cliente') + '» y coger otro ticket si es necesario.');
+  el('resQue').value = i['QUE HACER'] || (cerrada ? '' : ('Solucionar incidencia de «' + (i['NOMBRE'] || 'cliente') + '» y coger otro ticket si es necesario.'));
   var inv = { 'Usuario': 'USUARIO', 'Cliente': 'CLIENTE', 'Tienda': 'TIENDA', 'No identificado': 'NO_IDENTIFICADO' };
   elegirResp(inv[i['RESPONSABLE']] || '');
   // Pedido vinculado: restaurar / eliminar solo ADM
   el('resPedWrap').style.display = RES.vinculada && esAdmin ? 'block' : 'none';
   var nota = el('resPedNota');
   if (RES.vinculada && !esAdmin) { nota.style.display = 'block'; nota.textContent = 'Esta incidencia tiene un pedido vinculado: sigue en INCIDENCIA. Si hay que restaurarlo o eliminarlo, avisa a ADM.'; }
-  else if (entregadoDia) { nota.style.display = 'block'; nota.textContent = 'Pedido %DIA ENTREGADO y computado para el repartidor: solo hay que gestionar la incidencia.'; }
+  else if (entregadoDia && !cerrada) { nota.style.display = 'block'; nota.textContent = 'Pedido %DIA ENTREGADO y computado para el repartidor: solo hay que gestionar la incidencia.'; }
   else nota.style.display = 'none';
   elegirAccion('');
   el('mRes').classList.add('on');
@@ -587,7 +606,7 @@ async function guardarRes(finalizar) {
   var r = await api('finalizarIncidencia', {
     idIncidencia: RES.id, responsable: RES.resp, responsableUsuario: usu, solucion: el('resSol').value.trim(),
     queHacer: el('resQue').value.trim(),   // ronda 53
-    accionPedido: RES.esDia ? '' : accion, finalizar: !!finalizar
+    accionPedido: RES.esDia || RES.edicion ? '' : accion, finalizar: !!finalizar && !RES.edicion
   });
   spin(false);
   if (!r.ok) {
@@ -595,7 +614,7 @@ async function guardarRes(finalizar) {
     return;
   }
   cerrar('mRes'); RES = null;
-  msg((finalizar ? 'Incidencia finalizada.' : 'Guardado. La incidencia sigue pendiente.') +
+  msg((r.editada ? 'Cambios guardados.' : finalizar ? 'Incidencia finalizada.' : 'Guardado. La incidencia sigue pendiente.') +
       ({ creada: ' Tarea creada para Embolsado.', actualizada: ' Tarea de Embolsado actualizada.', anulada: ' Tarea de Embolsado anulada.' }[r.tarea] || ''), 'ok');
   cargar();
 }
