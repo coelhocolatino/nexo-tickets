@@ -6,6 +6,8 @@
      que usa las MISMAS funciones que los botones de Embolsado. Estética propia (excepción en CLAUDE.md).
      v3.10.1: primera versión (lienzo C «Pulso» v4 aprobado).
      v3.10.3: «listo para reparto» solo con la foto del ticket (antes bastaba confirmar con fríos).
+     v3.10.7 (ronda 78): con el micrófono abierto, una frase = una orden (antes contestaba a cada trozo con la
+       ayuda); voz «para el oído» (números redondos, céntimos, sin símbolos), tono natural y calidad «más humana».
      v3.10.6 (ronda 77): Jessica habla también del consumo y el CCP (jessica-parte.js v2).
      v3.10.5 (ronda 76): micrófono ABIERTO hasta apagarlo (repartidores y ADM; se pausa mientras habla Jessica) y
        saludo con su nombre la primera vez del día («¡Buenos días, Willian!»).
@@ -14,7 +16,7 @@
        entera o «el informe de Laura». Voz juguetona (Laomedeia) por defecto y los informes largos se leen enteros.
      v3.10.2: «elimina / borra / quita la reserva de X» = quitarla (pregunta antes); antes creaba una reserva nueva.
 -->
-<html lang="es" data-pagina="jessica" data-version="v3.10.6">
+<html lang="es" data-pagina="jessica" data-version="v3.10.7">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -279,15 +281,24 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity
         <option value="Leda">Leda</option>
         <option value="movil">Voz del móvil · la más rápida</option>
       </select>
+      <!-- Ronda 78: tono y calidad de la voz (para comparar) -->
+      <select id="estiloVoz" aria-label="Tono de la voz">
+        <option value="natural">Tono natural y alegre (nuevo)</option>
+        <option value="ninguno">Sin indicaciones (como antes)</option>
+      </select>
+      <select id="calidadVoz" aria-label="Calidad de la voz">
+        <option value="rapida">Rápida</option>
+        <option value="pro">Más humana · tarda un poco más</option>
+      </select>
       <button type="button" id="probar">Probar</button>
       <label><input type="checkbox" id="habla"> Que hable</label>
     </div>
   </details>
-  <div class="ver nx-version" data-nexo-version="Nexo · Jessica">Nexo · Jessica v3.10.6</div>
+  <div class="ver nx-version" data-nexo-version="Nexo · Jessica">Nexo · Jessica v3.10.7</div>
 </div>
 <div class="fiesta" id="fiesta" hidden aria-live="assertive"></div>
 
-<script src="jessica-parte.js?v=2"></script>
+<script src="jessica-parte.js?v=3"></script>
 <script>
 /* ============================================================
    SESIÓN — ronda 74: TODOS. ADM y EMBOLSADO tienen el centro de mando del embolsado;
@@ -482,7 +493,18 @@ el('voz').onchange = el('habla').onchange = function () {
   JES.voz = el('voz').value; JES.habla = el('habla').checked;
   try { localStorage.setItem('jes_voz', JES.voz); localStorage.setItem('jes_habla', JES.habla ? '1' : '0'); } catch (e) {}
 };
-el('probar').onclick = function () { var h = JES.habla; JES.habla = true; hablar('¡Hola! Soy Jessica. ¿Qué hacemos hoy? ¡Vamos a por todas!'); JES.habla = h; };
+JES.estilo = 'natural'; JES.calidad = 'rapida';
+try { JES.estilo = localStorage.getItem('jes_estilo') || 'natural'; JES.calidad = localStorage.getItem('jes_calidad') || 'rapida'; } catch (e) {}
+el('estiloVoz').value = JES.estilo; el('calidadVoz').value = JES.calidad;
+el('estiloVoz').onchange = el('calidadVoz').onchange = function () {
+  JES.estilo = el('estiloVoz').value; JES.calidad = el('calidadVoz').value;
+  try { localStorage.setItem('jes_estilo', JES.estilo); localStorage.setItem('jes_calidad', JES.calidad); } catch (e) {}
+};
+el('probar').onclick = function () {
+  var h = JES.habla; JES.habla = true;
+  hablarLista(['¡Hola! Soy Jessica. Mira, hoy vamos genial: llevas 123 pedidos y gastas 12,96 litros cada 100 km.', 'Tu CCP es de 0,87 € por pedido, ¡mejor que la media! ¿Seguimos?']);
+  JES.habla = h;
+};
 
 /* Sin internet o con «Voz del móvil»: la mejor voz femenina en español del teléfono. */
 function vozMovil(texto, alFin) {
@@ -516,7 +538,7 @@ function hablarLista(frases, op) {
   op = op || {};
   if (!JES.habla) return;
   var trozos = [], cur = '';
-  (frases || []).map(sinEmoji).filter(Boolean).forEach(function (f) {
+  (frases || []).map(function (f) { return JesParte.paraVoz(sinEmoji(f)); }).filter(Boolean).forEach(function (f) {   // ronda 78: para el oído
     if (cur && (cur + ' ' + f).length > 350) { trozos.push(cur); cur = f; } else cur = cur ? cur + ' ' + f : f;
   });
   if (cur) trozos.push(cur);
@@ -529,7 +551,7 @@ function hablarLista(frases, op) {
   function fin() { if (turno === JES.turno) finHabla(); }
   if (JES.voz === 'movil') return vozMovil(trozos.join(' '), fin);
   var pide = [];
-  function pedir(i) { if (i < trozos.length && !pide[i]) pide[i] = api('jesVoz', { texto: trozos[i], voz: JES.voz }); return pide[i]; }
+  function pedir(i) { if (i < trozos.length && !pide[i]) pide[i] = api('jesVoz', { texto: trozos[i], voz: JES.voz, estilo: JES.estilo, calidad: JES.calidad }); return pide[i]; }
   function resto(i) { if (turno === JES.turno) vozMovil(trozos.slice(i).join(' '), fin); }
   (function suena(i) {
     if (turno !== JES.turno) return;
@@ -600,19 +622,43 @@ function escucharFijo() {
   if (!JES.abierto || JES.hablando || JES.rec) return;
   var r = new SR(), espera = 150; JES.rec = r;
   r.lang = 'es-ES'; r.interimResults = true; r.maxAlternatives = 1; r.continuous = true;
+  // Ronda 78: el móvil da por «terminada» la frase a trozos («sí», «sí debe», «sí debe hazme…») y
+  // Jessica contestaba a cada trozo (casi siempre con la ayuda). Ahora espera a que calles 1,1 s y
+  // manda UNA vez la frase entera.
+  var pendiente = '', tPausa = null;
+  function enviar() {
+    clearTimeout(tPausa);
+    var f = pendiente; pendiente = '';
+    if (JES.rec === r) micPausa();
+    if (f) orden(f);
+    if (JES.abierto && !JES.hablando) setTimeout(escucharFijo, 300);
+  }
   r.onresult = function (ev) {
-    for (var i = ev.resultIndex; i < ev.results.length; i++) {
-      var t = ev.results[i][0].transcript;
-      oido('«' + t.trim() + '»');
-      if (ev.results[i].isFinal && t.trim()) orden(t);
-    }
+    pendiente = fraseEntera(ev.results);
+    oido('«' + pendiente + '»');
+    clearTimeout(tPausa); tPausa = setTimeout(enviar, 1100);
   };
   r.onerror = function (ev) {
     if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { cerrarMic(); decir('Necesito permiso para el micrófono. Tócalo y acepta, o escribe abajo.', 'duda', null, true); }
     else if (ev.error !== 'no-speech' && ev.error !== 'aborted') espera = 2000;   // sin red, etc.: no insistir en bucle
   };
-  r.onend = function () { if (JES.rec === r) JES.rec = null; if (JES.abierto && !JES.hablando) setTimeout(escucharFijo, espera); };
+  r.onend = function () {
+    if (JES.rec === r) JES.rec = null;
+    if (pendiente) return enviar();   // el móvil cortó antes de la pausa: se manda lo oído
+    if (JES.abierto && !JES.hablando) setTimeout(escucharFijo, espera);
+  };
   try { r.start(); } catch (e) { JES.rec = null; setTimeout(escucharFijo, 1000); }
+}
+/** Une los resultados del dictado. Si cada trozo repite el anterior («sí» → «sí debe»), vale el último. */
+function fraseEntera(results) {
+  var out = '';
+  Array.from(results).forEach(function (x) {
+    var t = String(x[0].transcript || '').trim(), a = sa_(out), b = sa_(t);
+    if (!t) return;
+    if (!out || b.indexOf(a) === 0) out = t;
+    else if (a.indexOf(b) !== 0) out += ' ' + t;
+  });
+  return out;
 }
 function marcarMic() {
   var o = el('orbe');
@@ -777,11 +823,13 @@ function reglas(frase) {
 
 /* Ronda 74: el parte del día y los informes (jessica-parte.js). Van antes que las órdenes de Embolsado. */
 function parte(intento, frase) {
+  var n = JES.nPregunta = (JES.nPregunta || 0) + 1;   // ronda 78: si llega tarde una respuesta vieja, se ignora
   var orbe = el('orbe'); orbe.classList.add('piensa');
   decir('Déjame mirar…', '', null, true);
   el('parte').hidden = false; el('parteTit').textContent = '…'; el('parteTxt').innerHTML = '<p class="cargando">Mirando los datos…</p>';
-  api('jesRegistrar', { frase: frase, accion: 'parte:' + intento.q, id: '' });
+  api('jesRegistrar', { frase: frase, orden: 'parte:' + intento.q, id: '' });
   JesParte.responder(intento).then(function (r) {
+    if (n !== JES.nPregunta) return;
     orbe.classList.remove('piensa');
     if (!r) return decir('No te he entendido. ¿Me lo repites?', 'duda');
     decir(r.titulo, 'ok', null, true);
@@ -800,7 +848,7 @@ function orden(frase) {
   if (pi) return parte(pi, frase);
   el('parte').hidden = true;
   var cmd = reglas(frase);
-  if (cmd) { api('jesRegistrar', { frase: frase, accion: cmd.accion, id: cmd.id || '' }); return ejecutar(cmd, ''); }
+  if (cmd) { api('jesRegistrar', { frase: frase, orden: cmd.accion, id: cmd.id || '' }); return ejecutar(cmd, ''); }
   var orbe = el('orbe'); orbe.classList.add('piensa'); decir('Pensando…', '', null, true);
   var ctx = {
     hoy: hoyISO(), dia_semana: DIAS[new Date().getDay()], hora: new Date().toTimeString().slice(0, 5),

@@ -19,6 +19,7 @@
   function leer(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function guardar(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   J.voz = leer('jes_voz') || 'Laomedeia'; J.habla = leer('jes_habla') !== '0';
+  J.estilo = leer('jes_estilo') || 'natural'; J.calidad = leer('jes_calidad') || 'rapida';   // ronda 78: se eligen en jessica.html
 
   /* ───────────── aspecto (estética de Jessica; solo dentro de .jx) ───────────── */
   var css = document.createElement('style');
@@ -95,7 +96,7 @@
     op = op || {};
     if (!J.habla) return;
     var trozos = [], cur = '';
-    (frases || []).map(sinEmoji).filter(Boolean).forEach(function (f) {
+    (frases || []).map(function (f) { return JesParte.paraVoz(sinEmoji(f)); }).filter(Boolean).forEach(function (f) {   // ronda 78: para el oído
       if (cur && (cur + ' ' + f).length > 350) { trozos.push(cur); cur = f; } else cur = cur ? cur + ' ' + f : f;
     });
     if (cur) trozos.push(cur);
@@ -107,7 +108,7 @@
     function fin() { if (turno === J.turno) finHabla(); }
     if (J.voz === 'movil') return vozMovil(trozos.join(' '), fin);
     var pide = [];
-    function pedir(i) { if (i < trozos.length && !pide[i]) pide[i] = JesParte.llamar('jesVoz', { texto: trozos[i], voz: J.voz }); return pide[i]; }
+    function pedir(i) { if (i < trozos.length && !pide[i]) pide[i] = JesParte.llamar('jesVoz', { texto: trozos[i], voz: J.voz, estilo: J.estilo, calidad: J.calidad }); return pide[i]; }
     function resto(i) { if (turno === J.turno) vozMovil(trozos.slice(i).join(' '), fin); }
     (function suena(i) {
       if (turno !== J.turno) return;
@@ -134,19 +135,43 @@
     if (!J.abierto || J.hablando || J.rec || !SR) return;
     var r = new SR(), espera = 150; J.rec = r;
     r.lang = 'es-ES'; r.interimResults = true; r.maxAlternatives = 1; r.continuous = true;
+    // Ronda 78: una frase = una orden. El móvil la da a trozos («cómo», «cómo voy»…): se espera
+    // a que calle 1,1 s y se manda una vez la frase entera.
+    var pendiente = '', tPausa = null;
+    function enviar() {
+      clearTimeout(tPausa);
+      var f = pendiente; pendiente = '';
+      if (J.rec === r) micPausa();
+      if (f) orden(f);
+      if (J.abierto && !J.hablando) setTimeout(escuchar, 300);
+    }
     r.onresult = function (ev) {
-      for (var i = ev.resultIndex; i < ev.results.length; i++) {
-        var t = ev.results[i][0].transcript;
-        oido('«' + t.trim() + '»');
-        if (ev.results[i].isFinal && t.trim()) orden(t);
-      }
+      pendiente = fraseEntera(ev.results);
+      oido('«' + pendiente + '»');
+      clearTimeout(tPausa); tPausa = setTimeout(enviar, 1100);
     };
     r.onerror = function (ev) {
       if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { cerrar(); mostrar('Necesito el micrófono', ['Dale permiso al micrófono para hablar conmigo.']); }
       else if (ev.error !== 'no-speech' && ev.error !== 'aborted') espera = 2000;
     };
-    r.onend = function () { if (J.rec === r) J.rec = null; if (J.abierto && !J.hablando) setTimeout(escuchar, espera); };
+    r.onend = function () {
+      if (J.rec === r) J.rec = null;
+      if (pendiente) return enviar();
+      if (J.abierto && !J.hablando) setTimeout(escuchar, espera);
+    };
     try { r.start(); } catch (e) { J.rec = null; setTimeout(escuchar, 1000); }
+  }
+  function sa(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  /** Si cada trozo repite el anterior («cómo» → «cómo voy»), vale el último; si no, se unen. */
+  function fraseEntera(results) {
+    var out = '';
+    Array.from(results).forEach(function (x) {
+      var t = String(x[0].transcript || '').trim(), a = sa(out), b = sa(t);
+      if (!t) return;
+      if (!out || b.indexOf(a) === 0) out = t;
+      else if (a.indexOf(b) !== 0) out += ' ' + t;
+    });
+    return out;
   }
   function marcar() {
     var o = el('jxOrbe');
@@ -173,12 +198,14 @@
 
   /* ───────────── lo que pregunta ───────────── */
   function orden(frase) {
+    var n = J.n = (J.n || 0) + 1;   // ronda 78: una respuesta vieja que llega tarde se ignora
     var i = JesParte.intencion(frase, true);
     i.enInforme = true;   // en el informe, «¿cómo voy?» es SU informe (también para Embolsado)
     var o = el('jxOrbe'); o.classList.add('piensa');
     mostrar('Déjame mirar…', []);
-    JesParte.llamar('jesRegistrar', { frase: String(frase).slice(0, 400), accion: 'informe:' + i.q, id: '' });
+    JesParte.llamar('jesRegistrar', { frase: String(frase).slice(0, 400), orden: 'informe:' + i.q, id: '' });
     JesParte.responder(i).then(function (r) {
+      if (n !== J.n) return;
       o.classList.remove('piensa');
       if (!r) return;
       mostrar(r.titulo, r.frases);

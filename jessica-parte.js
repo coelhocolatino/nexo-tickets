@@ -256,7 +256,7 @@
       if (quien && p.media != null && p.mediaFlota) {
         var dif = (p.media - p.mediaFlota) / p.mediaFlota * 100, md = nf(p.media), mf = nf(p.mediaFlota), h = rep ? 'Hace ' : 'Haces ';
         fr.push(dif >= 15 ? h + md + ' pedidos por día, muy por encima de la media de la flota, que es ' + mf + '. ¡' + (rep ? 'Es' : 'Eres') + ' una máquina!'
-          : dif >= -8 ? h + md + ' pedidos por día, justo en la media de la flota (' + mf + '). ¡Muy bien!'
+          : dif >= -8 ? h + md + ' pedidos por día, justo en la media de la flota, que es ' + mf + '. ¡Muy bien!'
           : h + md + ' pedidos por día, un poco por debajo de la media de la flota, que es ' + mf + '. ¡Seguro que lo subimos!');
         if (p.puesto && p.puesto <= 3) fr.push('¡Y ' + (rep ? 'es' : 'eres') + ' el número ' + p.puesto + ' de ' + p.deTantos + ' en pedidos! ¡Enhorabuena!');
       }
@@ -275,8 +275,8 @@
     var tipos = Object.keys(inc.tipos).sort(function (a, b) { return inc.tipos[b] - inc.tipos[a]; });
     if (!inc.n) return quien ? '¡Y cero incidencias este período! ¡Perfecto!' : '¡Ni una incidencia en el período!';
     var s = (quien ? (rep ? 'Lleva ' : 'Llevas ') : 'Llevamos ') + inc.n + (inc.n === 1 ? ' incidencia' : ' incidencias') + (tipos.length ? ', sobre todo ' + tipos[0] : '');
-    if (inc.antes != null) s += inc.n < inc.antes ? ', menos que el período anterior a estas alturas (' + inc.antes + '). ¡Bien hecho!'
-      : inc.n > inc.antes ? ', más que el período anterior a estas alturas (' + inc.antes + '). Vamos a cuidarlo.' : ', igual que el período anterior.';
+    if (inc.antes != null) s += inc.n < inc.antes ? ', menos que en el período anterior a estas alturas, que eran ' + inc.antes + '. ¡Bien hecho!'
+      : inc.n > inc.antes ? ', más que en el período anterior a estas alturas, que eran ' + inc.antes + '. Vamos a cuidarlo.' : ', igual que el período anterior.';
     else s += '.';
     if (inc.abiertas) s += ' ' + inc.abiertas + (inc.abiertas === 1 ? ' sigue abierta.' : ' siguen abiertas.');
     return s;
@@ -293,8 +293,8 @@
     if (m.freno > c.mFreno * 1.15) tips.push('anticipar las frenadas, dejando más distancia con el de delante');
     // Ronda 77: con pocos conductores, ser 3º no es ser «de los mejores» (un 74 salía con enhorabuena).
     if (sc >= 90 || c.puesto === 1) s = (rep ? suNom + ' tiene' : '¡Enhorabuena! Tienes') + ' un ' + sc + ' en conducción: de los mejores de la empresa, el número ' + c.puesto + ' de ' + c.filas.length + '. ¡Qué orgullo!';
-    else if (sc >= 75) s = (rep ? suNom + ' tiene un ' + sc + ' en conducción, ' : 'Tu estilo de conducción está en ' + sc + ' sobre 100, ') + (sc >= c.mScore ? 'por encima' : 'cerca') + ' de la media de la flota (' + Math.round(c.mScore) + '). ¡Muy bien!';
-    else s = (rep ? suNom + ' va en conducción' : 'Tu conducción va') + ' en ' + sc + ' sobre 100, un poco por debajo de lo normal (la media es ' + Math.round(c.mScore) + ').';
+    else if (sc >= 75) s = (rep ? suNom + ' tiene un ' + sc + ' en conducción, ' : 'Tu estilo de conducción está en ' + sc + ' sobre 100, ') + (sc >= c.mScore ? 'por encima' : 'cerca') + ' de la media de la flota, que es ' + Math.round(c.mScore) + '. ¡Muy bien!';
+    else s = (rep ? suNom + ' va en conducción' : 'Tu conducción va') + ' en ' + sc + ' sobre 100, un poco por debajo de lo normal: la media es ' + Math.round(c.mScore) + '.';
     if (tips.length) s += breve ? ' Un truco: ' + tips[0] + '.' : ' Para mejorar' + (rep ? ', que intente ' : ', intenta ') + lista(tips) + '.';
     else if (!breve && sc < 90) s += ' Conducir suave y con calma sube la nota rapidísimo.';
     return s;
@@ -313,14 +313,13 @@
   function n2(v) { return v == null ? '' : v.toFixed(2).replace('.', ','); }
   function combTxt(D, quien, rep, nombreRep) {
     var c = combustible(D, quien);
-    if (!quien) return c.fL100 ? 'En combustible, la flota gasta de media ' + n2(c.fL100) + ' litros cada 100 km y el CCP medio es de ' + n2(c.fCcp) + ' € por pedido.' : '';
+    if (!quien) return c.fL100 ? 'En combustible, la flota gasta de media ' + n2(c.fL100) + ' litros cada 100 km, y el CCP medio es de ' + n2(c.fCcp) + ' € por pedido.' : '';
     var suNom = rep ? (nombreRep || bonito(rep)) : '';
     if (!c.n) return rep ? suNom + ' todavía no tiene repostajes registrados.' : '';
-    var s = (rep ? suNom + ' gasta' : 'En tus ' + c.n + ' últimos repostajes gastas') + ' ' + n2(c.l100) + ' litros cada 100 km (la flota, ' + n2(c.fL100) + ')';
+    var s = (rep ? suNom + ' gasta' : 'En tus ' + c.n + ' últimos repostajes gastas') + ' ' + n2(c.l100) + ' litros cada 100 km, frente a ' + n2(c.fL100) + ' de la flota.';
     if (c.ccp != null && c.fCcp) s += c.ccp <= c.fCcp
-      ? ' y ' + (rep ? 'su' : 'tu') + ' CCP es de ' + n2(c.ccp) + ' € por pedido, mejor que la media de ' + n2(c.fCcp) + '. ¡Genial, cuanto menos, mejor!'
-      : ' y ' + (rep ? 'su' : 'tu') + ' CCP es de ' + n2(c.ccp) + ' € por pedido, un poco por encima de la media de ' + n2(c.fCcp) + '. Cuantos más pedidos por depósito, más baja.';
-    else s += '.';
+      ? ' ' + (rep ? 'Su' : 'Tu') + ' CCP es de ' + n2(c.ccp) + ' € por pedido, mejor que la media, que es de ' + n2(c.fCcp) + ' €. ¡Genial, cuanto menos, mejor!'
+      : ' ' + (rep ? 'Su' : 'Tu') + ' CCP es de ' + n2(c.ccp) + ' € por pedido, un poco por encima de la media, que es de ' + n2(c.fCcp) + ' €. Cuantos más pedidos por depósito, más baja.';
     if (c.l100 && c.fL100 && c.l100 > c.fL100 * 1.05 && !rep) s += ' Conducir suave y sin acelerones baja el consumo.';
     return s;
   }
@@ -381,6 +380,35 @@
     });
   }
 
+  /* ───────────── Ronda 78: la versión PARA EL OÍDO ─────────────
+     La pantalla enseña el dato exacto («12,96 litros», «0,87 €»); en voz alta suena a máquina.
+     paraVoz lo dice como lo diría una persona: «casi 13 litros», «87 céntimos», «Día»… */
+  function redondo(v, unidad) {   // 12,96 → «casi 13»; 12,1 → «unos 12»; 12,5 → «12 … y medio»
+    var r = Math.round(v), f = v - Math.floor(v), u = unidad ? ' ' + unidad : '';
+    if (Math.abs(v - r) <= 0.15) return 'unos ' + r + u;
+    if (f >= 0.35 && f <= 0.65) return Math.floor(v) + u + ' y medio';
+    return v < r ? 'casi ' + r + u : 'algo más de ' + Math.floor(v) + u;
+  }
+  function euros(v) {
+    var e = Math.floor(v + 1e-9), c = Math.round((v - e) * 100);
+    if (c === 100) { e++; c = 0; }
+    if (!e) return c + ' céntimos';
+    return e + (e === 1 ? ' euro' : ' euros') + (c ? ' con ' + c : '');
+  }
+  function num(t) { return parseFloat(String(t).replace(/\./g, '').replace(',', '.')); }
+  function paraVoz(f) {
+    return String(f || '')
+      .replace(/%DIA/gi, 'Día')
+      .replace(/(\d+(?:,\d+)?) €/g, function (a, n) { return euros(num(n)); })
+      .replace(/(\d+,\d+) (litros)/g, function (a, n, u) { return redondo(num(n), u); })
+      .replace(/(\d+,\d+)/g, function (a, n) { var v = num(n); return v >= 10 ? redondo(v, '') : String(Math.round(v * 10) / 10).replace('.', ','); })
+      .replace(/\b(\d{1,2})-(\d{1,2})H\b/g, 'de $1 a $2')
+      .replace(/\bkm\b/g, 'kilómetros')
+      .replace(/\bCCP\b/g, 'ce ce pe')
+      .replace(/[«»"()]/g, '')
+      .replace(/\s+/g, ' ').trim();
+  }
+
   /* ───────────── qué ha pedido ───────────── */
   function sa(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
   var NO_NOMBRE = /^(como|informe|dime|sobre|esta|estan|para|cual|cuanto|cuantos|pedidos|jessica|conduccion|incidencias|del|las|los|que|tal|hoy|lleva|va|van|vamos|el|la|de|su|sus)$/;
@@ -401,17 +429,21 @@
     var t = ' ' + sa(frase).replace(/^\s*(oye |hola )?jessica[, ]*/, '').replace(/[.,:;¿?¡!]/g, ' ').replace(/\s+/g, ' ') + ' ';
     // En el centro de mando, las órdenes de Embolsado mandan: «reserva para hoy de 1 a 4…» no es el parte.
     if (!soloParte && /reserv|caja|nevera|frio|congel|foto|ticket|elimin|borra|quita|cambi|pasa |mueve|confirm|finaliz|list[oa]|hueco|disponib|quedan/.test(t)) return null;
-    var rep = ES_ADM && /\b(informe|conduccion|incidencias|pedidos) de \w|\bcomo (va|lleva|esta) \w/.test(t) ? repDe(t) : null;
-    if (/conduc|conducir|volante|consumo|gasoil|gasolina|combustible|ccp|c c p|repost|litros/.test(t)) return { q: 'conduccion', rep: rep };   // ronda 77: + consumo y CCP
-    if (/incidenc/.test(t) && !/registr|abr[ei]r? una|apunta/.test(t)) return { q: 'incidencias', rep: rep };
+    var pideRep = ES_ADM && /\b(informe|conduccion|incidencias|pedidos) de \w|\bcomo (va|lleva|esta) \w/.test(t);
+    var rep = pideRep ? repDe(t) : null;
+    if (/conduc|conducir|volante|consumo|gasoil|gasolina|combustible|ccp|c c p|repost|litros/.test(t)) return { q: 'conduccion', rep: rep, pideRep: pideRep, t: t };   // ronda 77: + consumo y CCP
+    if (/incidenc/.test(t) && !/registr|abr[ei]r? una|apunta/.test(t)) return { q: 'incidencias', rep: rep, pideRep: pideRep, t: t };
     if (/previst|clientes (de hoy|del dia|para hoy|de siempre)|quien (pide|suele)|que clientes/.test(t)) return { q: 'previstos' };
     if (/embolsad/.test(t) && (soloParte || /\b(como|que hay|que tal|resumen|cuantos)\b/.test(t))) return { q: 'embolsado' };
-    if (/como (voy|vamos|estoy|estamos|va |lleva |esta )|mi informe|el informe|informe de|cuantos pedidos llevo|que tal (voy|vamos)|la empresa|produccion/.test(t)) return { q: 'informe', rep: rep };
+    if (/como (voy|vamos|estoy|estamos|va |lleva |esta )|mi informe|el informe|informe de|cuantos pedidos llevo|que tal (voy|vamos)|la empresa|produccion/.test(t)) return { q: 'informe', rep: rep, pideRep: pideRep, t: t };
     if (/buen(os|as) (dias|tardes|noches)|que (tenemos|hay|tengo|me toca)( para)? hoy|lo que (hay|tenemos)|para hoy|mi dia|mi ruta|mi parte|el parte|resumen/.test(t)) return { q: 'hoy' };
     return soloParte ? { q: 'ayuda' } : null;
   }
   function responder(i) {
     if (!i) return Promise.resolve(null);
+    // Ronda 78: «el informe de Laura» la primera vez: los nombres aún no estaban cargados y salía el de la
+    // empresa. Se cargan y se busca otra vez.
+    if (i.pideRep && !i.rep) return informe().then(function () { i.pideRep = false; i.rep = repDe(i.t); return responder(i); });
     var rep = i.rep && i.rep.rep, nom = i.rep && i.rep.nombre;
     if (i.q === 'hoy') return parteHoy();
     if (i.q === 'informe' && ES_EMB && !ES_ADM && !rep && !i.enInforme) return embolsado();   // el embolsador no reparte: su «cómo vamos» es el embolsado
@@ -440,7 +472,7 @@
   }
 
   window.JesParte = {
-    intencion: intencion, responder: responder, dia: dia, saludo: saludoDia, presentacion: presentacion,
+    intencion: intencion, responder: responder, dia: dia, saludo: saludoDia, presentacion: presentacion, paraVoz: paraVoz,
     llamar: function (accion, extra) { return post(URL_JES, accion, extra); },   // ronda 77: voz y rastro desde el informe
     franjas: FRANJAS, frTxt: FR_TXT, tiendaDe: tiendaDe, sumaTienda: sumaTienda, bonito: bonito,
     _calc: { produccion: produccion, incidencias: incidencias, conduccion: conduccion }
