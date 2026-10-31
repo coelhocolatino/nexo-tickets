@@ -56,12 +56,17 @@
   }
 
   /* Datos del informe: la misma copia que guarda informe-repartidor-nivel1.html. Solo se descarga si cambió. */
-  var CLAVE_INF = 'nexo_informe_datos';
+  // Ronda 80: la copia del informe es de CADA usuario y solo vale si se preparó para él (datos.para):
+  // el servidor ya solo manda lo que cada uno puede ver.
+  var PARA = ES_ADM ? '*' : REP;
+  var CLAVE_INF = 'nexo_informe_datos_' + USU;
+  try { localStorage.removeItem('nexo_informe_datos'); } catch (e) {}
+  function miCopia(g) { return g && g.datos && g.datos.rows && g.datos.para === PARA ? g : null; }
   var _inf = null;
   function informe() {
     if (ES_ADM && !_dia) return dia().then(function () { if (!_dia) _dia = { usuarios: [] }; return informe(); });
     if (_inf) return Promise.resolve(_inf);
-    var local = leer(CLAVE_INF);
+    var local = miCopia(leer(CLAVE_INF));
     return post(URL_EMB, 'informeRepartidorDatosVersion').then(function (v) {
       if (local && local.datos && local.datos.rows && (!v || !v.ok || v.generado === local.generado)) return (_inf = local.datos);
       return post(URL_EMB, 'informeRepartidorDatos').then(function (r) {
@@ -128,8 +133,10 @@
     return {
       act: act, ant: ant, n: n, total: a.total, porTienda: a.porTienda, nDias: a.nDias,
       antes: b ? b.total : 0, varPct: b && b.total ? (a.total - b.total) / b.total * 100 : null,
-      media: yo ? yo.media : null, mediaFlota: mediana(reps.map(function (x) { return x.media; })),
-      puesto: rep ? ranking.map(function (x) { return x.rep; }).indexOf(rep) + 1 : 0, deTantos: ranking.length,
+      // Ronda 80: quien no es ADM no recibe las filas de los demás: la flota llega hecha (D.flota, sin nombres).
+      media: yo ? yo.media : null, mediaFlota: D.flota ? D.flota.mediana_dia : mediana(reps.map(function (x) { return x.media; })),
+      puesto: rep ? (D.flota ? D.flota.puestos[rep] || 0 : ranking.map(function (x) { return x.rep; }).indexOf(rep) + 1) : 0,
+      deTantos: D.flota ? D.flota.repartidores : ranking.length,
       top: ranking.slice(0, 3)
     };
   }
@@ -144,11 +151,11 @@
     return { n: ahora.length, antes: antes, abiertas: abiertas, tipos: tipos };
   }
   function conduccion(D, rep) {
-    var c = D.conduccion || {}, filas = (c.filas || []).slice().sort(function (a, b) { return b.score - a.score; });
+    var c = D.conduccion || {}, FL = c.flota, filas = (c.filas || []).slice().sort(function (a, b) { return b.score - a.score; });
     if (!filas.length) return null;
-    var m = function (k) { return filas.reduce(function (s, f) { return s + (f[k] || 0); }, 0) / filas.length; };
+    var m = function (k) { return FL ? FL[k] : filas.reduce(function (s, f) { return s + (f[k] || 0); }, 0) / filas.length; };
     var mia = rep ? filas.filter(function (f) { return f.rep === rep; })[0] : null;
-    return { periodo: c.periodo, filas: filas, mia: mia, puesto: mia ? filas.indexOf(mia) + 1 : 0, mScore: m('score'), mAcel: m('acel'), mFreno: m('freno') };
+    return { periodo: c.periodo, filas: filas, n: FL ? FL.n : filas.length, mia: mia, puesto: mia ? mia.puesto || filas.indexOf(mia) + 1 : 0, mScore: m('score'), mAcel: m('acel'), mFreno: m('freno') };
   }
 
   /* ───────────── cómo lo dice ───────────── */
@@ -292,7 +299,7 @@
     if (m.acel > c.mAcel * 1.15) tips.push('acelerar más suave al salir de semáforos y rotondas');
     if (m.freno > c.mFreno * 1.15) tips.push('anticipar las frenadas, dejando más distancia con el de delante');
     // Ronda 77: con pocos conductores, ser 3º no es ser «de los mejores» (un 74 salía con enhorabuena).
-    if (sc >= 90 || c.puesto === 1) s = (rep ? suNom + ' tiene' : '¡Enhorabuena! Tienes') + ' un ' + sc + ' en conducción: de los mejores de la empresa, el número ' + c.puesto + ' de ' + c.filas.length + '. ¡Qué orgullo!';
+    if (sc >= 90 || c.puesto === 1) s = (rep ? suNom + ' tiene' : '¡Enhorabuena! Tienes') + ' un ' + sc + ' en conducción: de los mejores de la empresa, el número ' + c.puesto + ' de ' + c.n + '. ¡Qué orgullo!';
     else if (sc >= 75) s = (rep ? suNom + ' tiene un ' + sc + ' en conducción, ' : 'Tu estilo de conducción está en ' + sc + ' sobre 100, ') + (sc >= c.mScore ? 'por encima' : 'cerca') + ' de la media de la flota, que es ' + Math.round(c.mScore) + '. ¡Muy bien!';
     else s = (rep ? suNom + ' va en conducción' : 'Tu conducción va') + ' en ' + sc + ' sobre 100, un poco por debajo de lo normal: la media es ' + Math.round(c.mScore) + '.';
     if (tips.length) s += breve ? ' Un truco: ' + tips[0] + '.' : ' Para mejorar' + (rep ? ', que intente ' : ', intenta ') + lista(tips) + '.';
@@ -306,7 +313,8 @@
     var porRep = {};
     filas.forEach(function (f) { (porRep[f.rep] = porRep[f.rep] || []).push(f); });
     function media(l, k) { var v = l.map(function (x) { return x[k]; }).filter(function (x) { return x != null && x > 0; }); return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; }
-    function flota(k) { return media(Object.keys(porRep).map(function (r) { return { v: media(porRep[r].slice(-4), k) }; }), 'v'); }
+    var FC = (D.combustible || {}).flota;   // ronda 80: hecha en el servidor para quien no es ADM
+    function flota(k) { return FC ? FC[k] : media(Object.keys(porRep).map(function (r) { return { v: media(porRep[r].slice(-4), k) }; }), 'v'); }
     var ult = rep ? (porRep[rep] || []).slice(-4) : filas.slice(-4);
     return { n: ult.length, l100: media(ult, 'l100'), ccp: media(ult, 'ccp'), fL100: flota('l100'), fCcp: flota('ccp') };
   }
@@ -446,7 +454,7 @@
         var cd = conduccion(D, quien);
         if (cd) c.estilo_conduccion = { carga_del: cd.periodo, media_flota: Math.round(cd.mScore * 10) / 10,
           filas: (ES_ADM ? cd.filas : (cd.mia ? [cd.mia] : [])).map(function (f) { return { repartidor: ES_ADM ? etiquetaRep(f.rep) : 'yo', puntuacion: f.score, aceleracion: f.acel, frenado: f.freno, km: f.km }; }),
-          mi_puesto: cd.puesto || undefined, de: cd.filas.length };
+          mi_puesto: cd.puesto || undefined, de: cd.n };
         var cb = combustible(D, quien);
         c.combustible_4_ultimos_repostajes = { litros_100km: cb.l100 && Math.round(cb.l100 * 100) / 100, ccp_euros_por_pedido: cb.ccp && Math.round(cb.ccp * 100) / 100,
           flota_litros_100km: cb.fL100 && Math.round(cb.fL100 * 100) / 100, flota_ccp: cb.fCcp && Math.round(cb.fCcp * 100) / 100, nota: 'en consumo y CCP, cuanto MENOS, mejor' };
@@ -508,7 +516,7 @@
   var NO_NOMBRE = /^(como|informe|dime|sobre|esta|estan|para|cual|cuanto|cuantos|pedidos|jessica|conduccion|incidencias|del|las|los|que|tal|hoy|lleva|va|van|vamos|el|la|de|su|sus)$/;
   /** El repartidor del que habla el ADM («informe de Laura», «cómo va wexposito»). */
   function repDe(t) {
-    var D = _inf || (leer(CLAVE_INF) || {}).datos, reps = (D && D.reps) || [], us = (_dia && _dia.usuarios) || [];
+    var D = _inf || (miCopia(leer(CLAVE_INF)) || {}).datos, reps = (D && D.reps) || [], us = (_dia && _dia.usuarios) || [];
     var pal = t.split(/[^a-z0-9ñ]+/).filter(function (w) { return w.length > 2 && !NO_NOMBRE.test(w); });
     for (var i = 0; i < reps.length; i++) if (pal.indexOf(sa(reps[i])) !== -1) return { rep: reps[i], nombre: nomRep(reps[i]) };
     for (var j = 0; j < us.length; j++) {
