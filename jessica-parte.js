@@ -380,6 +380,96 @@
     });
   }
 
+  /* ───────────── Ronda 79: PREGUNTA LIBRE ─────────────
+     «Dime el total de pedidos entregados este mes», «resumen de ayer», «¿quién hizo más el lunes?»…
+     Las reglas solo entendían unas pocas frases hechas (lo demás: la ayuda). Ahora esas preguntas van a
+     Gemini (jesPreguntar, NEXO - MÓDULO JESSICA) con los DATOS del informe que esa persona puede ver:
+     el ADM todo; el repartidor lo suyo y las medias de la flota (como en su informe). Gemini contesta
+     solo con esos datos. */
+  function bloque(D, per, rep, hasta, conReps) {
+    var o = { desde: per.ini, hasta: per.fin, total: 0, naturales_P: 0, dobles_XP: 0, XR: 0, por_dia: {}, por_tienda: {} };
+    var dias = {}, porRep = {}, porRepDia = {};
+    D.rows.forEach(function (r) {
+      if (!enPer(r, per) || (hasta && r[0] > hasta)) return;
+      var nR = D.reps[r[2]], t = tot(r);
+      if (rep && nR !== rep) return;
+      o.total += t; o.naturales_P += r[4] || 0; o.dobles_XP += r[5] || 0; o.XR += r[6] || 0;
+      o.por_dia[r[0]] = (o.por_dia[r[0]] || 0) + t;
+      var ti = bonito(D.tiendas[r[1]]); o.por_tienda[ti] = (o.por_tienda[ti] || 0) + t;
+      dias[r[0]] = 1;
+      if (conReps) {
+        var k = etiquetaRep(nR);
+        porRep[k] = (porRep[k] || 0) + t;
+        var pd = porRepDia[r[0]] || (porRepDia[r[0]] = {}); pd[k] = (pd[k] || 0) + t;
+      }
+    });
+    o.dias_trabajados = Object.keys(dias).length;
+    if (conReps) { o.por_repartidor = porRep; o.por_dia_y_repartidor = porRepDia; }
+    return o;
+  }
+  function etiquetaRep(r) { var n = nomRep(r); return n && n.toUpperCase() !== r ? n + ' (' + r + ')' : n || r; }
+  function contexto() {
+    return Promise.all([informe(), _dia ? Promise.resolve(_dia) : dia()]).then(function (x) {
+      var D = x[0], d = x[1], hoy = hoyLocal(), quien = ES_ADM ? null : REP;
+      var c = {
+        hoy: hoy, dia_semana: ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][new Date().getDay()],
+        hora: new Date().toTimeString().slice(0, 5), quien_pregunta: NOMBRE, rol: ES_ADM ? 'ADM (ve toda la empresa)' : (ES_EMB ? 'embolsador' : 'repartidor (solo sus datos y las medias de la flota)'),
+        notas: ['«pedidos» o «entregas» = total = P + XP + XR, como en el informe; P = naturales, XP y XR = dobles.',
+                '«este mes» = el PERÍODO ACTUAL (va del día de corte de un mes al del siguiente), no el mes del calendario.',
+                'Los datos del informe se actualizan cada pocos minutos de 10h a 23h; los de hoy pueden estar incompletos.']
+      };
+      // El modelo rápido calcula mal los días de la semana («el jueves» → 30, que fue viernes): se le da hecho.
+      var DS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+      c.calendario = {};
+      for (var k = 0; k < 40; k++) {
+        var f = masDias(hoy, -k), dd = new Date(f + 'T12:00:00');
+        c.calendario[f] = DS[dd.getDay()] + ' ' + dd.getDate() + (k === 0 ? ' (hoy)' : k === 1 ? ' (ayer)' : k === 2 ? ' (anteayer)' : '');
+      }
+      c.notas.push('Para saber qué fecha es «el jueves», «ayer» o «el día 28», mira el calendario (fecha → día de la semana); el más reciente que no sea hoy, salvo que diga otra cosa.');
+      if (D) {
+        var act = periodo(D, 'act'), ant = periodo(D, 'ant');
+        if (act) {
+          var n = Math.max(1, Math.min(difDias(act.ini, hoy) + 1, difDias(act.ini, act.fin) + 1));
+          c.periodo_actual = bloque(D, act, quien, null, ES_ADM);
+          c.periodo_actual.etiqueta = act.label;
+          c.periodo_actual.dia_del_periodo = n + ' de ' + (difDias(act.ini, act.fin) + 1);
+          if (ant) {
+            c.periodo_anterior = bloque(D, ant, quien, null, ES_ADM);
+            c.periodo_anterior.total_a_la_misma_altura = bloque(D, ant, quien, masDias(ant.ini, n - 1), false).total;
+          }
+          var p = produccion(D, quien);
+          if (p) c.flota = { media_por_dia_trabajado_de_cada_repartidor: Math.round(p.mediaFlota * 10) / 10, repartidores: p.deTantos,
+            mi_media_por_dia_trabajado: p.media != null ? Math.round(p.media * 10) / 10 : undefined, mi_puesto_en_pedidos: quien ? p.puesto || undefined : undefined };
+          var inc = (D.incidencias || []).filter(function (i) { return (!quien || i.u === quien) && i.f >= (ant ? ant.ini : act.ini); });
+          c.incidencias = inc.map(function (i) { return { fecha: i.f, repartidor: ES_ADM ? etiquetaRep(i.u) : undefined, tipo: String(i.tipo || '').replace(/_/g, ' ').toLowerCase(), estado: i.estado, cliente: i.cli || undefined }; }).slice(0, 80);
+        }
+        var cd = conduccion(D, quien);
+        if (cd) c.estilo_conduccion = { carga_del: cd.periodo, media_flota: Math.round(cd.mScore * 10) / 10,
+          filas: (ES_ADM ? cd.filas : (cd.mia ? [cd.mia] : [])).map(function (f) { return { repartidor: ES_ADM ? etiquetaRep(f.rep) : 'yo', puntuacion: f.score, aceleracion: f.acel, frenado: f.freno, km: f.km }; }),
+          mi_puesto: cd.puesto || undefined, de: cd.filas.length };
+        var cb = combustible(D, quien);
+        c.combustible_4_ultimos_repostajes = { litros_100km: cb.l100 && Math.round(cb.l100 * 100) / 100, ccp_euros_por_pedido: cb.ccp && Math.round(cb.ccp * 100) / 100,
+          flota_litros_100km: cb.fL100 && Math.round(cb.fL100 * 100) / 100, flota_ccp: cb.fCcp && Math.round(cb.fCcp * 100) / 100, nota: 'CCP: cuanto menos, mejor' };
+        if (ES_ADM) c.combustible_por_repartidor = Array.from(new Set(((D.combustible || {}).filas || []).map(function (f) { return f.rep; }))).map(function (r) {
+          var x = combustible(D, r); return { repartidor: etiquetaRep(r), litros_100km: x.l100 && Math.round(x.l100 * 100) / 100, ccp: x.ccp && Math.round(x.ccp * 100) / 100 };
+        });
+      }
+      if (d && d.ok) {
+        c.pedidos_de_hoy_por_tienda_y_franja = d.tiendas;   // total, listos (con foto), asignados, entregados, conCaja
+        if (!ES_ADM) c.mis_pedidos_asignados_hoy = d.mios;
+      }
+      return c;
+    });
+  }
+  function libre(frase) {
+    return contexto().then(function (c) {
+      return post(URL_JES, 'jesPreguntar', { pregunta: String(frase).slice(0, 300), datos: c });
+    }).then(function (r) {
+      if (r && r.ok && r.frases && r.frases.length) return { titulo: r.titulo || 'Jessica', frases: r.frases };
+      return { titulo: 'Uy', frases: [(r && r.error) ? 'Ahora no puedo pensarlo: ' + r.error : 'No he podido mirarlo ahora. ¿Me lo repites en un momento?'] };
+    });
+  }
+
   /* ───────────── Ronda 78: la versión PARA EL OÍDO ─────────────
      La pantalla enseña el dato exacto («12,96 litros», «0,87 €»); en voz alta suena a máquina.
      paraVoz lo dice como lo diría una persona: «casi 13 litros», «87 céntimos», «Día»… */
@@ -429,6 +519,9 @@
     var t = ' ' + sa(frase).replace(/^\s*(oye |hola )?jessica[, ]*/, '').replace(/[.,:;¿?¡!]/g, ' ').replace(/\s+/g, ' ') + ' ';
     // En el centro de mando, las órdenes de Embolsado mandan: «reserva para hoy de 1 a 4…» no es el parte.
     if (!soloParte && /reserv|caja|nevera|frio|congel|foto|ticket|elimin|borra|quita|cambi|pasa |mueve|confirm|finaliz|list[oa]|hueco|disponib|quedan/.test(t)) return null;
+    // Ronda 79: fechas, totales, comparaciones, «quién / qué tienda»… → pregunta libre (Gemini con los datos).
+    if (/\b(ayer|anteayer|semana|mes|meses|lunes|martes|miercoles|jueves|viernes|sabado|domingo|dia \d+|el \d+|total|cuant[oa]s?|suma|media|promedio|mejor|peor|quien|que tienda|compar\w*|record|maximo|minimo|diferencia|porcentaje|proyeccion|anterior|pasado)\b/.test(t))
+      return { q: 'libre', frase: frase };
     var pideRep = ES_ADM && /\b(informe|conduccion|incidencias|pedidos) de \w|\bcomo (va|lleva|esta) \w/.test(t);
     var rep = pideRep ? repDe(t) : null;
     if (/conduc|conducir|volante|consumo|gasoil|gasolina|combustible|ccp|c c p|repost|litros/.test(t)) return { q: 'conduccion', rep: rep, pideRep: pideRep, t: t };   // ronda 77: + consumo y CCP
@@ -437,7 +530,8 @@
     if (/embolsad/.test(t) && (soloParte || /\b(como|que hay|que tal|resumen|cuantos)\b/.test(t))) return { q: 'embolsado' };
     if (/como (voy|vamos|estoy|estamos|va |lleva |esta )|mi informe|el informe|informe de|cuantos pedidos llevo|que tal (voy|vamos)|la empresa|produccion/.test(t)) return { q: 'informe', rep: rep, pideRep: pideRep, t: t };
     if (/buen(os|as) (dias|tardes|noches)|que (tenemos|hay|tengo|me toca)( para)? hoy|lo que (hay|tenemos)|para hoy|mi dia|mi ruta|mi parte|el parte|resumen/.test(t)) return { q: 'hoy' };
-    return soloParte ? { q: 'ayuda' } : null;
+    // Lo que no encaja en las frases hechas: también a la pregunta libre (antes: la ayuda).
+    return soloParte || /[?¿]/.test(frase) || /^ (que|como|cual|cuando|donde|dime|dame|cuentame|explicame) /.test(t) ? { q: 'libre', frase: frase } : null;
   }
   function responder(i) {
     if (!i) return Promise.resolve(null);
@@ -445,6 +539,7 @@
     // empresa. Se cargan y se busca otra vez.
     if (i.pideRep && !i.rep) return informe().then(function () { i.pideRep = false; i.rep = repDe(i.t); return responder(i); });
     var rep = i.rep && i.rep.rep, nom = i.rep && i.rep.nombre;
+    if (i.q === 'libre') return libre(i.frase);   // ronda 79
     if (i.q === 'hoy') return parteHoy();
     if (i.q === 'informe' && ES_EMB && !ES_ADM && !rep && !i.enInforme) return embolsado();   // el embolsador no reparte: su «cómo vamos» es el embolsado
     if (i.q === 'informe') return comoVoy(rep, nom);

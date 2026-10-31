@@ -6,6 +6,8 @@
      que usa las MISMAS funciones que los botones de Embolsado. Estética propia (excepción en CLAUDE.md).
      v3.10.1: primera versión (lienzo C «Pulso» v4 aprobado).
      v3.10.3: «listo para reparto» solo con la foto del ticket (antes bastaba confirmar con fríos).
+     v3.10.8 (ronda 79): pregunta libre — «total de pedidos este mes», «resumen de ayer»… las contesta Gemini con los
+       datos del informe (antes: la ayuda).
      v3.10.7 (ronda 78): con el micrófono abierto, una frase = una orden (antes contestaba a cada trozo con la
        ayuda); voz «para el oído» (números redondos, céntimos, sin símbolos), tono natural y calidad «más humana».
      v3.10.6 (ronda 77): Jessica habla también del consumo y el CCP (jessica-parte.js v2).
@@ -16,7 +18,7 @@
        entera o «el informe de Laura». Voz juguetona (Laomedeia) por defecto y los informes largos se leen enteros.
      v3.10.2: «elimina / borra / quita la reserva de X» = quitarla (pregunta antes); antes creaba una reserva nueva.
 -->
-<html lang="es" data-pagina="jessica" data-version="v3.10.7">
+<html lang="es" data-pagina="jessica" data-version="v3.10.8">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -294,11 +296,11 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity
       <label><input type="checkbox" id="habla"> Que hable</label>
     </div>
   </details>
-  <div class="ver nx-version" data-nexo-version="Nexo · Jessica">Nexo · Jessica v3.10.7</div>
+  <div class="ver nx-version" data-nexo-version="Nexo · Jessica">Nexo · Jessica v3.10.8</div>
 </div>
 <div class="fiesta" id="fiesta" hidden aria-live="assertive"></div>
 
-<script src="jessica-parte.js?v=3"></script>
+<script src="jessica-parte.js?v=4"></script>
 <script>
 /* ============================================================
    SESIÓN — ronda 74: TODOS. ADM y EMBOLSADO tienen el centro de mando del embolsado;
