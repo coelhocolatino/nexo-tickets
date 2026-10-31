@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.32">
+<html lang="es" data-pagina="informe-repartidor" data-version="v3.10.33">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -231,7 +231,7 @@ var DATA = {
   snapshot: '', generado: '', cover: { ini: '', fin: '' },
   tiendas: [], reps: [], franjas: [], rows: [], periodos: [],
   yearDaily: { y25: [] }, clubDefault: '', repOptions: ['*'], niveles: {},
-  conduccion: { periodo: '', filas: [] }, incidencias: [], entregas: []
+  conduccion: { periodo: '', filas: [] }, combustible: { filas: [] }, incidencias: [], entregas: []
 };
 
 function arrancarInforme() {
@@ -523,6 +523,46 @@ function clubUplift(prev, prevPeriodo) {
 }
 
 /* -------------------------------------------------------------------- piezas */
+/* ═══════════ RONDA 75 · COMBUSTIBLE Y CCP (hoja COMBUSTIBLE de Flota) ═══════════
+   Consumo (L/100 km) y CCP (€ de gasoil por pedido: cuanto MENOS, mejor) de los 4 últimos
+   repostajes del repartidor, con la media de la flota (media de los 4 últimos de cada uno). */
+function combustibleDe(rep) {
+  const filas = ((DATA.combustible || {}).filas || []).slice().sort((a, b) => a.f < b.f ? -1 : a.f > b.f ? 1 : 0);
+  const porRep = {};
+  filas.forEach(f => { (porRep[f.rep] = porRep[f.rep] || []).push(f); });
+  const ult4 = r => (porRep[r] || []).slice(-4);
+  const media = (l, k) => { const v = l.map(x => x[k]).filter(x => x != null && x > 0); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const flota = k => media(Object.keys(porRep).map(r => ({ v: media(ult4(r), k) })), "v");
+  const ultimos = rep === "*" ? filas.slice(-4) : ult4(rep);
+  return { ultimos, l100: media(ultimos, "l100"), ccp: media(ultimos, "ccp"), fL100: flota("l100"), fCcp: flota("ccp") };
+}
+function RepostajesChart({ c, T, anim, rep }) {
+  const h = React.createElement;
+  const caja = { width: 148, height: 148, flex: "0 0 auto", display: "flex", flexDirection: "column", marginLeft: "auto", marginRight: "auto" };   // en el móvil baja debajo de los índices, centrado
+  if (!c.ultimos.length) return h("div", { style: { ...caja, alignItems: "center", justifyContent: "center", textAlign: "center", border: "1px dashed var(--ring)", borderRadius: 12, padding: 12, color: "var(--ink-3)", fontSize: 12, fontWeight: 600 } }, "Todavía no hay repostajes registrados");
+  const f2 = v => v == null ? "" : v.toFixed(2).replace(".", ",");
+  const data = c.ultimos.map(f => ({ d: fmtShort(f.f), ccp: f.ccp, l100: f.l100, quien: f.rep }));
+  const cs = data.map(x => x.ccp || 0), ls = data.map(x => x.l100 || 0).filter(Boolean);
+  const cMax = Math.max(...cs, c.fCcp || 0) || 1, lMin = Math.min(...ls), lMax = Math.max(...ls), lR = (lMax - lMin) || 1;
+  return h("div", { style: caja, role: "img", "aria-label": "Últimos repostajes: " + data.map(x => x.d + " CCP " + f2(x.ccp) + " euros, " + f2(x.l100) + " litros cada 100 km").join("; ") },
+    h("div", { className: "eyebrow", style: { fontSize: 10, textAlign: "center" } }, rep === "*" ? "Últimos repostajes" : "Tus 4 últimos repostajes"),
+    h("div", { style: { flex: 1, minHeight: 0 } }, h(RC.ResponsiveContainer, { width: "100%", height: "100%" },
+      h(RC.ComposedChart, { data, margin: { top: 14, right: 4, left: 4, bottom: 0 } },
+        h(RC.XAxis, { dataKey: "d", tick: { fontSize: 9, fill: T["ink-3"] }, tickLine: false, axisLine: { stroke: T.grid }, interval: 0, height: 14 }),
+        h(RC.YAxis, { yAxisId: "c", hide: true, domain: [0, cMax * 1.9] }),
+        h(RC.YAxis, { yAxisId: "l", hide: true, domain: [lMin - lR * 1.8, lMax + lR * 0.35] }),
+        c.fCcp && h(RC.ReferenceLine, { yAxisId: "c", y: c.fCcp, stroke: T["ink-3"], strokeDasharray: "3 3" }),
+        h(RC.Bar, { yAxisId: "c", dataKey: "ccp", radius: [3, 3, 0, 0], barSize: 18, isAnimationActive: anim > 0, animationDuration: anim,
+          label: { position: "insideTop", fontSize: 9, fontWeight: 700, fill: "#fff", formatter: f2 } },
+          data.map((x, i) => h(RC.Cell, { key: i, fill: x.ccp != null && c.fCcp && x.ccp <= c.fCcp ? T.s3 : T.warn }))),
+        h(RC.Line, { yAxisId: "l", dataKey: "l100", stroke: T.brand, strokeWidth: 2, dot: { r: 2.5, fill: T.brand, strokeWidth: 0 }, isAnimationActive: anim > 0, animationDuration: anim,
+          label: { position: "top", fontSize: 9, fontWeight: 700, fill: T.brand, formatter: v => v == null ? "" : v.toFixed(1).replace(".", ",") } })
+      ))),
+    h("div", { className: "flex gap-2 justify-center text-[10px]", style: { color: "var(--ink-3)", fontWeight: 600 } },
+      h("span", null, h("i", { style: { display: "inline-block", width: 8, height: 8, borderRadius: 2, background: T.s3, marginRight: 3 } }), "CCP €"),
+      h("span", null, h("i", { style: { display: "inline-block", width: 10, height: 2, background: T.brand, verticalAlign: "middle", marginRight: 3 } }), "L/100 km")));
+}
+
 function Card({
   children,
   className = "",
@@ -1683,6 +1723,21 @@ function App() {
       c: colorIdx(d.freno, mFreno),
       ref: "media de la flota " + mFreno.toFixed(1).replace(".", ",")
     }];
+    /* RONDA 75 — combustible: consumo y CCP, debajo de los índices */
+    const comb = combustibleDe(rep);
+    const f2 = v => v == null ? "—" : v.toFixed(2).replace(".", ",");
+    const deQuien = rep === "*" ? " · últimos repostajes" : " · tus 4 últimos repostajes";
+    metricas.push({
+      k: "Consumo · litros cada 100 km", v: f2(comb.l100), u: "",
+      pct: comb.l100 && comb.fL100 ? comb.l100 / (comb.fL100 * 1.6) * 100 : 0,
+      c: comb.l100 == null ? T.grid : comb.l100 <= comb.fL100 ? T.s3 : comb.l100 <= comb.fL100 * 1.1 ? T.warn : T.crit,
+      ref: comb.fL100 ? "media de la flota " + f2(comb.fL100) + deQuien : "sin repostajes registrados"
+    }, {
+      k: "CCP · € de gasoil por pedido", v: f2(comb.ccp), u: "",
+      pct: comb.ccp && comb.fCcp ? comb.ccp / (comb.fCcp * 1.6) * 100 : 0,
+      c: comb.ccp == null ? T.grid : comb.ccp <= comb.fCcp ? T.s3 : comb.ccp <= comb.fCcp * 1.15 ? T.warn : T.crit,
+      ref: comb.fCcp ? "media de la flota " + f2(comb.fCcp) + " · cuanto menos, mejor" : "sin repostajes registrados"
+    });
     const maxScore = 100;
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       className: "flex flex-wrap items-center gap-5"
@@ -1789,7 +1844,7 @@ function App() {
       className: "num"
     }, nf(d.km)), " km"), d.tiempo && /*#__PURE__*/React.createElement("span", {
       className: "pill"
-    }, d.tiempo, " al volante")))), /*#__PURE__*/React.createElement("div", {
+    }, d.tiempo, " al volante"))), /*#__PURE__*/React.createElement(RepostajesChart, { c: comb, T: T, anim: anim, rep: rep })), /*#__PURE__*/React.createElement("div", {
       className: "mt-4 pt-3",
       style: {
         borderTop: "1px solid var(--ring)"
@@ -2515,6 +2570,10 @@ function App() {
       color: "var(--ink-2)"
     }
   }, "Estilo de conducci\xF3n"), " \u2014 hoja ESTILO CONDUCCI\xD3N de MANTENIMIENTO_FLOTA_COLATINO. Carga del ", DATA.conduccion.periodo, ": es la \xFAltima que hay, todav\xEDa no va por per\xEDodo."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("strong", {
+    style: {
+      color: "var(--ink-2)"
+    }
+  }, "Consumo y CCP"), " \u2014 hoja COMBUSTIBLE de MANTENIMIENTO_FLOTA_COLATINO (ronda 75): litros \xF7 km recorridos y importe \xF7 pedidos del per\xEDodo de cada repostaje; los 4 \xFAltimos de cada repartidor. Los repostajes SIN CCP no cuentan."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("strong", {
     style: {
       color: "var(--ink-2)"
     }

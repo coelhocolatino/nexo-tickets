@@ -6,7 +6,7 @@
      · Inicio, %DIA, Incidencias e Informe: todos.
      · Asignar: ADM o tienda TRAVESIA/GRANVIA. Reservas: ADM, TRAVESIA o nivel 2 (ronda 71), pero NO los
        embolsadores (departamento EMBOLSADO sin ser ADM; ronda 73).
-     · Embolsado y Jessica (ronda 73): ADM o departamento EMBOLSADO.
+     · Embolsado (ronda 73): ADM o departamento EMBOLSADO. Jessica (ronda 74): todos (el repartidor, su parte del día por voz).
      · Config: solo ADM.
    Se coloca solo tras <header class="nx-cab">. Estilos en nexo-tema.css (.nx-nav).
    Ronda 27: aquí viven también los AVISOS (globo amarillo de %DIA y rojo de Incidencias, con
@@ -37,7 +37,7 @@
     { k: 'asignar', t: 'Asignar', href: 'asignar.html', ic: '<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>', ok: admin || trav || gran },
     { k: 'reservas', t: 'Reservas', href: 'reservas.html?u=' + usr, ic: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>', ok: (admin || trav || nivel2) && !embSolo },
     { k: 'embolsado', t: 'Embolsado', href: EMBOLSADO_URL + '?u=' + usr, ic: '<path d="M6 8h12l1 12H5zM9 8V6a3 3 0 0 1 6 0v2"/>', ok: admin || emb },
-    { k: 'jessica', t: 'Jessica', href: 'jessica.html', ic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>', ok: admin || emb },   // ronda 73
+    { k: 'jessica', t: 'Jessica', href: 'jessica.html', ic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>', ok: true },   // ronda 74: todos (antes ADM o EMBOLSADO)
     { k: 'informe', t: 'Informe', href: 'informe-repartidor-nivel1.html', ic: '<path d="M5 20V10M12 20V4M19 20v-7"/>', ok: true },
     { k: 'actualizar', t: 'Actualizar', accion: true, ic: '<path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5"/>', ok: admin && (document.documentElement.getAttribute('data-pagina') === 'index') },
     { k: 'config', t: 'Config', href: 'config.html?u=' + usr, ic: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>', ok: admin }

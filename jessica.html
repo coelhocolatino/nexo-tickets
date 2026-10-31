@@ -6,9 +6,12 @@
      que usa las MISMAS funciones que los botones de Embolsado. Estética propia (excepción en CLAUDE.md).
      v3.10.1: primera versión (lienzo C «Pulso» v4 aprobado).
      v3.10.3: «listo para reparto» solo con la foto del ticket (antes bastaba confirmar con fríos).
+     v3.10.4 (ronda 74): el PARTE DEL DÍA (jessica-parte.js). Ahora la usan TODOS: el repartidor pregunta «¿qué tenemos
+       hoy?», «¿cómo voy?», «¿y mi conducción?», «clientes previstos», «¿cómo va el embolsado?»; el ADM, la empresa
+       entera o «el informe de Laura». Voz juguetona (Laomedeia) por defecto y los informes largos se leen enteros.
      v3.10.2: «elimina / borra / quita la reserva de X» = quitarla (pregunta antes); antes creaba una reserva nueva.
 -->
-<html lang="es" data-pagina="jessica" data-version="v3.10.3">
+<html lang="es" data-pagina="jessica" data-version="v3.10.4">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -175,20 +178,34 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity
 .fiesta i { position:absolute; top:-12px; width:9px; height:14px; border-radius:2px; animation:cae 1.6s ease-in forwards; }
 @keyframes sube { 0% { transform:scale(.6); opacity:0; } 100% { transform:none; opacity:1; } }
 @keyframes cae { 100% { transform:translateY(105vh) rotate(540deg); opacity:.8; } }
+/* Ronda 74: preguntas rápidas y el parte del día */
+.preg { display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none; }
+.preg::-webkit-scrollbar { display:none; }
+.preg button { flex:0 0 auto; min-height:44px; padding:0 14px; border-radius:22px; border:1px solid var(--p-borde); background:var(--p-panel); color:#fff; font:800 14px var(--nx-texto); cursor:pointer; white-space:nowrap; }
+.preg button:active { transform:scale(.96); }
+.parte { padding:14px 16px; border-radius:18px; background:rgba(251,191,36,.07); border:1px solid rgba(251,191,36,.35); }
+.parte[hidden] { display:none; }
+.parte h2 { margin:0 0 6px; font-family:var(--nx-display); font-weight:800; font-size:26px; line-height:1; color:var(--nx-lampara); }
+.parte p { margin:6px 0 0; font-size:16px; font-weight:600; line-height:1.45; }
+.parte .cargando { color:var(--p-suave); }
+.reparto .solo-mando { display:none !important; }
+.mando .solo-reparto { display:none !important; }
 @media (min-width:560px) { .cards { grid-template-columns:repeat(4, minmax(0,1fr)); } }
 @media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation:none !important; transition-duration:.01ms !important; } }
 </style>
 </head>
 <body>
-<div class="pag">
+<div class="pag" id="pag">
   <header class="cab">
     <a class="marca" href="index.html" aria-label="Ir al inicio">NEXO</a>
     <div class="usu"><b id="nombre">—</b><button type="button" id="salir">Salir</button></div>
   </header>
 
-  <h1 class="titulo">Centro de mando <span class="en-vivo"><i aria-hidden="true"></i>EN VIVO</span></h1>
+  <h1 class="titulo"><span id="tituloPag">Centro de mando</span> <span class="en-vivo"><i aria-hidden="true"></i>EN VIVO</span></h1>
 
-  <div class="tramos" id="tramos" role="group" aria-label="Tramos horarios (tocar para filtrar)"></div>
+  <div class="tramos solo-mando" id="tramos" role="group" aria-label="Tramos horarios (tocar para filtrar)"></div>
+  <!-- Ronda 74: repartidor: pedidos de hoy de su tienda por franja (solo se ven) -->
+  <div class="tramos solo-reparto" id="tramosRep" aria-label="Pedidos de hoy por franja"></div>
 
   <div class="voz">
     <div><div class="estado" id="estado" role="status">Te escucho…</div><div class="oido" id="oido">Di: «Ana Rodal en la caja 8»</div></div>
@@ -200,9 +217,20 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity
     </form>
   </div>
 
+  <!-- Ronda 74: preguntas rápidas (lo mismo que decirlo) -->
+  <div class="preg" id="preg" role="group" aria-label="Preguntas rápidas">
+    <button type="button" data-f="¿Qué tenemos para hoy?">☀️ Lo de hoy</button>
+    <button type="button" data-f="¿Cómo voy?" id="pregInforme">📈 ¿Cómo voy?</button>
+    <button type="button" data-f="¿Y mi conducción?" id="pregConduc">🚗 Conducción</button>
+    <button type="button" data-f="¿Mis incidencias?" id="pregInc">⚠️ Incidencias</button>
+    <button type="button" data-f="Clientes previstos">👥 Previstos</button>
+    <button type="button" data-f="¿Cómo va el embolsado?">📦 Embolsado</button>
+  </div>
+  <section class="parte" id="parte" hidden aria-live="polite"><h2 id="parteTit"></h2><div id="parteTxt"></div></section>
+
   <div class="aviso" id="aviso" hidden></div>
 
-  <div class="stats">
+  <div class="stats solo-mando">
     <div class="stat verde ancho"><span class="ind"><span class="punto" aria-hidden="true"></span></span>
       <div class="val"><span class="odo" id="oListos"></span><small>&nbsp;de&nbsp;</small><span id="tFranja">0</span></div>
       <div class="eti">pedidos listos de <b id="fAhora"></b> para reparto</div><span class="senal" id="sListos"></span></div>
@@ -216,25 +244,32 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity
       <div class="val" id="tMedio">—</div><div class="eti">Tiempo medio en caja</div></div>
   </div>
 
-  <nav class="atajos" aria-label="Ir a">
+  <!-- Ronda 74: atajos del repartidor -->
+  <nav class="atajos solo-reparto" aria-label="Ir a">
+    <a href="asignar.html" class="atajo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-.1M17 19a2 2 0 1 0 0-.1"/></svg>Mis pedidos</a>
+    <a href="dia.html" class="atajo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>Pedidos %DIA</a>
+    <a href="informe-repartidor-nivel1.html" class="atajo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Mi informe</a>
+  </nav>
+  <nav class="atajos solo-mando" aria-label="Ir a">
     <a id="aEmb" href="#" target="_top" class="atajo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 12H5zM9 8V6a3 3 0 0 1 6 0v2"/></svg>Embolsado</a>
     <a id="aPend" href="#" target="_top" class="atajo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Pedidos pendientes</a>
     <a href="incidencias.html" class="atajo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4M12 17v.5"/></svg>Incidencias<span class="globo" id="gInc" hidden></span></a>
   </nav>
 
-  <div class="sec"><span>ACTIVIDAD DE LA TIENDA</span><span>hoy</span></div>
-  <div class="feed" aria-live="polite"><div id="lista"></div></div>
+  <div class="sec solo-mando"><span>ACTIVIDAD DE LA TIENDA</span><span>hoy</span></div>
+  <div class="feed solo-mando" aria-live="polite"><div id="lista"></div></div>
 
-  <div class="sec"><span id="tituloCards">PEDIDOS DE HOY</span><button type="button" id="verTodos" hidden>Ver todos</button></div>
-  <div class="cards" id="cards"></div>
+  <div class="sec solo-mando"><span id="tituloCards">PEDIDOS DE HOY</span><button type="button" id="verTodos" hidden>Ver todos</button></div>
+  <div class="cards solo-mando" id="cards"></div>
 
   <details class="ajustes">
     <summary>⚙ Voz de Jessica</summary>
     <div class="fila2">
       <select id="voz" aria-label="Voz de Jessica">
+        <option value="Laomedeia">Laomedeia · juguetona (la de Jessica)</option>
         <option value="Aoede">Aoede · desenfadada</option>
+        <option value="Autonoe">Autonoe · luminosa y simpática</option>
         <option value="Achernar">Achernar · dulce</option>
-        <option value="Laomedeia">Laomedeia · juguetona</option>
         <option value="Vindemiatrix">Vindemiatrix · tierna</option>
         <option value="Sulafat">Sulafat · cálida</option>
         <option value="Despina">Despina</option>
@@ -245,20 +280,23 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity
       <label><input type="checkbox" id="habla"> Que hable</label>
     </div>
   </details>
-  <div class="ver nx-version" data-nexo-version="Nexo · Jessica">Nexo · Jessica v3.10.3</div>
+  <div class="ver nx-version" data-nexo-version="Nexo · Jessica">Nexo · Jessica v3.10.4</div>
 </div>
 <div class="fiesta" id="fiesta" hidden aria-live="assertive"></div>
 
+<script src="jessica-parte.js?v=1"></script>
 <script>
 /* ============================================================
-   SESIÓN — solo ADM y departamento EMBOLSADO
+   SESIÓN — ronda 74: TODOS. ADM y EMBOLSADO tienen el centro de mando del embolsado;
+   el resto (repartidores), su parte del día por voz.
 ============================================================ */
 var sesion = {};
 try { sesion = JSON.parse(sessionStorage.getItem('sad_user') || '{}'); } catch (e) {}
 if (!sesion.usuario) window.location.replace('login.html');
 var ES_ADMIN = String(sesion.nivel || '').toLowerCase().trim() === 'admin';
 var ES_EMB = String(sesion.departamento || '').toUpperCase().trim() === 'EMBOLSADO';
-if (sesion.usuario && !ES_ADMIN && !ES_EMB) window.location.replace('index.html');
+var MANDO = ES_ADMIN || ES_EMB;
+document.getElementById('pag').classList.add(MANDO ? 'mando' : 'reparto');
 var USUARIO = String(sesion.usuario || '').toLowerCase();
 var USR = encodeURIComponent(USUARIO);
 
@@ -429,14 +467,19 @@ setInterval(function () { document.querySelectorAll('#lista .ev[data-h]').forEac
 /* ============================================================
    JESSICA: VOZ
 ============================================================ */
-var JES = { voz: 'Aoede', habla: true, ultimo: null, audio: null, rec: null };
-try { JES.voz = localStorage.getItem('jes_voz') || 'Aoede'; JES.habla = localStorage.getItem('jes_habla') !== '0'; } catch (e) {}
+var JES = { voz: 'Laomedeia', habla: true, ultimo: null, audio: null, rec: null, turno: 0 };
+try {
+  JES.voz = localStorage.getItem('jes_voz') || 'Laomedeia'; JES.habla = localStorage.getItem('jes_habla') !== '0';
+  // Ronda 74: la voz de Jessica pasa a ser la juguetona (Laomedeia). Quien tenía la de antes por defecto, cambia una vez.
+  if (!localStorage.getItem('jes_r74')) { if (JES.voz === 'Aoede') JES.voz = 'Laomedeia'; localStorage.setItem('jes_voz', JES.voz); localStorage.setItem('jes_r74', '1'); }
+} catch (e) {}
+if (!el('voz').querySelector('option[value="' + JES.voz + '"]')) JES.voz = 'Laomedeia';
 el('voz').value = JES.voz; el('habla').checked = JES.habla;
 el('voz').onchange = el('habla').onchange = function () {
   JES.voz = el('voz').value; JES.habla = el('habla').checked;
   try { localStorage.setItem('jes_voz', JES.voz); localStorage.setItem('jes_habla', JES.habla ? '1' : '0'); } catch (e) {}
 };
-el('probar').onclick = function () { var h = JES.habla; JES.habla = true; hablar('¡Hola! Soy Jessica. ¿Qué hacemos?'); JES.habla = h; };
+el('probar').onclick = function () { var h = JES.habla; JES.habla = true; hablar('¡Hola! Soy Jessica. ¿Qué hacemos hoy? ¡Vamos a por todas!'); JES.habla = h; };
 
 /* Sin internet o con «Voz del móvil»: la mejor voz femenina en español del teléfono. */
 function vozMovil(texto) {
@@ -446,7 +489,7 @@ function vozMovil(texto) {
   function p(v) { return (fem.test(v.name) ? 4 : 0) + (/natural|neural|online|premium|enhanced/i.test(v.name) ? 3 : 0) + (/es-ES/i.test(v.lang) ? 2 : 0); }
   vs.sort(function (a, b) { return p(b) - p(a); });
   var u = new SpeechSynthesisUtterance(texto); u.lang = 'es-ES'; if (vs[0]) u.voice = vs[0];
-  u.pitch = 1.15; u.rate = 1.05; speechSynthesis.cancel(); speechSynthesis.speak(u);
+  u.pitch = 1.2; u.rate = 1.08; speechSynthesis.cancel(); speechSynthesis.speak(u);
 }
 /* Gemini devuelve audio PCM de 16 bits: se le pone cabecera WAV. */
 function wav(b64, rate) {
@@ -460,15 +503,38 @@ function wav(b64, rate) {
   new Uint8Array(buf, 44).set(pcm);
   return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
 }
-function hablar(texto) {
-  if (!JES.habla || !texto) return;
-  texto = String(texto).replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu, '').trim();
-  if (JES.voz === 'movil') return vozMovil(texto);
-  api('jesVoz', { texto: texto, voz: JES.voz }).then(function (r) {
-    if (!r || !r.ok) return vozMovil(texto);
-    try { if (JES.audio) JES.audio.pause(); JES.audio = new Audio(wav(r.audio, r.rate || 24000)); JES.audio.play().catch(function () { vozMovil(texto); }); }
-    catch (e) { vozMovil(texto); }
+function sinEmoji(t) { return String(t || '').replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu, '').replace(/\s+/g, ' ').trim(); }
+function callar() { JES.turno++; if (JES.audio) try { JES.audio.pause(); } catch (e) {} if (window.speechSynthesis) speechSynthesis.cancel(); }
+function hablar(texto) { hablarLista([texto]); }
+/* Ronda 74: los informes son largos. Se parten en trozos de frases enteras (≤ 350 letras) y se leen
+   seguidos; el siguiente trozo se pide mientras suena el anterior. Hablar otra vez o tocar el micrófono corta. */
+function hablarLista(frases) {
+  if (!JES.habla) return;
+  var trozos = [], cur = '';
+  (frases || []).map(sinEmoji).filter(Boolean).forEach(function (f) {
+    if (cur && (cur + ' ' + f).length > 350) { trozos.push(cur); cur = f; } else cur = cur ? cur + ' ' + f : f;
   });
+  if (cur) trozos.push(cur);
+  if (!trozos.length) return;
+  callar();
+  var turno = JES.turno;
+  if (JES.voz === 'movil') return vozMovil(trozos.join(' '));
+  var pide = [];
+  function pedir(i) { if (i < trozos.length && !pide[i]) pide[i] = api('jesVoz', { texto: trozos[i], voz: JES.voz }); return pide[i]; }
+  function resto(i) { if (turno === JES.turno) vozMovil(trozos.slice(i).join(' ')); }
+  (function suena(i) {
+    if (turno !== JES.turno || i >= trozos.length) return;
+    pedir(i).then(function (r) {
+      if (turno !== JES.turno) return;
+      pedir(i + 1);
+      if (!r || !r.ok) return resto(i);
+      try {
+        JES.audio = new Audio(wav(r.audio, r.rate || 24000));
+        JES.audio.onended = function () { suena(i + 1); };
+        JES.audio.play().catch(function () { resto(i); });
+      } catch (e) { resto(i); }
+    });
+  })(0);
 }
 
 /** Jessica contesta: texto grande + voz. botones = [{t, cls, fn}] */
@@ -487,8 +553,7 @@ var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 function escuchar() {
   if (!SR) { el('frase').focus(); decir('Este móvil no deja dictar aquí. Escribe la orden o usa el 🎤 del teclado.', 'duda', null, true); return; }
   try { if (JES.rec) JES.rec.abort(); } catch (e) {}
-  if (JES.audio) try { JES.audio.pause(); } catch (e) {}
-  if (window.speechSynthesis) speechSynthesis.cancel();
+  callar();
   var r = new SR(); JES.rec = r; r.lang = 'es-ES'; r.interimResults = true; r.maxAlternatives = 1;
   var orbe = el('orbe'), fin = '';
   orbe.classList.add('escucha'); decir('Te escucho…', '', null, true);
@@ -619,8 +684,30 @@ function reglas(frase) {
   return null;
 }
 
+/* Ronda 74: el parte del día y los informes (jessica-parte.js). Van antes que las órdenes de Embolsado. */
+function parte(intento, frase) {
+  var orbe = el('orbe'); orbe.classList.add('piensa');
+  decir('Déjame mirar…', '', null, true);
+  el('parte').hidden = false; el('parteTit').textContent = '…'; el('parteTxt').innerHTML = '<p class="cargando">Mirando los datos…</p>';
+  api('jesRegistrar', { frase: frase, accion: 'parte:' + intento.q, id: '' });
+  JesParte.responder(intento).then(function (r) {
+    orbe.classList.remove('piensa');
+    if (!r) return decir('No te he entendido. ¿Me lo repites?', 'duda');
+    decir(r.titulo, 'ok', null, true);
+    el('parteTit').textContent = r.titulo;
+    el('parteTxt').innerHTML = r.frases.map(function (f) { return '<p>' + esc(f) + '</p>'; }).join('');
+    hablarLista(r.frases);
+    if (!MANDO) cargarRep();
+  }).catch(function () { orbe.classList.remove('piensa'); decir('Se me ha cruzado un cable. ¿Me lo repites?', 'duda'); });
+}
+document.querySelectorAll('#preg button').forEach(function (b) { b.onclick = function () { oido('«' + b.dataset.f + '»'); orden(b.dataset.f); }; });
+if (ES_ADMIN) { el('pregInforme').textContent = '🏢 La empresa'; el('pregInforme').dataset.f = '¿Cómo vamos en la empresa?'; el('pregConduc').dataset.f = '¿Cómo va la conducción?'; el('pregInc').dataset.f = '¿Cómo van las incidencias?'; }
+
 function orden(frase) {
   frase = String(frase || '').trim(); if (!frase) return;
+  var pi = window.JesParte && JesParte.intencion(frase, !MANDO);
+  if (pi) return parte(pi, frase);
+  el('parte').hidden = true;
   var cmd = reglas(frase);
   if (cmd) { api('jesRegistrar', { frase: frase, accion: cmd.accion, id: cmd.id || '' }); return ejecutar(cmd, ''); }
   var orbe = el('orbe'); orbe.classList.add('piensa'); decir('Pensando…', '', null, true);
@@ -795,13 +882,35 @@ function ejecutar(c, via) {
 /* ============================================================
    ARRANQUE: carga los pedidos y escucha sin tocar nada
 ============================================================ */
-odo('oListos', 0); odo('oPend', 0); odo('oFrios', 0);
-pintaTramos(); pintaCards();
+/* Ronda 74: el repartidor ve los pedidos de hoy de su tienda por franja (cuántos hay y cuántos listos). */
+function cargarRep() {
+  return JesParte.dia().then(function (d) {
+    if (!d || !d.ok) return aviso((d && d.error) || 'No se han podido cargar los pedidos de hoy.');
+    aviso('');
+    var t = JesParte.tiendaDe(d), x = d.tiendas[t] || {}, ah = tramoAhora();
+    el('tramosRep').innerHTML = JesParte.franjas.map(function (f) {
+      var n = (x[f] || {}).total || 0, l = (x[f] || {}).listos || 0, pips = Math.max(n, 1);
+      return '<div class="tramo' + (f === ah ? ' ahora' : '') + '"><span class="h">' + f.replace('H', 'h') + '</span><span class="n">' + n + '</span>' +
+        '<span class="pips" style="grid-template-columns:repeat(' + pips + ',1fr)">' + Array.from({ length: pips }, function (_, i) { return '<i' + (i < l ? ' class="on"' : '') + '></i>'; }).join('') + '</span>' +
+        '<span class="est">' + (n ? l + ' listo' + (l === 1 ? '' : 's') : 'sin pedidos') + '</span></div>';
+    }).join('');
+    el('tramosRep').setAttribute('aria-label', 'Pedidos de hoy en ' + JesParte.bonito(t) + ' por franja');
+  });
+}
 if (window.speechSynthesis) try { speechSynthesis.getVoices(); } catch (e) {}
+if (MANDO) {
+  odo('oListos', 0); odo('oPend', 0); odo('oFrios', 0);
+  pintaTramos(); pintaCards();
+} else {
+  el('tituloPag').textContent = 'Tu día';
+  el('oido').textContent = 'Di: «Buenos días, Jessica, ¿qué tenemos hoy?»';
+  el('frase').placeholder = '…o escríbelo: «¿cómo voy?»';
+}
 if (sesion.usuario) {
-  cargar();
-  setInterval(function () { if (!document.hidden) cargar(); }, 30000);
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) cargar(); });
+  var recarga = MANDO ? cargar : cargarRep;
+  recarga();
+  setInterval(function () { if (!document.hidden) recarga(); }, MANDO ? 30000 : 60000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) recarga(); });
   setTimeout(escuchar, 400);
 }
 </script>
