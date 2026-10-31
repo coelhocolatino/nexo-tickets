@@ -63,7 +63,9 @@
      v3.10.2 (2026-10-09): ventana "Qué novedades hay" (nexo-novedades.js), una vez por usuario;
      se vuelve a abrir con el enlace de abajo.
 -->
-<html lang="es" data-pagina="auto" data-version="v3.11.3">
+<!-- v3.11.4 (2026-10-31, ronda 82): el ticket se sube con el USUARIO del repartidor (columna A), no con su NOMBRE.
+     Requiere Embolsado.js de la ronda 82 (acción usuariosNombres). -->
+<html lang="es" data-pagina="auto" data-version="v3.11.4">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -1193,7 +1195,7 @@ document.getElementById('ticketForm').addEventListener('submit', async function(
   const datosForm = {
     fecha:      fechaInput.value,
     tienda:     String(tiendaSel.value).trim(),
-    repartidor: String(repartSel.value).trim(),
+    repartidor: usuarioDeRepartidor(String(repartSel.value).trim()),   // ronda 82: el USUARIO, no el NOMBRE
     franja:     String(document.getElementById('franja').value).trim(),
     pedidos:    document.getElementById('pedidos').value,
     dobles:     document.getElementById('dobles').value,
@@ -1421,6 +1423,28 @@ function avisoAutoTrav() {
   var bloq = autoTravBloqueado();
   if (h) h.style.display = bloq ? 'flex' : 'none';
   if (b) b.disabled = bloq;
+}
+/* Ronda 82: la lista de repartidores trae el NOMBRE (columna B de USUARIOS), pero el ticket se archiva
+   con el USUARIO (columna A): con él lo reconoce el informe. Embolsado da la pareja USUARIO ↔ NOMBRE;
+   se guarda en el móvil para poder subir también sin conexión. */
+var MAPA_USUARIOS = {};
+function claveNombre(v) { return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '').toUpperCase(); }
+function ponerMapaUsuarios(lista) {
+  var m = {};
+  (lista || []).forEach(function (u) { if (u && u.usuario) { m[claveNombre(u.usuario)] = u.usuario; if (u.nombre && !m[claveNombre(u.nombre)]) m[claveNombre(u.nombre)] = u.usuario; } });
+  MAPA_USUARIOS = m;
+}
+try { ponerMapaUsuarios(JSON.parse(localStorage.getItem('nexo_usuarios_nombres') || '[]')); } catch (e) {}
+postProxy(EMBOLSADO_URL, { accion: 'usuariosNombres', usuario: sesion && sesion.usuario }).then(function (r) {
+  if (!r || !r.ok) return;
+  ponerMapaUsuarios(r.usuarios);
+  try { localStorage.setItem('nexo_usuarios_nombres', JSON.stringify(r.usuarios || [])); } catch (e) {}
+}).catch(function () {});
+function usuarioDeRepartidor(v) {
+  var k = claveNombre(v);
+  if (MAPA_USUARIOS[k]) return MAPA_USUARIOS[k];
+  if (sesion && sesion.usuario && k && k === claveNombre(sesion.nombre)) return String(sesion.usuario).toUpperCase();
+  return v;
 }
 postProxy(EMBOLSADO_URL, { accion: 'autoAsignarConfig', usuario: sesion && sesion.usuario }).then(function (r) {
   if (!r || !r.ok) return;
