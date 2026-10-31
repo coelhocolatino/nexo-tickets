@@ -449,11 +449,15 @@
           mi_puesto: cd.puesto || undefined, de: cd.filas.length };
         var cb = combustible(D, quien);
         c.combustible_4_ultimos_repostajes = { litros_100km: cb.l100 && Math.round(cb.l100 * 100) / 100, ccp_euros_por_pedido: cb.ccp && Math.round(cb.ccp * 100) / 100,
-          flota_litros_100km: cb.fL100 && Math.round(cb.fL100 * 100) / 100, flota_ccp: cb.fCcp && Math.round(cb.fCcp * 100) / 100, nota: 'CCP: cuanto menos, mejor' };
+          flota_litros_100km: cb.fL100 && Math.round(cb.fL100 * 100) / 100, flota_ccp: cb.fCcp && Math.round(cb.fCcp * 100) / 100, nota: 'en consumo y CCP, cuanto MENOS, mejor' };
+        // Ronda 79: la valoración ya hecha (el modelo rápido felicitaba un consumo peor que el de la flota).
+        if (quien && cb.l100 && cb.fL100) c.combustible_4_ultimos_repostajes.valoracion_consumo = cb.l100 <= cb.fL100 ? 'MEJOR que la flota (gasta menos): felicítale' : 'PEOR que la flota (gasta más): NO le felicites por el consumo; anímale a conducir suave';
+        if (quien && cb.ccp && cb.fCcp) c.combustible_4_ultimos_repostajes.valoracion_ccp = cb.ccp <= cb.fCcp ? 'MEJOR que la flota (menos € por pedido): felicítale' : 'PEOR que la flota (más € por pedido): anímale';
         if (ES_ADM) c.combustible_por_repartidor = Array.from(new Set(((D.combustible || {}).filas || []).map(function (f) { return f.rep; }))).map(function (r) {
           var x = combustible(D, r); return { repartidor: etiquetaRep(r), litros_100km: x.l100 && Math.round(x.l100 * 100) / 100, ccp: x.ccp && Math.round(x.ccp * 100) / 100 };
         });
       }
+      if (!ES_ADM) c.notas.push('Si pregunta por OTRO repartidor, contesta solo: «Eso solo lo puede ver el ADM. ¿Te cuento cómo vas tú?». No le mandes a buscarlo en ningún sitio.');
       if (d && d.ok) {
         c.pedidos_de_hoy_por_tienda_y_franja = d.tiendas;   // total, listos (con foto), asignados, entregados, conCaja
         if (!ES_ADM) c.mis_pedidos_asignados_hoy = d.mios;
