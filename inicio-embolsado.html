@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — inicio-embolsado.html
      Página de inicio propia del departamento EMBOLSADO (columna DEPARTAMENTO
-     de la hoja USUARIOS): logo y 4 botones grandes — Reservas, Incidencias,
-     Embolsado e Informe. Los ADM siguen viendo el index normal.
+     de la hoja USUARIOS): logo y botones grandes — Incidencias, Embolsado,
+     Jessica e Informe (ronda 73: sin Reservas, los embolsadores no la usan). Los ADM siguen viendo el index normal.
 
      v3.10.1 (2026-10-09, ronda 24): diseño nuevo (nexo-tema.css) y
      comprobación de versión al entrar (nexo-version.js + version.json).
@@ -10,7 +10,7 @@
      v3.10.2 (2026-10-09): ventana "Qué novedades hay" (nexo-novedades.js), una vez por usuario;
      se vuelve a abrir con el enlace de abajo.
 -->
-<html lang="es" data-pagina="inicio-embolsado" data-version="v3.10.8">
+<html lang="es" data-pagina="inicio-embolsado" data-version="v3.10.9">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -84,10 +84,6 @@ body.nx { display:flex; flex-direction:column; }
 
 <main>
 <nav class="menu" aria-label="Menú de Embolsado">
-  <a id="btnReservas" href="reservas.html">
-    <span class="ico"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10h16M8 4v4M16 4v4"/></svg></span>
-    <span class="txt">Reservas</span><svg class="flecha" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
-  </a>
   <a id="btnIncidencias" href="incidencias.html">
     <span class="ico"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4M12 17.5v.5"/></svg><span class="num" id="numIncidencias"></span></span>
     <span class="txt">Incidencias</span><svg class="flecha" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
@@ -126,7 +122,6 @@ var PROXY_BASE    = 'https://sad-proxy.colatino-ventas-enlinea.workers.dev/';
 
 // El usuario ya logueado se pasa a los módulos (?u=usuario) para que entren
 // directo, sin volver a pedir contraseña — igual que hace index.html.
-document.getElementById('btnReservas').href  = 'reservas.html?u=' + encodeURIComponent(USUARIO);
 document.getElementById('btnEmbolsado').href = EMBOLSADO_URL + '?u=' + encodeURIComponent(USUARIO);
 // Ronda 67: NEXO - MÓDULO JESSICA; ?jessica=1 abre el panel de voz escuchando.
 var JESSICA_URL = 'https://script.google.com/macros/s/AKfycbzo14OOZrwPqfXjPd1xjIn5EXr7EoFmLd6YdATo5QrC4piPaByEVrC4pUX9jpBwMl--/exec';
