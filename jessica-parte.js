@@ -44,7 +44,16 @@
 
   /* Pedidos de hoy (jesDia): siempre frescos, son pocos bytes. */
   var _dia = null;
-  function dia() { return post(URL_JES, 'jesDia').then(function (r) { if (r && r.ok) _dia = r; return r; }); }
+  function dia() {
+    return post(URL_JES, 'jesDia').then(function (r) {
+      if (r && r.ok) {
+        _dia = r;
+        // Ronda 76: el nombre de verdad (DATABASE › USUARIOS › NOMBRE), no el usuario del login.
+        if (r.nombre) NOMBRE = bonito(String(r.nombre).split(/\s+/)[0]);
+      }
+      return r;
+    });
+  }
 
   /* Datos del informe: la misma copia que guarda informe-repartidor-nivel1.html. Solo se descarga si cambió. */
   var CLAVE_INF = 'nexo_informe_datos';
@@ -257,7 +266,8 @@
       fr.push(incTxt(incidencias(D, quien, p.act, p.ant, p.n), quien, rep));
       var c = conduccion(D, quien);
       if (c) fr.push(conducTxt(c, quien, rep, nombreRep, true));
-      fr.push(quien ? una(['¡Sigue así, que lo estás haciendo genial!', '¡Gracias por el esfuerzo, se nota!', '¡Vamos a por más!']) : '¡Gran trabajo de todo el equipo!');
+      var cb = combTxt(D, quien, rep, nombreRep); if (cb) fr.push(cb);   // ronda 77
+      fr.push(rep ? '¡Buen trabajo de ' + suNom + '!' : quien ? una(['¡Sigue así, que lo estás haciendo genial!', '¡Gracias por el esfuerzo, se nota!', '¡Vamos a por más!']) : '¡Gran trabajo de todo el equipo!');
       return { titulo: quien ? (rep ? 'Informe de ' + suNom : 'Tu informe, ' + NOMBRE) : 'Informe de la empresa', frases: fr };
     });
   }
@@ -281,13 +291,40 @@
     var sc = Math.round(m.score), tips = [], s;
     if (m.acel > c.mAcel * 1.15) tips.push('acelerar más suave al salir de semáforos y rotondas');
     if (m.freno > c.mFreno * 1.15) tips.push('anticipar las frenadas, dejando más distancia con el de delante');
-    if (sc >= 90 || c.puesto <= 3) s = (rep ? suNom + ' tiene' : '¡Enhorabuena! Tienes') + ' un ' + sc + ' en conducción: de los mejores de la empresa, el número ' + c.puesto + ' de ' + c.filas.length + '. ¡Qué orgullo!';
+    // Ronda 77: con pocos conductores, ser 3º no es ser «de los mejores» (un 74 salía con enhorabuena).
+    if (sc >= 90 || c.puesto === 1) s = (rep ? suNom + ' tiene' : '¡Enhorabuena! Tienes') + ' un ' + sc + ' en conducción: de los mejores de la empresa, el número ' + c.puesto + ' de ' + c.filas.length + '. ¡Qué orgullo!';
     else if (sc >= 75) s = (rep ? suNom + ' tiene un ' + sc + ' en conducción, ' : 'Tu estilo de conducción está en ' + sc + ' sobre 100, ') + (sc >= c.mScore ? 'por encima' : 'cerca') + ' de la media de la flota (' + Math.round(c.mScore) + '). ¡Muy bien!';
     else s = (rep ? suNom + ' va en conducción' : 'Tu conducción va') + ' en ' + sc + ' sobre 100, un poco por debajo de lo normal (la media es ' + Math.round(c.mScore) + ').';
     if (tips.length) s += breve ? ' Un truco: ' + tips[0] + '.' : ' Para mejorar' + (rep ? ', que intente ' : ', intenta ') + lista(tips) + '.';
     else if (!breve && sc < 90) s += ' Conducir suave y con calma sube la nota rapidísimo.';
     return s;
   }
+  /* Ronda 77: consumo (L/100 km) y CCP (€ de gasoil por pedido) de los 4 últimos repostajes,
+     como el bloque «Estilo de conducción» del informe (hoja COMBUSTIBLE, ronda 75). */
+  function combustible(D, rep) {
+    var filas = ((D.combustible || {}).filas || []).slice().sort(function (a, b) { return a.f < b.f ? -1 : a.f > b.f ? 1 : 0; });
+    var porRep = {};
+    filas.forEach(function (f) { (porRep[f.rep] = porRep[f.rep] || []).push(f); });
+    function media(l, k) { var v = l.map(function (x) { return x[k]; }).filter(function (x) { return x != null && x > 0; }); return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; }
+    function flota(k) { return media(Object.keys(porRep).map(function (r) { return { v: media(porRep[r].slice(-4), k) }; }), 'v'); }
+    var ult = rep ? (porRep[rep] || []).slice(-4) : filas.slice(-4);
+    return { n: ult.length, l100: media(ult, 'l100'), ccp: media(ult, 'ccp'), fL100: flota('l100'), fCcp: flota('ccp') };
+  }
+  function n2(v) { return v == null ? '' : v.toFixed(2).replace('.', ','); }
+  function combTxt(D, quien, rep, nombreRep) {
+    var c = combustible(D, quien);
+    if (!quien) return c.fL100 ? 'En combustible, la flota gasta de media ' + n2(c.fL100) + ' litros cada 100 km y el CCP medio es de ' + n2(c.fCcp) + ' € por pedido.' : '';
+    var suNom = rep ? (nombreRep || bonito(rep)) : '';
+    if (!c.n) return rep ? suNom + ' todavía no tiene repostajes registrados.' : '';
+    var s = (rep ? suNom + ' gasta' : 'En tus ' + c.n + ' últimos repostajes gastas') + ' ' + n2(c.l100) + ' litros cada 100 km (la flota, ' + n2(c.fL100) + ')';
+    if (c.ccp != null && c.fCcp) s += c.ccp <= c.fCcp
+      ? ' y ' + (rep ? 'su' : 'tu') + ' CCP es de ' + n2(c.ccp) + ' € por pedido, mejor que la media de ' + n2(c.fCcp) + '. ¡Genial, cuanto menos, mejor!'
+      : ' y ' + (rep ? 'su' : 'tu') + ' CCP es de ' + n2(c.ccp) + ' € por pedido, un poco por encima de la media de ' + n2(c.fCcp) + '. Cuantos más pedidos por depósito, más baja.';
+    else s += '.';
+    if (c.l100 && c.fL100 && c.l100 > c.fL100 * 1.05 && !rep) s += ' Conducir suave y sin acelerones baja el consumo.';
+    return s;
+  }
+
   function soloConduccion(rep, nombreRep) {
     return informe().then(function (D) {
       if (!D) return { titulo: 'No tengo el informe', frases: ['Ahora no puedo leer el informe.'] };
@@ -295,6 +332,7 @@
       if (!c) return { titulo: 'Conducción', frases: ['Todavía no hay datos de estilo de conducción.'] };
       var fr = [conducTxt(c, quien, rep, nombreRep, false)];
       if (c.periodo) fr.push('Son los datos de la carga del ' + c.periodo + '.');
+      var cb = combTxt(D, quien, rep, nombreRep); if (cb) fr.push(cb);   // ronda 77
       if (quien && !rep) fr.push(una(['¡Conduce con cariño, que la furgo y tu espalda lo agradecen!', '¡Seguro y suave, así se llega lejos!']));
       return { titulo: 'Estilo de conducción', frases: fr };
     });
@@ -364,7 +402,7 @@
     // En el centro de mando, las órdenes de Embolsado mandan: «reserva para hoy de 1 a 4…» no es el parte.
     if (!soloParte && /reserv|caja|nevera|frio|congel|foto|ticket|elimin|borra|quita|cambi|pasa |mueve|confirm|finaliz|list[oa]|hueco|disponib|quedan/.test(t)) return null;
     var rep = ES_ADM && /\b(informe|conduccion|incidencias|pedidos) de \w|\bcomo (va|lleva|esta) \w/.test(t) ? repDe(t) : null;
-    if (/conduc|conducir|volante/.test(t)) return { q: 'conduccion', rep: rep };
+    if (/conduc|conducir|volante|consumo|gasoil|gasolina|combustible|ccp|c c p|repost|litros/.test(t)) return { q: 'conduccion', rep: rep };   // ronda 77: + consumo y CCP
     if (/incidenc/.test(t) && !/registr|abr[ei]r? una|apunta/.test(t)) return { q: 'incidencias', rep: rep };
     if (/previst|clientes (de hoy|del dia|para hoy|de siempre)|quien (pide|suele)|que clientes/.test(t)) return { q: 'previstos' };
     if (/embolsad/.test(t) && (soloParte || /\b(como|que hay|que tal|resumen|cuantos)\b/.test(t))) return { q: 'embolsado' };
@@ -376,7 +414,7 @@
     if (!i) return Promise.resolve(null);
     var rep = i.rep && i.rep.rep, nom = i.rep && i.rep.nombre;
     if (i.q === 'hoy') return parteHoy();
-    if (i.q === 'informe' && ES_EMB && !ES_ADM && !rep) return embolsado();   // el embolsador no reparte: su «cómo vamos» es el embolsado
+    if (i.q === 'informe' && ES_EMB && !ES_ADM && !rep && !i.enInforme) return embolsado();   // el embolsador no reparte: su «cómo vamos» es el embolsado
     if (i.q === 'informe') return comoVoy(rep, nom);
     if (i.q === 'conduccion') return soloConduccion(rep, nom);
     if (i.q === 'incidencias') return soloIncidencias(rep);
@@ -385,8 +423,25 @@
     return Promise.resolve({ titulo: '¿En qué te ayudo?', frases: ['Puedo contarte lo que tenemos hoy, cómo vas este período, tu conducción, tus incidencias, los clientes previstos o cómo va el embolsado. ¡Pregúntame lo que quieras!'] });
   }
 
+  /** Ronda 76: el saludo de la primera vez del día. rol: 'rep' | 'adm' | 'emb' */
+  function saludoDia(rol) {
+    var sigue = rol === 'inf' ? (ES_ADM ? ['¿Te cuento cómo va la empresa?', '¿Qué quieres saber del informe?'] : ['¿Qué quieres saber de tu informe?', '¿Vemos cómo vas?'])
+      : rol === 'adm' ? ['¿Te cuento cómo va la empresa?', '¿Vemos cómo vamos hoy?']
+      : rol === 'emb' ? ['¿Empezamos con el embolsado?', '¡Vamos a dejar todo listo para reparto!']
+      : ['¿Te cuento lo que tenemos para hoy?', '¡Qué alegría verte! ¿Vemos lo que hay para hoy?'];
+    return '¡' + saludo() + ', ' + NOMBRE + '! ' + (rol === 'inf' ? '' : 'Soy Jessica. ') + una(sigue);
+  }
+  /** Ronda 77: la primera vez en el informe, Jessica se presenta y dice lo que sabe hacer. */
+  function presentacion() {
+    return ['¡' + saludo() + ', ' + NOMBRE + '! Soy Jessica, tu ayudante por voz. ¡Encantada!',
+      'Puedo contarte lo que tenemos para hoy, cómo vas este período, tu conducción, tu consumo de gasoil y el CCP, tus incidencias y los clientes previstos.' +
+        (ES_ADM ? ' Y como ADM, el informe de toda la empresa o el de cualquier repartidor: dime, por ejemplo, «el informe de Abraham».' : ''),
+      'El micrófono se queda abierto: pregúntame lo que quieras, y tócalo cuando quieras terminar. ¡Vamos a por todas!'];
+  }
+
   window.JesParte = {
-    intencion: intencion, responder: responder, dia: dia,
+    intencion: intencion, responder: responder, dia: dia, saludo: saludoDia, presentacion: presentacion,
+    llamar: function (accion, extra) { return post(URL_JES, accion, extra); },   // ronda 77: voz y rastro desde el informe
     franjas: FRANJAS, frTxt: FR_TXT, tiendaDe: tiendaDe, sumaTienda: sumaTienda, bonito: bonito,
     _calc: { produccion: produccion, incidencias: incidencias, conduccion: conduccion }
   };

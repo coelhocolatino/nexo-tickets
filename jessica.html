@@ -6,12 +6,15 @@
      que usa las MISMAS funciones que los botones de Embolsado. Estética propia (excepción en CLAUDE.md).
      v3.10.1: primera versión (lienzo C «Pulso» v4 aprobado).
      v3.10.3: «listo para reparto» solo con la foto del ticket (antes bastaba confirmar con fríos).
+     v3.10.6 (ronda 77): Jessica habla también del consumo y el CCP (jessica-parte.js v2).
+     v3.10.5 (ronda 76): micrófono ABIERTO hasta apagarlo (repartidores y ADM; se pausa mientras habla Jessica) y
+       saludo con su nombre la primera vez del día («¡Buenos días, Willian!»).
      v3.10.4 (ronda 74): el PARTE DEL DÍA (jessica-parte.js). Ahora la usan TODOS: el repartidor pregunta «¿qué tenemos
        hoy?», «¿cómo voy?», «¿y mi conducción?», «clientes previstos», «¿cómo va el embolsado?»; el ADM, la empresa
        entera o «el informe de Laura». Voz juguetona (Laomedeia) por defecto y los informes largos se leen enteros.
      v3.10.2: «elimina / borra / quita la reserva de X» = quitarla (pregunta antes); antes creaba una reserva nueva.
 -->
-<html lang="es" data-pagina="jessica" data-version="v3.10.4">
+<html lang="es" data-pagina="jessica" data-version="v3.10.6">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -280,11 +283,11 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity
       <label><input type="checkbox" id="habla"> Que hable</label>
     </div>
   </details>
-  <div class="ver nx-version" data-nexo-version="Nexo · Jessica">Nexo · Jessica v3.10.4</div>
+  <div class="ver nx-version" data-nexo-version="Nexo · Jessica">Nexo · Jessica v3.10.6</div>
 </div>
 <div class="fiesta" id="fiesta" hidden aria-live="assertive"></div>
 
-<script src="jessica-parte.js?v=1"></script>
+<script src="jessica-parte.js?v=2"></script>
 <script>
 /* ============================================================
    SESIÓN — ronda 74: TODOS. ADM y EMBOLSADO tienen el centro de mando del embolsado;
@@ -482,14 +485,15 @@ el('voz').onchange = el('habla').onchange = function () {
 el('probar').onclick = function () { var h = JES.habla; JES.habla = true; hablar('¡Hola! Soy Jessica. ¿Qué hacemos hoy? ¡Vamos a por todas!'); JES.habla = h; };
 
 /* Sin internet o con «Voz del móvil»: la mejor voz femenina en español del teléfono. */
-function vozMovil(texto) {
-  if (!window.speechSynthesis) return;
+function vozMovil(texto, alFin) {
+  if (!window.speechSynthesis) { if (alFin) alFin(); return; }
   var fem = /m[oó]nica|elvira|luc[ií]a|helena|laura|paulina|marisol|ximena|isabela|female|mujer|google espa[nñ]ol$/i;
   var vs = speechSynthesis.getVoices().filter(function (v) { return /^es/i.test(v.lang); });
   function p(v) { return (fem.test(v.name) ? 4 : 0) + (/natural|neural|online|premium|enhanced/i.test(v.name) ? 3 : 0) + (/es-ES/i.test(v.lang) ? 2 : 0); }
   vs.sort(function (a, b) { return p(b) - p(a); });
   var u = new SpeechSynthesisUtterance(texto); u.lang = 'es-ES'; if (vs[0]) u.voice = vs[0];
-  u.pitch = 1.2; u.rate = 1.08; speechSynthesis.cancel(); speechSynthesis.speak(u);
+  u.pitch = 1.2; u.rate = 1.08; if (alFin) u.onend = u.onerror = alFin;
+  speechSynthesis.cancel(); speechSynthesis.speak(u);
 }
 /* Gemini devuelve audio PCM de 16 bits: se le pone cabecera WAV. */
 function wav(b64, rate) {
@@ -508,7 +512,8 @@ function callar() { JES.turno++; if (JES.audio) try { JES.audio.pause(); } catch
 function hablar(texto) { hablarLista([texto]); }
 /* Ronda 74: los informes son largos. Se parten en trozos de frases enteras (≤ 350 letras) y se leen
    seguidos; el siguiente trozo se pide mientras suena el anterior. Hablar otra vez o tocar el micrófono corta. */
-function hablarLista(frases) {
+function hablarLista(frases, op) {
+  op = op || {};
   if (!JES.habla) return;
   var trozos = [], cur = '';
   (frases || []).map(sinEmoji).filter(Boolean).forEach(function (f) {
@@ -518,12 +523,17 @@ function hablarLista(frases) {
   if (!trozos.length) return;
   callar();
   var turno = JES.turno;
-  if (JES.voz === 'movil') return vozMovil(trozos.join(' '));
+  // Ronda 76: mientras habla, el micrófono abierto se pausa (no se oye a sí misma) y vuelve al terminar.
+  JES.hablando = true; if (JES.abierto) micPausa();
+  clearTimeout(JES.tHabla); JES.tHabla = setTimeout(finHabla, 90000);   // red de seguridad
+  function fin() { if (turno === JES.turno) finHabla(); }
+  if (JES.voz === 'movil') return vozMovil(trozos.join(' '), fin);
   var pide = [];
   function pedir(i) { if (i < trozos.length && !pide[i]) pide[i] = api('jesVoz', { texto: trozos[i], voz: JES.voz }); return pide[i]; }
-  function resto(i) { if (turno === JES.turno) vozMovil(trozos.slice(i).join(' ')); }
+  function resto(i) { if (turno === JES.turno) vozMovil(trozos.slice(i).join(' '), fin); }
   (function suena(i) {
-    if (turno !== JES.turno || i >= trozos.length) return;
+    if (turno !== JES.turno) return;
+    if (i >= trozos.length) return fin();
     pedir(i).then(function (r) {
       if (turno !== JES.turno) return;
       pedir(i + 1);
@@ -531,7 +541,11 @@ function hablarLista(frases) {
       try {
         JES.audio = new Audio(wav(r.audio, r.rate || 24000));
         JES.audio.onended = function () { suena(i + 1); };
-        JES.audio.play().catch(function () { resto(i); });
+        JES.audio.play().catch(function (e) {
+          // El navegador no deja sonar sin un toque antes (al abrir la página): se guarda para el primer toque.
+          if (e && e.name === 'NotAllowedError' && op.bloqueado) { op.bloqueado(); return fin(); }
+          resto(i);
+        });
       } catch (e) { resto(i); }
     });
   })(0);
@@ -570,7 +584,84 @@ function escuchar() {
   r.onend = function () { orbe.classList.remove('escucha'); if (fin) orden(fin); };
   try { r.start(); } catch (e) { orbe.classList.remove('escucha'); }
 }
-el('orbe').onclick = escuchar;
+
+/* ============================================================
+   RONDA 76: MICRÓFONO ABIERTO HASTA APAGARLO (repartidores y ADM)
+   Tocar el micrófono lo abre; tocarlo otra vez lo apaga (y calla a Jessica).
+   Mientras Jessica habla se pausa solo y vuelve al terminar. El navegador corta el
+   dictado tras un silencio: se vuelve a poner en marcha solo mientras esté abierto.
+   Embolsado sigue como antes: un toque, una orden.
+============================================================ */
+var MIC_FIJO = !MANDO || ES_ADMIN;
+JES.abierto = false; JES.hablando = false;
+function micPausa() { var r = JES.rec; JES.rec = null; if (r) try { r.onend = null; r.abort(); } catch (e) {} }
+function finHabla() { clearTimeout(JES.tHabla); JES.hablando = false; if (JES.abierto) setTimeout(escucharFijo, 300); }
+function escucharFijo() {
+  if (!JES.abierto || JES.hablando || JES.rec) return;
+  var r = new SR(), espera = 150; JES.rec = r;
+  r.lang = 'es-ES'; r.interimResults = true; r.maxAlternatives = 1; r.continuous = true;
+  r.onresult = function (ev) {
+    for (var i = ev.resultIndex; i < ev.results.length; i++) {
+      var t = ev.results[i][0].transcript;
+      oido('«' + t.trim() + '»');
+      if (ev.results[i].isFinal && t.trim()) orden(t);
+    }
+  };
+  r.onerror = function (ev) {
+    if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { cerrarMic(); decir('Necesito permiso para el micrófono. Tócalo y acepta, o escribe abajo.', 'duda', null, true); }
+    else if (ev.error !== 'no-speech' && ev.error !== 'aborted') espera = 2000;   // sin red, etc.: no insistir en bucle
+  };
+  r.onend = function () { if (JES.rec === r) JES.rec = null; if (JES.abierto && !JES.hablando) setTimeout(escucharFijo, espera); };
+  try { r.start(); } catch (e) { JES.rec = null; setTimeout(escucharFijo, 1000); }
+}
+function marcarMic() {
+  var o = el('orbe');
+  o.classList.toggle('escucha', JES.abierto);
+  o.setAttribute('aria-pressed', JES.abierto ? 'true' : 'false');
+  o.setAttribute('aria-label', JES.abierto ? 'Apagar el micrófono' : 'Abrir el micrófono para hablar con Jessica');
+}
+function abrirMic(alEntrar) {
+  if (!SR) return escuchar();   // sin dictado: el aviso de siempre
+  if (!alEntrar) { callar(); clearTimeout(JES.tHabla); JES.hablando = false; }
+  JES.abierto = true; marcarMic();
+  oido('Micrófono abierto · tócalo para apagarlo');
+  escucharFijo();
+}
+function cerrarMic() {
+  JES.abierto = false; micPausa(); callar(); clearTimeout(JES.tHabla); JES.hablando = false; marcarMic();
+  oido('Micrófono apagado · tócalo para hablar');
+}
+el('orbe').onclick = function () {
+  if (JES.saltaClic) { JES.saltaClic = false; return; }
+  if (!MIC_FIJO) return escuchar();
+  if (JES.abierto) cerrarMic(); else abrirMic();
+};
+
+/* ============================================================
+   RONDA 76: SALUDO CON SU NOMBRE, la primera vez que abre Jessica en el día
+   («¡Buenos días, Willian!»; buenas tardes desde las 14h y buenas noches desde las 21h).
+   El nombre es el de DATABASE › USUARIOS › NOMBRE (lo trae jesDia).
+   Si el navegador no deja sonar sin tocar antes la pantalla, lo dice al primer toque.
+============================================================ */
+function saludar() {
+  var k = 'jes_saludo_' + USUARIO, hoy = isoDe_(new Date());
+  try { if (localStorage.getItem(k) === hoy) return; } catch (e) {}
+  JesParte.dia().then(function (d) {
+    if (!d || !d.ok) return;
+    try { localStorage.setItem(k, hoy); } catch (e) {}
+    var t = JesParte.saludo(ES_ADMIN ? 'adm' : ES_EMB ? 'emb' : 'rep');
+    decir(t, 'ok', null, true);
+    var activo = !navigator.userActivation || navigator.userActivation.hasBeenActive;
+    if (!activo && JES.voz === 'movil') { JES.saludoPendiente = t; return; }
+    hablarLista([t], { bloqueado: function () { JES.saludoPendiente = t; } });
+  });
+}
+document.addEventListener('pointerdown', function (ev) {
+  if (!JES.saludoPendiente) return;
+  var t = JES.saludoPendiente; JES.saludoPendiente = null;
+  if (el('orbe').contains(ev.target) && JES.abierto) JES.saltaClic = true;   // ese toque no apaga el micrófono
+  hablar(t);
+}, true);
 el('escribe').onsubmit = function (ev) { ev.preventDefault(); var f = el('frase').value; el('frase').value = ''; if (f.trim()) { oido('«' + f + '»'); orden(f); } };
 
 /* ============================================================
@@ -911,7 +1002,8 @@ if (sesion.usuario) {
   recarga();
   setInterval(function () { if (!document.hidden) recarga(); }, MANDO ? 30000 : 60000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) recarga(); });
-  setTimeout(escuchar, 400);
+  setTimeout(function () { if (MIC_FIJO) abrirMic(true); else escuchar(); }, 400);
+  saludar();
 }
 </script>
 </body>
