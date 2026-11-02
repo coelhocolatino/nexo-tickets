@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — incidencias.html
+     v3.10.11 (2026-11-03, ronda 85): cliente ausente exige 3 llamadas (cada una con su hora h:mm:ss; texto «Mínimo 3
+       intentos de contacto»); botón «Excluir incidencia» para el ADM (sale de la lista y sus fotos van a la papelera).
      v3.10.10 (2026-11-02, ronda 83): en «Cliente ausente», aviso de lo que hay que mandar y los 15 minutos de cortesía.
      v3.10.3 (2026-10-16, ronda 25): foto como en el resto (Sacar/Subir); cliente ausente exige 1 foto del portal;
        «Llamar al cliente» (1 llamada basta; con el interruptor de Configuración marca #31#); campo Tienda
@@ -27,7 +29,7 @@
      se pintan al instante con lo último visto y se actualizan detrás. Requiere Embolsado.js de la ronda 53. -->
 <!-- v3.10.9 (2026-10-31, ronda 81): el ADM puede «Editar» las incidencias ya cerradas (responsable, solución, qué hacer);
      queda «Editada por…». Requiere Embolsado.js de la ronda 81. -->
-<html lang="es" data-pagina="incidencias" data-version="v3.10.10">
+<html lang="es" data-pagina="incidencias" data-version="v3.10.11">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -90,6 +92,8 @@ body.nx { padding-bottom:40px; }
 .b-fin { width:100%; min-height:52px; border:0; border-radius:12px; background:var(--nx-verde); color:#fff; font:800 16px var(--nx-texto); cursor:pointer; }
 .fin-por { font-size:13px; font-weight:600; color:var(--nx-suave); }
 /* Ronda 81: el ADM edita incidencias cerradas */
+.b-excluir { width:100%; min-height:44px; border:0; border-radius:12px; background:transparent; box-shadow:inset 0 0 0 1.5px var(--nx-rojo); color:var(--nx-rojo);
+  font:800 14px var(--nx-texto); cursor:pointer; margin-top:6px; }   /* ronda 85 */
 .b-editar { width:100%; min-height:48px; border:0; border-radius:12px; background:var(--nx-azul-fondo); color:var(--nx-azul); font:800 15px var(--nx-texto); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; }
 .editada-por { font-size:12.5px; font-weight:700; color:var(--nx-azul); }
 .aviso-adm { background:#FFF1CC; color:#7A4A05; border-radius:10px; padding:8px 10px; font-size:13px; font-weight:800; }
@@ -268,7 +272,7 @@ body.nx { padding-bottom:40px; }
     <div id="panelCuerpo"><div class="vacio">Cargando…</div></div>
   </section>
 
-  <div class="nx-version" data-nexo-version="Nexo · Incidencias">Nexo · Incidencias v3.10.10</div>
+  <div class="nx-version" data-nexo-version="Nexo · Incidencias">Nexo · Incidencias v3.10.11</div>
 </main>
 
 <!-- ===== Resolver: responsable y finalizar ===== -->
@@ -480,7 +484,7 @@ function cardHTML(i) {
   if (i['NOMBRE'] || i['DIRECCION']) h += '<div class="cli">' + esc(i['NOMBRE'] || '—') + (i['DIRECCION'] ? '<span>' + esc(i['DIRECCION']) + '</span>' : '') + '</div>';
   if (i['TIENDA']) h += '<div class="linea"><b>Tienda:</b> ' + esc(i['TIENDA']) + '</div>';
   if (i['TELEFONO']) h += '<div class="linea"><b>Tel.</b> <a href="tel:' + esc(i['TELEFONO']) + '" style="color:var(--nx-azul);font-weight:800">' + esc(i['TELEFONO']) + '</a></div>';
-  if (i['INTENTOS']) h += '<div class="linea"><b>Llamadas:</b> ' + esc(i['INTENTOS'].split('|').map(function (x) { return hm(x); }).filter(Boolean).join(', ')) + '</div>';
+  if (i['INTENTOS']) h += '<div class="linea"><b>Llamadas:</b> ' + esc(i['INTENTOS'].split('|').map(function (x) { return String(x).trim().replace(/^0(\d:)/, '$1'); }).filter(Boolean).join(', ')) + '</div>';   // ronda 85: h:mm:ss
   if (i['OBSERVACIONES']) h += '<div class="linea"><b>Obs:</b> ' + esc(i['OBSERVACIONES']) + '</div>';
   var links = [];
   if (i['URL TICKET']) links.push('<a target="_blank" rel="noopener" href="' + esc(i['URL TICKET']) + '">' + IC_CAM + 'Ticket</a>');
@@ -505,7 +509,27 @@ function cardHTML(i) {
     h += '<div class="editada-por">Editada por ' + esc(nombreDe(i['EDITADA POR'])) + (me ? ', ' + me[1] + ' a las ' + me[2] : (eh ? ', ' + esc(eh) : '')) + '</div>';
   }
   if (!pend && esAdmin) h += '<button class="b-editar" onclick="abrirRes(\'' + id + '\')">' + IC_LAPIZ + 'Editar</button>';
+  if (esAdmin) h += '<button class="b-excluir" onclick="excluirInc(\'' + id + '\')">Excluir incidencia</button>';   // ronda 85
   return h + '</article>';
+}
+
+/* Ronda 85: el ADM excluye una incidencia. Sale de la lista (y de los informes), queda guardada en la hoja
+   INCIDENCIAS_EXCLUIDAS con el motivo, y sus fotos van a la papelera de Drive (se vacía sola a los 30 días). */
+async function excluirInc(id) {
+  var i = datos.filter(function (x) { return x['ID INCIDENCIA'] === id; })[0];
+  if (!i) return;
+  var que = i['TIPO'] + ' · ' + (i['CAJA'] === '%DIA' ? 'albarán ' + i['TICKET'] : 'caja ' + i['CAJA'] + ', ticket ' + i['TICKET']) + ' · ' + nombreDe(i['USUARIO']);
+  var motivo = prompt('EXCLUIR la incidencia\n' + que + '\n\nDesaparece de la lista y de los informes, y sus fotos se borran.\n¿Por qué se excluye?');
+  if (motivo === null) return;
+  motivo = motivo.trim();
+  if (!motivo) { alert('Hay que escribir el motivo para excluirla.'); return; }
+  if (!confirm('¿Excluir definitivamente esta incidencia y borrar sus fotos?\n\n' + que)) return;
+  spin(true, 'Excluyendo…');
+  var r = await api('excluirIncidencia', { idIncidencia: id, motivo: motivo });
+  spin(false);
+  if (!r.ok) { alert(r.error || 'No se pudo excluir.'); return; }
+  msg('Incidencia excluida.' + (r.papelera && r.papelera.length ? ' A la papelera: ' + r.papelera.join(', ') + '.' : ''), 'ok');
+  cargar();
 }
 
 async function cargar() {
@@ -821,10 +845,11 @@ function pintarTiendaNv() {
   sel.onchange = function () { if (nv) nv.tienda = sel.value; };
   if (nv) nv.tienda = sel.value;
 }
-/* Ronda 25: "Llamar al cliente". Con 1 llamada basta. Si en Configuración está el interruptor
-   de ocultar número, se marca #31# delante (España); depende de la operadora. */
+/* Ronda 25: "Llamar al cliente". Si en Configuración está el interruptor de ocultar número, se marca
+   #31# delante (España); depende de la operadora. Ronda 85: mínimo 3 llamadas, cada una con su hora (h:mm:ss). */
+var LLAMADAS_MIN = 3;
 function llamarAlCliente() {
-  if (!nv || nv.intentos.length >= 1) { return; }
+  if (!nv || nv.intentos.length >= LLAMADAS_MIN) { return; }
   var tel = String((nv.datos && nv.datos.telefono) || el('nvTel').value || '').replace(/[^\d+]/g, '');
   if (!tel) { alert('No hay teléfono del cliente. Vuelve al paso 2 y escríbelo.'); return; }
   var oculto = false; try { oculto = localStorage.getItem('nexo_ocultar_numero') === '1'; } catch (e) {}
@@ -970,12 +995,13 @@ function elegirTipoNv(k) {
 }
 function pintarAusenteNv() {
   var n = nv.intentos.length;
-  el('btnLlamada').style.display = n >= 1 ? 'none' : 'block';
+  el('btnLlamada').style.display = n >= LLAMADAS_MIN ? 'none' : 'block';
+  el('btnLlamada').textContent = 'Llamar al cliente (' + n + '/' + LLAMADAS_MIN + ')';
   var ok = el('nvLlamOk');
-  ok.style.display = n >= 1 ? 'block' : 'none';
-  if (n >= 1) ok.textContent = 'Llamada hecha a las ' + new Date(nv.intentos[0]).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) + '. Ya puedes registrar la incidencia.';
-  var oculto = false; try { oculto = localStorage.getItem('nexo_ocultar_numero') === '1'; } catch (e) {}
-  el('nvLlamNota').textContent = 'Con 1 llamada basta.' + (oculto ? ' Se llama con tu número oculto (#31#).' : '') + ' En cliente ausente es obligatoria al menos 1 foto del portal.';
+  ok.style.display = n ? 'block' : 'none';
+  ok.textContent = nv.intentos.map(function (t, k) { return 'Llamada ' + (k + 1) + ': ' + new Date(t).toLocaleTimeString('es-ES'); }).join(' · ') +
+    (n >= LLAMADAS_MIN ? '. Ya puedes registrar la incidencia.' : '');
+  el('nvLlamNota').textContent = 'Mínimo 3 intentos de contacto';   // ronda 85: texto pedido por Wanderson
 }
 
 async function registrarNueva(forzar) {
@@ -983,7 +1009,7 @@ async function registrarNueva(forzar) {
   if (!nv.tipo) { alert('Elige el motivo.'); return; }
   var d = TIPOS[nv.tipo], obs = el('nvObs').value.trim();
   if (d.obs && !obs) { alert('Escribe las observaciones.'); el('nvObs').focus(); return; }
-  if (nv.tipo === 'CLIENTE_AUSENTE' && nv.intentos.length < 1) { alert('Pulsa «Llamar al cliente» antes de registrar la incidencia.'); return; }
+  if (nv.tipo === 'CLIENTE_AUSENTE' && nv.intentos.length < LLAMADAS_MIN) { alert('Faltan llamadas: hacen falta ' + LLAMADAS_MIN + ' intentos de contacto (llevas ' + nv.intentos.length + ').'); return; }
   if (nv.tipo === 'CLIENTE_AUSENTE' && !nvCol.fotos().length) { alert('En cliente ausente hace falta al menos 1 foto del portal.'); return; }
   if (!el('nvTienda').value) { alert('Elige la tienda.'); el('nvTienda').focus(); return; }
   nvOcupado = true;

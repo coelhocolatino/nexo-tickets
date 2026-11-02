@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <!-- Nexo · Configuración (solo ADM)
+     v3.10.15 (2026-11-03, ronda 85): «Correos de incidencias» › «Enviar desde» por tienda (p. ej. GRANVIA › envios1@…).
      v3.10.14 (2026-11-02, ronda 83): «Correos de incidencias» — a quién va el correo de cada incidencia, por tienda y tipo
        (grupo de la hoja CORREOS y/o correos sueltos). Requiere Embolsado de la ronda 83 (ConfigCorreosInc.gs).
      v3.10.10 (2026-10-17, ronda 34): en «Reservas automáticas», NOMBRE y DIRECCIÓN en campos separados
@@ -21,7 +22,7 @@
      guardarReservaAuto, borrarReservaAuto; disparador generarReservasAuto).
      Se mantienen: Pedidos diarios emitidos (NEXO SCRIPT, PEDIDOS_TOTALES; GRANVIA en su
      columna) y Límites por franja (Módulo Embolsado, hoja LIMITES). -->
-<html lang="es" data-pagina="config" data-version="v3.10.14">
+<html lang="es" data-pagina="config" data-version="v3.10.15">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -312,7 +313,7 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
     <div class="msg" id="msgAuto"></div>
   </section>
 
-  <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.14</div>
+  <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.15</div>
 </main>
 <script>
 /* Ronda 27: secciones plegables (solo se abre una) + sección de teléfonos útiles. */
@@ -1080,7 +1081,8 @@ el('swAutoTrav').addEventListener('change', function () {
 });
 
 /* ══════ Ronda 83: Correos de incidencias (por tienda y tipo) — ver ConfigCorreosInc.gs ══════ */
-var ICC = { cargado: false, tiendas: [], tipos: [], grupos: [], reglas: [], original: '[]', tienda: 'TRAVESIA' };
+var ICC = { cargado: false, tiendas: [], tipos: [], grupos: [], reglas: [], original: '[]', tienda: 'TRAVESIA',
+            remitentes: {}, remOriginal: '{}', alias: [], cuenta: '' };   // ronda 85: «Enviar desde» por tienda
 function iccRegla(t, k) { for (var i = 0; i < ICC.reglas.length; i++) if (ICC.reglas[i].tienda === t && ICC.reglas[i].tipo === k) return ICC.reglas[i]; return null; }
 function iccPintarTiendas() {
   el('iccTiendas').innerHTML = ICC.tiendas.map(function (t) {
@@ -1092,7 +1094,7 @@ function iccElegirTienda(t) { iccRecoger(); ICC.tienda = t; iccPintarTiendas(); 
 function iccPintar() {
   var todos = iccRegla(ICC.tienda, 'TODOS');
   var porDefecto = todos ? 'lo de «Todas las incidencias»' : 'Embolsado y ADM';
-  el('iccCuerpo').innerHTML = ICC.tipos.map(function (x) {
+  el('iccCuerpo').innerHTML = iccRemitenteHTML() + ICC.tipos.map(function (x) {
     var r = iccRegla(ICC.tienda, x.clave) || { grupo: '', correos: [], copia: false };
     var activa = !!(r.grupo || (r.correos && r.correos.length));
     var opc = '<option value="">' + 'Ninguno (' + (x.clave === 'TODOS' || !todos ? 'Embolsado y ADM' : 'como «Todas»') + ')' + '</option>' +
@@ -1105,24 +1107,39 @@ function iccPintar() {
       '</div>';
   }).join('');
 }
+/* Ronda 85: «Enviar desde» de la tienda abierta. Solo funciona si ese correo está en «Enviar como» del Gmail
+   de la cuenta del script; si no, la incidencia sale desde la cuenta del script, como siempre. */
+function iccRemitenteHTML() {
+  var de = ICC.remitentes[ICC.tienda] || '';
+  var cuenta = ICC.cuenta || 'la cuenta del script';
+  var estado = !de ? 'Vacío: los correos salen desde ' + esc(cuenta) + ', como siempre.'
+    : ICC.alias.indexOf(de.toLowerCase()) >= 0 ? '✔ Listo: ' + esc(de) + ' está en «Enviar como» de Gmail.'
+    : '✘ Falta darlo de alta en Gmail de ' + esc(cuenta) + ' › Configuración › Cuentas › «Enviar como». Mientras, salen desde ' + esc(cuenta) + '.';
+  return '<div class="icc-fila' + (de ? ' on' : '') + '" id="iccRemFila"><div class="icc-tit">Enviar desde<span>' + esc(ICC.tienda) + '</span></div>' +
+    '<input class="in" id="iccRem" type="text" inputmode="email" autocapitalize="off" spellcheck="false" placeholder="correo@empresa.com (vacío = como siempre)" value="' + esc(de) + '" oninput="iccMarcar()">' +
+    '<p class="nota" id="iccRemEstado">' + estado + '</p></div>';
+}
 /** Pasa lo que hay en pantalla (la tienda abierta) a ICC.reglas. */
 function iccRecoger() {
   if (!ICC.cargado || !el('iccCuerpo').querySelector('.icc-fila')) return;
+  if (el('iccRem')) { var de = el('iccRem').value.trim().toLowerCase(); if (de) ICC.remitentes[ICC.tienda] = de; else delete ICC.remitentes[ICC.tienda]; }
   ICC.reglas = ICC.reglas.filter(function (r) { return r.tienda !== ICC.tienda; });
-  [].forEach.call(el('iccCuerpo').querySelectorAll('.icc-fila'), function (f) {
+  [].forEach.call(el('iccCuerpo').querySelectorAll('.icc-fila[data-tipo]'), function (f) {
     var grupo = f.querySelector('[data-c="grupo"]').value;
     var correos = f.querySelector('[data-c="correos"]').value.split(/[,;\s]+/).map(function (c) { return c.trim().toLowerCase(); }).filter(String);
     if (!grupo && !correos.length) return;
     ICC.reglas.push({ tienda: ICC.tienda, tipo: f.getAttribute('data-tipo'), grupo: grupo, correos: correos, copia: f.querySelector('[data-c="copia"]').checked });
   });
 }
+function iccRemTxt() { var o = {}; Object.keys(ICC.remitentes).sort().forEach(function (k) { o[k] = ICC.remitentes[k]; }); return JSON.stringify(o); }
 function iccOrden(a) { return JSON.stringify(a.slice().sort(function (x, y) { return (x.tienda + x.tipo).localeCompare(y.tienda + y.tipo); })); }
 function iccMarcar() {
   iccRecoger();
-  var hay = iccOrden(ICC.reglas) !== ICC.original;
+  var hay = iccOrden(ICC.reglas) !== ICC.original || iccRemTxt() !== ICC.remOriginal;
   el('btnIccGuardar').disabled = !hay; el('btnIccDeshacer').disabled = !hay;
   aviso('msgIcc', '');
-  [].forEach.call(el('iccCuerpo').querySelectorAll('.icc-fila'), function (f) {
+  if (el('iccRemFila')) el('iccRemFila').classList.toggle('on', !!el('iccRem').value.trim());
+  [].forEach.call(el('iccCuerpo').querySelectorAll('.icc-fila[data-tipo]'), function (f) {
     var on = !!(f.querySelector('[data-c="grupo"]').value || f.querySelector('[data-c="correos"]').value.trim());
     f.classList.toggle('on', on);
   });
@@ -1134,23 +1151,25 @@ function iccCargar() {
     ICC.tiendas = r.tiendas || []; ICC.tipos = r.tipos || []; ICC.grupos = r.grupos || [];
     ICC.reglas = (r.reglas || []).map(function (x) { return { tienda: x.tienda, tipo: x.tipo, grupo: x.grupo || '', correos: x.correos || [], copia: !!x.copia }; });
     ICC.original = iccOrden(ICC.reglas); ICC.cargado = true;
+    ICC.remitentes = r.remitentes || {}; ICC.remOriginal = iccRemTxt(); ICC.alias = r.alias || []; ICC.cuenta = r.cuenta || '';
     if (ICC.tiendas.indexOf(ICC.tienda) === -1) ICC.tienda = ICC.tiendas[0] || '';
     iccPintarTiendas(); iccPintar();
   });
 }
 el('btnIccDeshacer').addEventListener('click', function () {
-  ICC.reglas = JSON.parse(ICC.original);
+  ICC.reglas = JSON.parse(ICC.original); ICC.remitentes = JSON.parse(ICC.remOriginal);
   el('btnIccGuardar').disabled = true; el('btnIccDeshacer').disabled = true;
   aviso('msgIcc', ''); iccPintarTiendas(); iccPintar();
 });
 el('btnIccGuardar').addEventListener('click', function () {
   iccRecoger();
   spin(true);
-  postEmbolsado({ accion: 'incCorreosConfigGuardar', reglas: ICC.reglas }).then(function (r) {
+  postEmbolsado({ accion: 'incCorreosConfigGuardar', reglas: ICC.reglas, remitentes: ICC.remitentes }).then(function (r) {
     spin(false);
     if (!r || !r.ok) { aviso('msgIcc', (r && r.error) || 'No se pudo guardar.', 'err'); return; }
     ICC.reglas = (r.reglas || []).map(function (x) { return { tienda: x.tienda, tipo: x.tipo, grupo: x.grupo || '', correos: x.correos || [], copia: !!x.copia }; });
     ICC.original = iccOrden(ICC.reglas);
+    ICC.remitentes = r.remitentes || {}; ICC.remOriginal = iccRemTxt(); if (r.alias) ICC.alias = r.alias;
     el('btnIccGuardar').disabled = true; el('btnIccDeshacer').disabled = true;
     iccPintarTiendas(); iccPintar();
     aviso('msgIcc', 'Guardado. Las incidencias nuevas ya se envían así.', 'ok');
