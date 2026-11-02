@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — incidencias.html
+     v3.10.10 (2026-11-02, ronda 83): en «Cliente ausente», aviso de lo que hay que mandar y los 15 minutos de cortesía.
      v3.10.3 (2026-10-16, ronda 25): foto como en el resto (Sacar/Subir); cliente ausente exige 1 foto del portal;
        «Llamar al cliente» (1 llamada basta; con el interruptor de Configuración marca #31#); campo Tienda
        (por defecto la del usuario). Requiere Embolsado.js de la ronda 25.
@@ -26,7 +27,7 @@
      se pintan al instante con lo último visto y se actualizan detrás. Requiere Embolsado.js de la ronda 53. -->
 <!-- v3.10.9 (2026-10-31, ronda 81): el ADM puede «Editar» las incidencias ya cerradas (responsable, solución, qué hacer);
      queda «Editada por…». Requiere Embolsado.js de la ronda 81. -->
-<html lang="es" data-pagina="incidencias" data-version="v3.10.9">
+<html lang="es" data-pagina="incidencias" data-version="v3.10.10">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -267,7 +268,7 @@ body.nx { padding-bottom:40px; }
     <div id="panelCuerpo"><div class="vacio">Cargando…</div></div>
   </section>
 
-  <div class="nx-version" data-nexo-version="Nexo · Incidencias">Nexo · Incidencias v3.10.8</div>
+  <div class="nx-version" data-nexo-version="Nexo · Incidencias">Nexo · Incidencias v3.10.10</div>
 </main>
 
 <!-- ===== Resolver: responsable y finalizar ===== -->
@@ -357,6 +358,7 @@ body.nx { padding-bottom:40px; }
     <div><span class="etq">Motivo</span><div id="nvTipos"></div></div>
     <div id="nvAusente" style="display:none;flex-direction:column;gap:8px">
       <div class="perf" aria-hidden="true"></div>
+      <p class="nx-aviso ambar" style="margin:0">Para clientes ausentes se debe enviar foto del ticket, del portal y captura de pantalla con los intentos de llamadas (Mínimo 3). Tiempo de cortesía de espera: 15 minutos.</p>
       <span class="etq">Llamada al cliente</span>
       <button class="b-llamada" id="btnLlamada" type="button" onclick="llamarAlCliente()">Llamar al cliente</button>
       <div id="nvLlamOk" class="aviso g" style="display:none"></div>

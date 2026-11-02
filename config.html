@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <!-- Nexo · Configuración (solo ADM)
+     v3.10.14 (2026-11-02, ronda 83): «Correos de incidencias» — a quién va el correo de cada incidencia, por tienda y tipo
+       (grupo de la hoja CORREOS y/o correos sueltos). Requiere Embolsado de la ronda 83 (ConfigCorreosInc.gs).
      v3.10.10 (2026-10-17, ronda 34): en «Reservas automáticas», NOMBRE y DIRECCIÓN en campos separados
      v3.10.11 (2026-10-19, ronda 41): «Informes automáticos» — por tienda, el informe diario y el
                                       mensual se encienden, se configuran y se envían por separado
@@ -19,7 +21,7 @@
      guardarReservaAuto, borrarReservaAuto; disparador generarReservasAuto).
      Se mantienen: Pedidos diarios emitidos (NEXO SCRIPT, PEDIDOS_TOTALES; GRANVIA en su
      columna) y Límites por franja (Módulo Embolsado, hoja LIMITES). -->
-<html lang="es" data-pagina="config" data-version="v3.10.13">
+<html lang="es" data-pagina="config" data-version="v3.10.14">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -146,6 +148,14 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
 .cfg-bloque>.cfg-tit{font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--nx-azul,#17407A);margin:0 0 6px}
 .cfg-bloque .sw-fila{padding-left:0;padding-right:0}
 .cfg-bloque .cfg-dest{margin-top:8px;padding-top:6px;border-top:1px dashed var(--nx-borde,#DCE3EC)}
+/* Ronda 83: correos de incidencias */
+.icc-fila{border:1px solid var(--nx-borde,#DCE3EC);border-radius:12px;padding:10px 12px;margin:0 0 8px;background:#fff;display:flex;flex-direction:column;gap:8px}
+.icc-fila.on{border-color:var(--nx-azul,#17407A);box-shadow:inset 3px 0 0 var(--nx-azul,#17407A)}
+.icc-fila .icc-tit{display:flex;justify-content:space-between;gap:8px;align-items:baseline;font-weight:800;font-size:15px}
+.icc-fila .icc-tit span{font-size:12px;font-weight:700;color:var(--nx-suave)}
+.icc-fila.todos .icc-tit{color:var(--nx-azul,#17407A)}
+.icc-fila .icc-copia{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;cursor:pointer}
+.icc-fila .icc-copia input{width:20px;height:20px;flex:none}
 /* Ronda 45: informe del repartidor */
 .cfg-fila2{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 .cfg-fila2>div{flex:1 1 150px;min-width:0}
@@ -243,6 +253,21 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
     <div class="msg" id="msgCfg"></div>
   </section>
 
+  <!-- Correos de incidencias (Ronda 83) -->
+  <section class="sec">
+    <h2>Correos de incidencias</h2>
+    <p class="nota">A quién se manda el correo de cada incidencia nueva, por tienda y por tipo: un grupo de la hoja
+      CORREOS, correos sueltos o los dos. Lo que se deje vacío va a Embolsado y ADM, como hasta ahora (o a lo que diga
+      «Todas las incidencias» de esa tienda). Se guarda en la hoja INCIDENCIAS_CORREOS de DATABASE.</p>
+    <div class="nx-pestanas" role="group" aria-label="Tienda de las incidencias" id="iccTiendas"></div>
+    <div id="iccCuerpo"><div class="ra-vacio">Cargando…</div></div>
+    <div class="fila-btn">
+      <button class="btn-s" id="btnIccDeshacer" type="button" disabled>Deshacer</button>
+      <button class="btn-p" id="btnIccGuardar" type="button" disabled>Guardar</button>
+    </div>
+    <div class="msg" id="msgIcc"></div>
+  </section>
+
   <!-- Informe del repartidor (Ronda 45) -->
   <section class="sec">
     <h2>Informe del repartidor</h2>
@@ -287,7 +312,7 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
     <div class="msg" id="msgAuto"></div>
   </section>
 
-  <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.13</div>
+  <div class="nx-version" data-nexo-version="Nexo · Configuración">Nexo · Configuración v3.10.14</div>
 </main>
 <script>
 /* Ronda 27: secciones plegables (solo se abre una) + sección de teléfonos útiles. */
@@ -308,6 +333,10 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
       if (typeof IRC === 'undefined' || !IRC.datos.length) return 'PDF por repartidor';
       var on = IRC.datos.filter(function (r) { return r.activo; }).length;
       return on + ' de ' + IRC.datos.length + ' repartidores con envío automático';
+    },
+    'Correos de incidencias': function () {                        // ronda 83
+      if (typeof ICC === 'undefined' || !ICC.cargado) return 'A quién va cada incidencia, por tienda';
+      return ICC.reglas.length ? ICC.reglas.length + ' regla' + (ICC.reglas.length === 1 ? '' : 's') + ' · el resto a Embolsado y ADM' : 'Todas a Embolsado y ADM';
     },
     'Tiendas por usuario': 'Quién puede asignar en otra tienda',   // ronda 71
     'Auto-Asignar': 'TRAVESIA: bloqueado o permitido'              // ronda 71
@@ -1049,6 +1078,85 @@ el('swAutoTrav').addEventListener('change', function () {
     aviso('msgAuto', r.travesiaPermitida ? 'Activado: se puede usar Auto-Asignar en TRAVESIA.' : 'Bloqueado: Auto-Asignar no deja subir tickets de TRAVESIA.', 'ok');
   });
 });
+
+/* ══════ Ronda 83: Correos de incidencias (por tienda y tipo) — ver ConfigCorreosInc.gs ══════ */
+var ICC = { cargado: false, tiendas: [], tipos: [], grupos: [], reglas: [], original: '[]', tienda: 'TRAVESIA' };
+function iccRegla(t, k) { for (var i = 0; i < ICC.reglas.length; i++) if (ICC.reglas[i].tienda === t && ICC.reglas[i].tipo === k) return ICC.reglas[i]; return null; }
+function iccPintarTiendas() {
+  el('iccTiendas').innerHTML = ICC.tiendas.map(function (t) {
+    var n = ICC.reglas.filter(function (r) { return r.tienda === t; }).length;
+    return '<button type="button" class="' + (t === ICC.tienda ? 'on' : '') + '" onclick="iccElegirTienda(\'' + esc(t) + '\')">' + esc(t) + (n ? ' · ' + n : '') + '</button>';
+  }).join('');
+}
+function iccElegirTienda(t) { iccRecoger(); ICC.tienda = t; iccPintarTiendas(); iccPintar(); }
+function iccPintar() {
+  var todos = iccRegla(ICC.tienda, 'TODOS');
+  var porDefecto = todos ? 'lo de «Todas las incidencias»' : 'Embolsado y ADM';
+  el('iccCuerpo').innerHTML = ICC.tipos.map(function (x) {
+    var r = iccRegla(ICC.tienda, x.clave) || { grupo: '', correos: [], copia: false };
+    var activa = !!(r.grupo || (r.correos && r.correos.length));
+    var opc = '<option value="">' + 'Ninguno (' + (x.clave === 'TODOS' || !todos ? 'Embolsado y ADM' : 'como «Todas»') + ')' + '</option>' +
+      ICC.grupos.map(function (g) { return '<option value="' + esc(g.nombre) + '"' + (g.nombre === r.grupo ? ' selected' : '') + '>' + esc(g.nombre) + ' (' + g.total + ')</option>'; }).join('');
+    return '<div class="icc-fila' + (activa ? ' on' : '') + (x.clave === 'TODOS' ? ' todos' : '') + '" data-tipo="' + esc(x.clave) + '">' +
+      '<div class="icc-tit">' + esc(x.etiqueta) + '<span>' + (activa ? 'regla propia' : 'va a ' + esc(x.clave === 'TODOS' ? 'Embolsado y ADM' : porDefecto)) + '</span></div>' +
+      '<div><span class="etq">Grupo de la hoja CORREOS</span><select class="in" data-c="grupo" onchange="iccMarcar()">' + opc + '</select></div>' +
+      '<div><span class="etq">Correos sueltos (opcional)</span><input class="in" data-c="correos" type="text" inputmode="email" autocapitalize="off" spellcheck="false" autocomplete="off" placeholder="correo@uno.com, correo@dos.com" value="' + esc((r.correos || []).join(', ')) + '" oninput="iccMarcar()"></div>' +
+      '<label class="icc-copia"><input type="checkbox" data-c="copia"' + (r.copia ? ' checked' : '') + ' onchange="iccMarcar()">También a Embolsado y ADM</label>' +
+      '</div>';
+  }).join('');
+}
+/** Pasa lo que hay en pantalla (la tienda abierta) a ICC.reglas. */
+function iccRecoger() {
+  if (!ICC.cargado || !el('iccCuerpo').querySelector('.icc-fila')) return;
+  ICC.reglas = ICC.reglas.filter(function (r) { return r.tienda !== ICC.tienda; });
+  [].forEach.call(el('iccCuerpo').querySelectorAll('.icc-fila'), function (f) {
+    var grupo = f.querySelector('[data-c="grupo"]').value;
+    var correos = f.querySelector('[data-c="correos"]').value.split(/[,;\s]+/).map(function (c) { return c.trim().toLowerCase(); }).filter(String);
+    if (!grupo && !correos.length) return;
+    ICC.reglas.push({ tienda: ICC.tienda, tipo: f.getAttribute('data-tipo'), grupo: grupo, correos: correos, copia: f.querySelector('[data-c="copia"]').checked });
+  });
+}
+function iccOrden(a) { return JSON.stringify(a.slice().sort(function (x, y) { return (x.tienda + x.tipo).localeCompare(y.tienda + y.tipo); })); }
+function iccMarcar() {
+  iccRecoger();
+  var hay = iccOrden(ICC.reglas) !== ICC.original;
+  el('btnIccGuardar').disabled = !hay; el('btnIccDeshacer').disabled = !hay;
+  aviso('msgIcc', '');
+  [].forEach.call(el('iccCuerpo').querySelectorAll('.icc-fila'), function (f) {
+    var on = !!(f.querySelector('[data-c="grupo"]').value || f.querySelector('[data-c="correos"]').value.trim());
+    f.classList.toggle('on', on);
+  });
+  iccPintarTiendas();
+}
+function iccCargar() {
+  postEmbolsado({ accion: 'incCorreosConfigObtener' }).then(function (r) {
+    if (!r || !r.ok) { el('iccCuerpo').innerHTML = '<div class="ra-vacio">' + esc((r && r.error) || 'No se pudo leer.') + '</div>'; return; }
+    ICC.tiendas = r.tiendas || []; ICC.tipos = r.tipos || []; ICC.grupos = r.grupos || [];
+    ICC.reglas = (r.reglas || []).map(function (x) { return { tienda: x.tienda, tipo: x.tipo, grupo: x.grupo || '', correos: x.correos || [], copia: !!x.copia }; });
+    ICC.original = iccOrden(ICC.reglas); ICC.cargado = true;
+    if (ICC.tiendas.indexOf(ICC.tienda) === -1) ICC.tienda = ICC.tiendas[0] || '';
+    iccPintarTiendas(); iccPintar();
+  });
+}
+el('btnIccDeshacer').addEventListener('click', function () {
+  ICC.reglas = JSON.parse(ICC.original);
+  el('btnIccGuardar').disabled = true; el('btnIccDeshacer').disabled = true;
+  aviso('msgIcc', ''); iccPintarTiendas(); iccPintar();
+});
+el('btnIccGuardar').addEventListener('click', function () {
+  iccRecoger();
+  spin(true);
+  postEmbolsado({ accion: 'incCorreosConfigGuardar', reglas: ICC.reglas }).then(function (r) {
+    spin(false);
+    if (!r || !r.ok) { aviso('msgIcc', (r && r.error) || 'No se pudo guardar.', 'err'); return; }
+    ICC.reglas = (r.reglas || []).map(function (x) { return { tienda: x.tienda, tipo: x.tipo, grupo: x.grupo || '', correos: x.correos || [], copia: !!x.copia }; });
+    ICC.original = iccOrden(ICC.reglas);
+    el('btnIccGuardar').disabled = true; el('btnIccDeshacer').disabled = true;
+    iccPintarTiendas(); iccPintar();
+    aviso('msgIcc', 'Guardado. Las incidencias nuevas ya se envían así.', 'ok');
+  });
+});
+if (String(sesion.nivel || '').toLowerCase() === 'admin') iccCargar();
 </script>
 </body>
 </html>

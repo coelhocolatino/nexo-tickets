@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — asignar.html (Pedidos asignados)
+     v3.11.8 (2026-11-02, ronda 83): en «Cliente ausente», aviso de lo que hay que mandar (ticket, portal, captura de
+       las llamadas, mínimo 3) y los 15 minutos de cortesía.
      v3.10.1 (2026-10-09, ronda 24): diseño nuevo (nexo-tema.css), cabecera
      con logo y usuario, tarjetas como las de Embolsado (nº de ticket grande,
      caja debajo), botones Incidencia / Entregar, y comprobación de versión
@@ -34,7 +36,7 @@
      v3.11.5 (2026-10-25, ronda 56): el ADM puede finalizar (sin o con incidencia) los pedidos de cualquier
      repartidor; el ticket se archiva a nombre del repartidor. Requiere Embolsado.js de la ronda 56.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.11.7">
+<html lang="es" data-pagina="asignar" data-version="v3.11.8">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -309,7 +311,7 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
     <summary><span><span id="prevAsigTit">Clientes previstos para hoy</span><small id="prevAsigSub">Calculado a las 05:00</small></span><svg class="flecha" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></summary>
     <div class="prev-lista" id="prevAsigLista"><div class="prev-nota">Cargando…</div></div>
   </details>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.7</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.8</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
@@ -1316,17 +1318,19 @@ function elegirTipo(k) {
   document.getElementById('incObsWrap').style.display = 'block';
   document.getElementById('incObs').placeholder = d.obs ? 'Observaciones (obligatorio)' + (k === 'COMPRA_RECHAZADA' ? ' — motivo del rechazo' : '') : 'Observaciones (opcional)';
   document.getElementById('incFotoWrap').style.display = d.fotosMax ? 'block' : 'none';
-  document.getElementById('btnIncFoto').textContent = k === 'CLIENTE_AUSENTE' ? 'Foto del portal (opcional)' : 'Añadir foto (máx. ' + d.fotosMax + ')';
+  document.getElementById('btnIncFoto').textContent = k === 'CLIENTE_AUSENTE' ? 'Añadir fotos: ticket, portal y llamadas' : 'Añadir foto (máx. ' + d.fotosMax + ')';
   document.getElementById('incMini').innerHTML = '';
   var a = document.getElementById('incAusente');
   if (k === 'CLIENTE_AUSENTE') { a.style.display = 'block'; pintarAusente(); } else a.style.display = 'none';
 }
 
+/* Ronda 83 (pedido de Wanderson): lo que tiene que mandar el repartidor en un cliente ausente. */
+var AVISO_AUSENTE_HTML = '<p class="nx-aviso ambar" style="margin:0 0 8px">Para clientes ausentes se debe enviar foto del ticket, del portal y captura de pantalla con los intentos de llamadas (Mínimo 3). Tiempo de cortesía de espera: 15 minutos.</p>';
 function pintarAusente() {
   var n = incIntentos.length;
   var h = '<button class="intento" onclick="nuevoIntento()" ' + (n >= 3 ? 'disabled' : '') + '>Registrar llamada (' + n + '/3)</button>';
   if (n) h += '<div class="cuenta" id="cuenta"></div>';
-  document.getElementById('incAusente').innerHTML = h;
+  document.getElementById('incAusente').innerHTML = AVISO_AUSENTE_HTML + h;
   tick();
   clearInterval(incTimer); if (n) incTimer = setInterval(tick, 1000);
 }

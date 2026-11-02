@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — dia.html (Pedidos %DIA)
+     v3.10.9 (2026-11-02, ronda 83): en «Cliente ausente», aviso de lo que hay que mandar y los 15 minutos de cortesía.
      v3.10.8 (2026-10-25, ronda 54): «Clientes previstos para hoy» en Pendientes (menú cerrado; la lista se
        pide al abrirlo). Requiere NEXO DIA Code.js de la ronda 54 (diaClientesPrevistos).
      v3.10.7 (2026-10-16, ronda 31): "Finalizar sin incidencia" / "Finalizar con incidencia". Con incidencia el
@@ -16,7 +17,7 @@
        "Activar avisos"; la suscripción se guarda en NEXO DIA → hoja _DIA_AVISOS).
      v3.10.3 (2026-10-09): incidencias con hasta 10 fotos y sin la espera de 10 min tras las 3 llamadas.
 -->
-<html lang="es" data-pagina="dia" data-version="v3.10.8">
+<html lang="es" data-pagina="dia" data-version="v3.10.9">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -239,7 +240,7 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
     <div class="prev-lista" id="prevDiaLista"><div class="prev-nota">Cargando…</div></div>
   </details>
   <button class="nx-btn texto btn-todos" id="btnTodos" onclick="verTodos()">Ver histórico (45 días)</button>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos %DIA">Nexo · Pedidos %DIA v3.10.8</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos %DIA">Nexo · Pedidos %DIA v3.10.9</div>
 </main>
 
 <!-- Imagen ampliada -->
@@ -976,16 +977,18 @@ function elegirTipo(k) {
   document.getElementById('incObsWrap').style.display = 'block';
   document.getElementById('incObs').placeholder = d.obs ? 'Observaciones (obligatorio)' + (k === 'COMPRA_RECHAZADA' ? ' — motivo del rechazo' : '') : 'Observaciones (opcional)';
   document.getElementById('incFotoWrap').style.display = d.fotosMax ? 'block' : 'none';
-  document.getElementById('incFotoTxt').textContent = k === 'CLIENTE_AUSENTE' ? 'Foto del portal (opcional)' : 'Añadir foto (máx. ' + d.fotosMax + ')';
+  document.getElementById('incFotoTxt').textContent = k === 'CLIENTE_AUSENTE' ? 'Añadir fotos: ticket, portal y llamadas' : 'Añadir foto (máx. ' + d.fotosMax + ')';
   document.getElementById('incMini').innerHTML = '';
   var a = document.getElementById('incAusente');
   if (k === 'CLIENTE_AUSENTE') { a.style.display = 'block'; pintarAusente(); } else a.style.display = 'none';
 }
+/* Ronda 83 (pedido de Wanderson): lo que tiene que mandar el repartidor en un cliente ausente. */
+var AVISO_AUSENTE_HTML = '<p class="nx-aviso ambar" style="margin:0 0 8px">Para clientes ausentes se debe enviar foto del ticket, del portal y captura de pantalla con los intentos de llamadas (Mínimo 3). Tiempo de cortesía de espera: 15 minutos.</p>';
 function pintarAusente() {
   var n = incIntentos.length;
   var h = '<button class="intento" onclick="nuevoIntento()" ' + (n >= 3 ? 'disabled' : '') + '>📞 Registrar tentativa (' + n + '/3)</button>';
   if (n) h += '<div class="cuenta" id="cuenta"></div>';
-  document.getElementById('incAusente').innerHTML = h;
+  document.getElementById('incAusente').innerHTML = AVISO_AUSENTE_HTML + h;
   tick();
   clearInterval(incTimer); if (n) incTimer = setInterval(tick, 1000);
 }
