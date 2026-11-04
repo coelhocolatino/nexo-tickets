@@ -13,7 +13,7 @@
          con el estado de cada furgoneta.
      Backend: proyecto Apps Script "NEXO FLOTA" (Flota.gs), por el proxy de
      Cloudflare, igual que el resto de las páginas. -->
-<html lang="es" data-pagina="flota" data-version="v3.10.4">
+<html lang="es" data-pagina="flota" data-version="v3.10.5">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -95,10 +95,24 @@
 #tarjetaGrande svg { width:100%; max-width:560px; height:160px; }
 #tarjetaGrande .num { font-size:20px; font-weight:800; letter-spacing:.14em; color:#000; }
 #tarjetaGrande .nx-btn { width:100%; max-width:560px; }
+/* Ronda 86: QR de la tarjeta debajo del código de barras */
+#tarjetaGrande { overflow-y:auto; justify-content:safe center; }
+#tarjetaGrande svg { flex:none; }
+#tarjetaGrande svg.qr { width:min(64vw, 38vh, 280px); height:auto; }
 .fl-notas { display:flex; gap:8px; }
 .fl-notas input { flex:1; min-width:0; }
 .fl-ccpbtn { flex:none; min-width:64px; border:0; border-radius:12px; background:var(--nx-verde); color:#fff; font-family:inherit; font-size:15px; font-weight:800; cursor:pointer; }
 .fl-ccpbtn.off { background:var(--nx-rojo); }
+/* Ronda 86: el ADM toca un repostaje de «Últimos repostajes» y se amplía para editarlo */
+.fl-item.editable { cursor:pointer; box-shadow:inset 0 0 0 1.5px transparent; }
+.fl-item.editable:active { box-shadow:inset 0 0 0 1.5px var(--nx-azul); }
+.fl-item.editable .der::after { content:' ✎'; color:var(--nx-azul); }
+#editComb { position:fixed; inset:0; background:var(--nx-fondo, #F2F5F9); z-index:1150; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+#editComb .fl-card { max-width:620px; margin:0 auto; border-radius:0 0 var(--nx-r-tarjeta) var(--nx-r-tarjeta); min-height:100%; }
+.fl-edit-cab { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.fl-periodo { background:var(--nx-azul-fondo); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:8px; }
+.fl-periodo .fl-grid { gap:8px; }
+.fl-botones { display:grid; grid-template-columns:1fr 2fr; gap:8px; }
 </style>
 
 <!-- GUARD DE SESIÓN -->
@@ -141,7 +155,55 @@
     <div class="fl-sub">Enséñalo en caja · sube el brillo si no lo lee</div>
     <svg viewBox="0 0 143 60" preserveAspectRatio="none" shape-rendering="crispEdges"><rect x="10" y="0" width="2" height="60"/><rect x="13" y="0" width="1" height="60"/><rect x="16" y="0" width="3" height="60"/><rect x="21" y="0" width="3" height="60"/><rect x="25" y="0" width="2" height="60"/><rect x="29" y="0" width="1" height="60"/><rect x="32" y="0" width="1" height="60"/><rect x="36" y="0" width="2" height="60"/><rect x="40" y="0" width="1" height="60"/><rect x="43" y="0" width="3" height="60"/><rect x="47" y="0" width="1" height="60"/><rect x="50" y="0" width="2" height="60"/><rect x="54" y="0" width="2" height="60"/><rect x="59" y="0" width="1" height="60"/><rect x="62" y="0" width="1" height="60"/><rect x="65" y="0" width="2" height="60"/><rect x="69" y="0" width="1" height="60"/><rect x="72" y="0" width="3" height="60"/><rect x="76" y="0" width="2" height="60"/><rect x="79" y="0" width="2" height="60"/><rect x="82" y="0" width="4" height="60"/><rect x="87" y="0" width="1" height="60"/><rect x="89" y="0" width="4" height="60"/><rect x="94" y="0" width="3" height="60"/><rect x="98" y="0" width="3" height="60"/><rect x="102" y="0" width="1" height="60"/><rect x="105" y="0" width="2" height="60"/><rect x="109" y="0" width="2" height="60"/><rect x="112" y="0" width="1" height="60"/><rect x="116" y="0" width="1" height="60"/><rect x="120" y="0" width="2" height="60"/><rect x="125" y="0" width="3" height="60"/><rect x="129" y="0" width="1" height="60"/><rect x="131" y="0" width="2" height="60"/></svg>
     <div class="num">2708241120898</div>
+    <!-- Ronda 86: QR de la misma tarjeta (contiene 2708241120898) -->
+    <svg class="qr" viewBox="0 0 29 29" shape-rendering="crispEdges" aria-label="QR de la tarjeta de puntos"><rect width="29" height="29" fill="#fff"/><path d="M4 4h7v1h-7zM13 4h1v1h-1zM16 4h1v1h-1zM18 4h7v1h-7zM4 5h1v1h-1zM10 5h1v1h-1zM12 5h1v1h-1zM15 5h1v1h-1zM18 5h1v1h-1zM24 5h1v1h-1zM4 6h1v1h-1zM6 6h3v1h-3zM10 6h1v1h-1zM13 6h1v1h-1zM18 6h1v1h-1zM20 6h3v1h-3zM24 6h1v1h-1zM4 7h1v1h-1zM6 7h3v1h-3zM10 7h1v1h-1zM12 7h1v1h-1zM15 7h1v1h-1zM18 7h1v1h-1zM20 7h3v1h-3zM24 7h1v1h-1zM4 8h1v1h-1zM6 8h3v1h-3zM10 8h1v1h-1zM14 8h3v1h-3zM18 8h1v1h-1zM20 8h3v1h-3zM24 8h1v1h-1zM4 9h1v1h-1zM10 9h1v1h-1zM12 9h3v1h-3zM16 9h1v1h-1zM18 9h1v1h-1zM24 9h1v1h-1zM4 10h7v1h-7zM12 10h1v1h-1zM14 10h1v1h-1zM16 10h1v1h-1zM18 10h7v1h-7zM14 11h3v1h-3zM4 12h5v1h-5zM10 12h4v1h-4zM16 12h2v1h-2zM19 12h1v1h-1zM21 12h1v1h-1zM23 12h1v1h-1zM4 13h3v1h-3zM8 13h1v1h-1zM11 13h1v1h-1zM13 13h1v1h-1zM16 13h1v1h-1zM19 13h1v1h-1zM21 13h1v1h-1zM24 13h1v1h-1zM5 14h1v1h-1zM10 14h1v1h-1zM12 14h1v1h-1zM15 14h1v1h-1zM17 14h1v1h-1zM20 14h1v1h-1zM22 14h3v1h-3zM4 15h4v1h-4zM9 15h1v1h-1zM11 15h2v1h-2zM19 15h3v1h-3zM4 16h2v1h-2zM7 16h4v1h-4zM14 16h2v1h-2zM17 16h1v1h-1zM20 16h1v1h-1zM12 17h1v1h-1zM15 17h5v1h-5zM22 17h2v1h-2zM4 18h7v1h-7zM12 18h3v1h-3zM16 18h1v1h-1zM18 18h2v1h-2zM22 18h2v1h-2zM4 19h1v1h-1zM10 19h1v1h-1zM13 19h1v1h-1zM15 19h5v1h-5zM21 19h4v1h-4zM4 20h1v1h-1zM6 20h3v1h-3zM10 20h1v1h-1zM12 20h2v1h-2zM16 20h1v1h-1zM19 20h1v1h-1zM21 20h1v1h-1zM4 21h1v1h-1zM6 21h3v1h-3zM10 21h1v1h-1zM12 21h2v1h-2zM16 21h1v1h-1zM19 21h2v1h-2zM22 21h1v1h-1zM4 22h1v1h-1zM6 22h3v1h-3zM10 22h1v1h-1zM12 22h1v1h-1zM14 22h2v1h-2zM17 22h1v1h-1zM22 22h1v1h-1zM4 23h1v1h-1zM10 23h1v1h-1zM12 23h2v1h-2zM19 23h2v1h-2zM22 23h2v1h-2zM4 24h7v1h-7zM12 24h2v1h-2zM15 24h1v1h-1zM17 24h1v1h-1zM21 24h2v1h-2z"/></svg>
     <button type="button" class="nx-btn tinta grande" id="btnTarjetaCerrar">Cerrar</button>
+  </div>
+  <!-- Ronda 86: repostaje ampliado para que el ADM lo corrija (fechas del período incluidas) -->
+  <div id="editComb" class="oculto" role="dialog" aria-modal="true" aria-labelledby="e_tit">
+    <div class="fl-card">
+      <div class="fl-edit-cab">
+        <div class="fl-tit" id="e_tit">Editar repostaje <span class="fl-sub" id="e_ref"></span></div>
+        <button type="button" class="nx-btn texto" id="e_x" aria-label="Cerrar sin guardar">✕</button>
+      </div>
+      <div class="fl-grid">
+        <div class="fl-campo"><label for="e_fecha">Fecha</label><input type="date" id="e_fecha"></div>
+        <div class="fl-campo"><label for="e_hora">Hora del ticket</label><input type="time" id="e_hora"></div>
+        <div class="fl-campo ancho">
+          <label>Turno</label>
+          <div class="fl-seg" id="e_turno">
+            <button type="button" data-v="MAÑANA">Mañana</button>
+            <button type="button" data-v="TARDE">Tarde</button>
+          </div>
+        </div>
+        <div class="fl-campo ancho"><label for="e_mat">Furgoneta</label><select id="e_mat"></select></div>
+        <div class="fl-campo ancho"><label for="e_cond">Conductor (repartidor que computa las entregas)</label><input type="text" id="e_cond" autocapitalize="characters"></div>
+        <div class="fl-campo"><label for="e_kmant">KM anterior</label><input type="number" id="e_kmant" inputmode="numeric" min="0" step="1"></div>
+        <div class="fl-campo"><label for="e_km">KM actual</label><input type="number" id="e_km" inputmode="numeric" min="0" step="1"></div>
+        <div class="fl-campo"><label for="e_imp">Importe repostado (€)</label><input type="number" id="e_imp" inputmode="decimal" min="0" step="0.01"></div>
+        <div class="fl-campo"><label for="e_lit">Litros</label><input type="number" id="e_lit" inputmode="decimal" min="0" step="0.01"></div>
+        <div class="fl-campo ancho"><label for="e_notas">Notas</label>
+          <div class="fl-notas"><input type="text" id="e_notas"><button type="button" class="fl-ccpbtn" id="e_ccp" aria-pressed="true">CCP</button></div></div>
+        <div class="fl-aviso rojo ancho oculto" id="e_ccp_aviso">Al no seleccionar CCP no se contabilizan los pedidos.</div>
+      </div>
+      <div class="fl-periodo" id="e_periodo">
+        <div class="fl-sub">Período de pedidos que se cuentan para el CCP</div>
+        <div class="fl-grid">
+          <div class="fl-campo"><label for="e_ini">Desde</label><input type="date" id="e_ini"></div>
+          <div class="fl-campo"><label for="e_fin">Hasta</label><input type="date" id="e_fin"></div>
+        </div>
+      </div>
+      <div class="fl-kpis">
+        <div class="fl-kpi"><b id="ek_rec">—</b><span>km recorridos</span></div>
+        <div class="fl-kpi"><b id="ek_ped">—</b><span>pedidos</span></div>
+        <div class="fl-kpi"><b id="ek_ccp">—</b><span>CCP</span></div>
+      </div>
+      <div class="fl-avisos" id="e_avisos"></div>
+      <div class="fl-botones">
+        <button type="button" class="nx-btn suave grande" id="e_cancelar">Cancelar</button>
+        <button type="button" class="nx-btn tinta grande" id="e_guardar">Guardar cambios</button>
+      </div>
+    </div>
   </div>
   <div id="msg" role="alert" aria-live="polite"></div>
 
@@ -457,14 +519,133 @@ function pintarSelectVeh(id, sel) {
   }).join('');
 }
 
+var HISTORIAL = [];
 function pintarHistorial(lista) {
   var el = document.getElementById('combHistorial');
+  HISTORIAL = lista || [];
   if (!lista || !lista.length) { el.innerHTML = '<div class="fl-sub">Todavía no hay repostajes grabados.</div>'; return; }
-  el.innerHTML = lista.map(function (f) {
-    return '<div class="fl-item"><span>' + esc(ddmm(f.fecha)) + ' · ' + esc(f.matricula) + ' · ' + esc(f.conductor) + '<br>' +
+  el.innerHTML = lista.map(function (f, i) {
+    // Ronda 86: el ADM toca la tarjeta para ampliarla y corregirla
+    return (ES_ADMIN && f.periodo ? '<div class="fl-item editable" role="button" tabindex="0" data-i="' + i + '" aria-label="Editar repostaje">' : '<div class="fl-item">') + '<span>' + esc(ddmm(f.fecha)) + ' · ' + esc(f.matricula) + ' · ' + esc(f.conductor) + '<br>' +
       '<span class="fl-sub">' + kms(f.recorrido) + ' · ' + dec(f.litros, 2) + ' L · ' + (f.l100 ? dec(f.l100, 2) + ' L/100' : '—') + '</span></span>' +
       '<span class="der">' + eur(f.valor) + '<br>' + (f.sinCcp ? 'sin CCP' : (f.entregas ? f.entregas + ' entregas · CCP ' + num2(f.ccp) : 'sin entregas')) + '</span></div>';
   }).join('');
+}
+
+/* ============================================================
+   RONDA 86: EDITAR UN REPOSTAJE (ADM)
+============================================================ */
+var EDIT = null, editCcp = true, editTurno = 'TARDE', editCuenta = 0;
+document.getElementById('combHistorial').addEventListener('click', function (ev) {
+  var it = ev.target.closest('.fl-item.editable');
+  if (it) abrirEdicion(HISTORIAL[Number(it.dataset.i)]);
+});
+document.getElementById('combHistorial').addEventListener('keydown', function (ev) {
+  var it = ev.target.closest('.fl-item.editable');
+  if (it && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); abrirEdicion(HISTORIAL[Number(it.dataset.i)]); }
+});
+
+function abrirEdicion(f) {
+  if (!f) return;
+  EDIT = f;
+  var val = function (id, v) { document.getElementById(id).value = (v === null || v === undefined) ? '' : v; };
+  document.getElementById('e_ref').textContent = 'N° ' + (f.n || '') + ' · fila ' + f.fila;
+  val('e_fecha', f.fecha); val('e_hora', f.hora); val('e_cond', f.conductor);
+  val('e_kmant', f.kmAnterior); val('e_km', f.kmActual); val('e_imp', f.valor); val('e_lit', f.litros); val('e_notas', f.notas);
+  var v = VEHICULOS.filter(function (x) { return String(x.matricula).replace(/\s/g, '').indexOf(String(f.matricula).replace(/\s/g, '')) !== -1; })[0];
+  pintarSelectVeh('e_mat', v ? v.matricula : '');
+  editTurnoPon(f.turno || 'TARDE');
+  val('e_ini', f.periodo ? f.periodo.inicio : ''); val('e_fin', f.periodo ? f.periodo.fin : '');
+  editCcpPon(!f.sinCcp);
+  pintarAvisos('e_avisos', f.periodo && !f.periodo.deFormula && !f.sinCcp ? ['Período calculado (la fila no tenía fechas en su fórmula): revísalo antes de guardar.'] : []);
+  document.getElementById('editComb').classList.remove('oculto');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('editComb').scrollTop = 0;
+  editRecalcular();
+  editContar();
+}
+function cerrarEdicion() {
+  document.getElementById('editComb').classList.add('oculto');
+  document.body.style.overflow = '';
+  EDIT = null;
+}
+document.getElementById('e_x').addEventListener('click', cerrarEdicion);
+document.getElementById('e_cancelar').addEventListener('click', cerrarEdicion);
+
+function editTurnoPon(v) {
+  editTurno = (String(v || '').toUpperCase().indexOf('MA') === 0) ? 'MAÑANA' : 'TARDE';
+  document.querySelectorAll('#e_turno button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === editTurno); });
+}
+document.querySelectorAll('#e_turno button').forEach(function (b) { b.addEventListener('click', function () { editTurnoPon(b.dataset.v); }); });
+
+function editCcpPon(v) {
+  editCcp = !!v;
+  var b = document.getElementById('e_ccp');
+  b.classList.toggle('off', !editCcp);
+  b.setAttribute('aria-pressed', editCcp ? 'true' : 'false');
+  document.getElementById('e_ccp_aviso').classList.toggle('oculto', editCcp);
+  document.getElementById('e_periodo').classList.toggle('oculto', !editCcp);
+  editRecalcular();
+}
+document.getElementById('e_ccp').addEventListener('click', function () { editCcpPon(!editCcp); if (editCcp) editContar(); });
+
+function editRecalcular() {
+  var km = num(document.getElementById('e_km').value), kmant = num(document.getElementById('e_kmant').value);
+  var imp = num(document.getElementById('e_imp').value);
+  document.getElementById('ek_rec').textContent = (km !== null && kmant !== null && km > kmant) ? kms(km - kmant) : '—';
+  document.getElementById('ek_ped').textContent = editCcp ? (editCuenta === null ? '…' : String(editCuenta)) : '—';
+  document.getElementById('ek_ccp').textContent = !editCcp ? 'Sin CCP' : ((imp && editCuenta) ? num2(imp / editCuenta) : '—');
+}
+['e_km', 'e_kmant', 'e_imp'].forEach(function (id) { document.getElementById(id).addEventListener('input', editRecalcular); });
+
+/* Pedidos del período: se piden al servidor al cambiar fechas o conductor (el último pedido manda). */
+var editPeticion = 0;
+function editContar() {
+  if (!EDIT || !editCcp) return;
+  var ini = document.getElementById('e_ini').value, fin = document.getElementById('e_fin').value;
+  var cond = (document.getElementById('e_cond').value || '').toUpperCase().trim();
+  if (!ini || !fin || !cond) { editCuenta = 0; editRecalcular(); return; }
+  if (ini > fin) { editCuenta = 0; editRecalcular(); pintarAvisos('e_avisos', ['«Desde» es posterior a «hasta».'], true); return; }
+  var yo = ++editPeticion;
+  editCuenta = null; editRecalcular();
+  postFlota({ accion: 'flotaContarPedidos', conductor: cond, inicio: ini, fin: fin }).then(function (r) {
+    if (yo !== editPeticion) return;
+    if (!r || !r.ok) { editCuenta = 0; editRecalcular(); pintarAvisos('e_avisos', [(r && r.error) || 'No se pudieron contar los pedidos'], true); return; }
+    editCuenta = r.total || 0;
+    editRecalcular();
+    var av = (r.parecidos || []).map(function (p) { return 'En ese período también hay ' + p.pedidos + ' pedidos de ' + p.repartidor + ' (nombre parecido).'; });
+    if (!r.conocido) av.push('El repartidor ' + cond + ' no aparece en _DATA_UNIFICADA.');
+    pintarAvisos('e_avisos', av);
+  });
+}
+['e_ini', 'e_fin', 'e_cond'].forEach(function (id) { document.getElementById(id).addEventListener('change', editContar); });
+
+document.getElementById('e_guardar').addEventListener('click', function () { guardarEdicion(false); });
+function guardarEdicion(forzar) {
+  if (!EDIT) return;
+  var g = function (id) { return document.getElementById(id).value; };
+  var datos = {
+    fecha: g('e_fecha'), hora: g('e_hora'), turno: editTurno, matricula: g('e_mat'),
+    conductor: (g('e_cond') || '').toUpperCase().trim(), kmAnterior: g('e_kmant'), km: g('e_km'),
+    importe: g('e_imp'), litros: g('e_lit'), notas: g('e_notas'), ccp: editCcp, inicio: g('e_ini'), fin: g('e_fin')
+  };
+  if (!datos.fecha || !datos.matricula || !datos.conductor || datos.km === '' || datos.kmAnterior === '' || !datos.importe || !datos.litros) {
+    pintarAvisos('e_avisos', ['Rellena fecha, furgoneta, conductor, km, importe y litros.'], true); return;
+  }
+  if (editCcp && (!datos.inicio || !datos.fin || datos.inicio > datos.fin)) { pintarAvisos('e_avisos', ['Revisa las fechas del período de pedidos.'], true); return; }
+  showSpinner('Guardando los cambios…');
+  postFlota({ accion: 'flotaEditarCombustible', fila: EDIT.fila, n: EDIT.n, datos: datos, forzar: !!forzar }).then(function (r) {
+    hideSpinner();
+    if (!r || !r.ok) {
+      if (r && r.codigo === 'KM_BAJOS' && confirm(r.error + '\n\n¿Guardar igualmente?')) return guardarEdicion(true);
+      pintarAvisos('e_avisos', [(r && r.error) || 'No se pudo guardar'], true);
+      return;
+    }
+    cerrarEdicion();
+    setMsg('Repostaje corregido · ' + r.furgoneta + ' · ' + (r.sinCcp ? 'sin CCP' : (r.entregas || 0) + ' pedidos · CCP ' + num2(r.ccp)), 'var(--nx-verde)');
+    pintarAvisos('combAvisos', r.avisos || []);
+    cargarInicio();
+  });
 }
 
 /* ============================================================
