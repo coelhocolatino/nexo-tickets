@@ -299,8 +299,60 @@ function sesionValida(u) {
   return u && u.usuario && u.token && u.expiry && Date.now() < u.expiry;
 }
 
+/* Ronda 86 (04/11/2026): al abrir la app desde el icono (start_url
+   login.html?ver=…) se enseña primero la web nexotransportes.com, a pantalla
+   completa. Su «Acceso» avisa por postMessage y aquí se sigue como siempre
+   (sesión vigente → index.html; si no, el usuario ya escrito). Sin red, o si
+   la web no responde en 10 s, queda el login de siempre. Inicio y el logo de
+   la app siguen yendo a index.html. */
+const WEB_INICIO = 'https://nexotransportes.com';
+const WEB_ORIGENES = [WEB_INICIO, 'https://www.nexotransportes.com'];
+const inicioWeb = /[?&]ver=/.test(location.search) && navigator.onLine !== false && window.top === window;
+
+// Si la web (sin actualizar) abre el login dentro de su marco, saltar a la ventana de la app.
+try {
+  if (window.top !== window && window.top.location.origin === location.origin) {
+    window.top.location.replace(location.pathname + location.hash);
+  }
+} catch (e) { /* marco de otro sitio: seguir aquí */ }
+
+function abrirWebInicio() {
+  const f = document.createElement('iframe');
+  f.src = WEB_INICIO + '/?app=1';
+  f.title = 'NEXO Transportes';
+  f.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;z-index:9999;background:#07080f';
+  document.body.appendChild(f);
+  let lista = false;
+  const corte = setTimeout(() => { if (!lista) cerrar(''); }, 10000);
+  function alMensaje(ev) {
+    if (WEB_ORIGENES.indexOf(ev.origin) < 0 || ev.source !== f.contentWindow) return;
+    const d = ev.data || {};
+    if (d.nexo === 'lista') { lista = true; clearTimeout(corte); }
+    else if (d.nexo === 'acceso') cerrar(String(d.u || ''));
+  }
+  function cerrar(u) {
+    clearTimeout(corte);
+    window.removeEventListener('message', alMensaje);
+    f.remove();
+    history.replaceState(null, '', location.pathname + (u ? '#u=' + encodeURIComponent(u) : ''));
+    checkSession();
+    usuarioDeLaWeb();
+  }
+  window.addEventListener('message', alMensaje);
+}
+
+/* El usuario escrito en la web llega como #u=… y se pone en el campo. */
+function usuarioDeLaWeb() {
+  const m = /[#&]u=([^&]*)/.exec(location.hash);
+  if (!m) return;
+  let u = '';
+  try { u = decodeURIComponent(m[1]).trim(); } catch (e) {}
+  const inp = document.getElementById('inputUsuario');
+  if (u && inp && !inp.value) { inp.value = u; inp.focus(); }
+}
+
 /* Comprueba sesión al cargar: si está vigente redirige a index.html */
-(function checkSession() {
+function checkSession() {
   try {
     // 1. Intentar desde localStorage (persiste entre pestañas/reinicios)
     const raw = localStorage.getItem(SESSION_KEY);
@@ -327,7 +379,8 @@ function sesionValida(u) {
     localStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(SESSION_KEY);
   }
-})();
+}
+if (inicioWeb) abrirWebInicio(); else checkSession();
 
 /* Inicializar botón biométrico si hay credencial guardada */
 (async function initBiometria() {
@@ -714,6 +767,7 @@ document.getElementById('inputPwdConfirm').addEventListener('keydown', e => {
 });
 
 setTimeout(() => document.getElementById('inputUsuario').focus(), 200);
+usuarioDeLaWeb();
 </script>
 </body>
 </html>
