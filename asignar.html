@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — asignar.html (Pedidos asignados)
+     v3.11.9 (2026-11-05, ronda 87): fotos de la incidencia con el selector de siempre (sacar o subir de la galería);
+       antes solo abría la cámara.
      v3.11.8 (2026-11-02, ronda 83): en «Cliente ausente», aviso de lo que hay que mandar (ticket, portal, captura de
        las llamadas, mínimo 3) y los 15 minutos de cortesía.
      v3.10.1 (2026-10-09, ronda 24): diseño nuevo (nexo-tema.css), cabecera
@@ -36,7 +38,7 @@
      v3.11.5 (2026-10-25, ronda 56): el ADM puede finalizar (sin o con incidencia) los pedidos de cualquier
      repartidor; el ticket se archiva a nombre del repartidor. Requiere Embolsado.js de la ronda 56.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.11.8">
+<html lang="es" data-pagina="asignar" data-version="v3.11.9">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -46,6 +48,7 @@
 <link rel="stylesheet" href="nexo-tema.css?v=28">
 <script src="nexo-version.js?v=1"></script>
 <script src="nexo-nav.js?v=2"></script>
+<script src="nexo-foto.js?v=3"></script>
 <script>
 /* Guard de sesión */
 (function () {
@@ -198,6 +201,8 @@ details.entregados[open] > summary .flecha { transform:rotate(180deg); }
   font:800 16px var(--nx-texto); margin-bottom:8px; cursor:pointer; }
 .ausente button.intento:disabled { background:var(--nx-verde-fondo); color:var(--nx-verde-tinta); }
 .ausente .cuenta { font-size:14px; font-weight:700; }
+.inc-foto { display:flex; align-items:center; gap:12px; margin-bottom:8px; }   /* ronda 87: como en %DIA */
+.inc-foto span { font-size:14px; font-weight:700; color:var(--nx-suave); }
 .btn-foto { width:100%; min-height:52px; border:0; border-radius:12px; background:var(--nx-azul-fondo); color:var(--nx-azul); font:800 15px var(--nx-texto); cursor:pointer; }
 
 /* Lectura de la foto con varios tickets (multi-ticket) */
@@ -311,7 +316,7 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
     <summary><span><span id="prevAsigTit">Clientes previstos para hoy</span><small id="prevAsigSub">Calculado a las 05:00</small></span><svg class="flecha" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></summary>
     <div class="prev-lista" id="prevAsigLista"><div class="prev-nota">Cargando…</div></div>
   </details>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.8</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.9</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
@@ -340,10 +345,10 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
     <textarea id="incObs" placeholder="Observaciones"></textarea>
   </div>
   <div id="incFotoWrap" style="display:none">
-    <button class="btn-foto" id="btnIncFoto" onclick="document.getElementById('incFile').click()">Añadir foto</button>
+    <!-- Ronda 87: el mismo selector que Embolsado y %DIA (deslizar: izquierda = subir de la galería, derecha = sacar foto). -->
+    <div class="inc-foto"><div id="incFotoSel"></div><span id="btnIncFoto">Añadir foto</span></div>
     <div class="miniaturas" id="incMini"></div>
   </div>
-  <input type="file" id="incFile" accept="image/*" capture="environment" style="display:none" />
   <div class="row">
     <button class="b-gris" onclick="cerrar('mInc')">Cancelar</button>
     <button class="b-rojo" id="btnIncEnviar" onclick="enviarIncidencia()">Registrar</button>
@@ -1345,14 +1350,13 @@ function tick() {
   else c.textContent = 'Tentativas: ' + t + ' — 3 llamadas hechas: ya puedes registrar la incidencia.';
 }
 
-document.getElementById('incFile').addEventListener('change', async function (ev) {
-  var f = ev.target.files[0]; ev.target.value = '';
+NexoFoto.crear(document.getElementById('incFotoSel'), { clase: 'mini', alElegir: async function (f) {   // ronda 87
   if (!f || !incTipo) return;
   if (incFotos.length >= TIPOS[incTipo].fotosMax) { msg('Máximo de fotos alcanzado.', 'err'); return; }
   var d = await reducir(f, 1400);
   incFotos.push(d);
   document.getElementById('incMini').innerHTML = incFotos.map(function (x) { return '<img src="' + x + '" alt="Foto adjunta">'; }).join('');
-});
+} });
 
 function reducir(file, max) {
   return new Promise(function (res, rej) {

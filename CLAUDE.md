@@ -44,6 +44,6 @@ Se instalan en `~/.claude/skills`. Su uso aquí está limitado:
 ## Reglas de negocio ya acordadas
 - Un pedido queda «listo para asignar» solo con estado CONFIRMADO y con nevera, fríos y congelados rellenos (0 cuenta como relleno).
 - «N.F.», «NO FRIO» o «SIN FRIO» en un ticket se interpretan como 0/0/0.
-- Incidencia CLIENTE_AUSENTE: mínimo 1 llamada registrada y 1 foto del portal; la tienda es obligatoria.
+- Incidencia CLIENTE_AUSENTE: mínimo 3 llamadas registradas, cada una con su hora (h:mm:ss) (ronda 85); la tienda es obligatoria. Se pide foto del ticket, del portal y captura de las llamadas (aviso de la ronda 83).
 - Ocultar el número al llamar (`#31#`) es un interruptor por teléfono en Config (`localStorage 'nexo_ocultar_numero'`); depende del operador.
 - La cola de lectura OCR de Embolsado funciona mientras se está dentro del módulo; al salir se retoma al volver.
