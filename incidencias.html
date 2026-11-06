@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — incidencias.html
+     v3.10.12 (2026-11-06, ronda 89): «Llamar al cliente» sigue disponible después de la 3.ª llamada (todas quedan apuntadas).
      v3.10.11 (2026-11-03, ronda 85): cliente ausente exige 3 llamadas (cada una con su hora h:mm:ss; texto «Mínimo 3
        intentos de contacto»); botón «Excluir incidencia» para el ADM (sale de la lista y sus fotos van a la papelera).
      v3.10.10 (2026-11-02, ronda 83): en «Cliente ausente», aviso de lo que hay que mandar y los 15 minutos de cortesía.
@@ -29,7 +30,7 @@
      se pintan al instante con lo último visto y se actualizan detrás. Requiere Embolsado.js de la ronda 53. -->
 <!-- v3.10.9 (2026-10-31, ronda 81): el ADM puede «Editar» las incidencias ya cerradas (responsable, solución, qué hacer);
      queda «Editada por…». Requiere Embolsado.js de la ronda 81. -->
-<html lang="es" data-pagina="incidencias" data-version="v3.10.11">
+<html lang="es" data-pagina="incidencias" data-version="v3.10.12">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -272,7 +273,7 @@ body.nx { padding-bottom:40px; }
     <div id="panelCuerpo"><div class="vacio">Cargando…</div></div>
   </section>
 
-  <div class="nx-version" data-nexo-version="Nexo · Incidencias">Nexo · Incidencias v3.10.11</div>
+  <div class="nx-version" data-nexo-version="Nexo · Incidencias">Nexo · Incidencias v3.10.12</div>
 </main>
 
 <!-- ===== Resolver: responsable y finalizar ===== -->
@@ -849,7 +850,7 @@ function pintarTiendaNv() {
    #31# delante (España); depende de la operadora. Ronda 85: mínimo 3 llamadas, cada una con su hora (h:mm:ss). */
 var LLAMADAS_MIN = 3;
 function llamarAlCliente() {
-  if (!nv || nv.intentos.length >= LLAMADAS_MIN) { return; }
+  if (!nv) { return; }   // ronda 89: se puede seguir llamando después de la 3.ª; todas quedan apuntadas
   var tel = String((nv.datos && nv.datos.telefono) || el('nvTel').value || '').replace(/[^\d+]/g, '');
   if (!tel) { alert('No hay teléfono del cliente. Vuelve al paso 2 y escríbelo.'); return; }
   var oculto = false; try { oculto = localStorage.getItem('nexo_ocultar_numero') === '1'; } catch (e) {}
@@ -995,8 +996,8 @@ function elegirTipoNv(k) {
 }
 function pintarAusenteNv() {
   var n = nv.intentos.length;
-  el('btnLlamada').style.display = n >= LLAMADAS_MIN ? 'none' : 'block';
-  el('btnLlamada').textContent = 'Llamar al cliente (' + n + '/' + LLAMADAS_MIN + ')';
+  el('btnLlamada').style.display = 'block';
+  el('btnLlamada').textContent = 'Llamar al cliente (' + n + (n < LLAMADAS_MIN ? '/' + LLAMADAS_MIN : '') + ')';
   var ok = el('nvLlamOk');
   ok.style.display = n ? 'block' : 'none';
   ok.textContent = nv.intentos.map(function (t, k) { return 'Llamada ' + (k + 1) + ': ' + new Date(t).toLocaleTimeString('es-ES'); }).join(' · ') +

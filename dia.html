@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — dia.html (Pedidos %DIA)
+     v3.10.10 (2026-11-06, ronda 89): cliente ausente — «Llamar al cliente» llama desde la app y apunta cada llamada.
      v3.10.9 (2026-11-02, ronda 83): en «Cliente ausente», aviso de lo que hay que mandar y los 15 minutos de cortesía.
      v3.10.8 (2026-10-25, ronda 54): «Clientes previstos para hoy» en Pendientes (menú cerrado; la lista se
        pide al abrirlo). Requiere NEXO DIA Code.js de la ronda 54 (diaClientesPrevistos).
@@ -17,7 +18,7 @@
        "Activar avisos"; la suscripción se guarda en NEXO DIA → hoja _DIA_AVISOS).
      v3.10.3 (2026-10-09): incidencias con hasta 10 fotos y sin la espera de 10 min tras las 3 llamadas.
 -->
-<html lang="es" data-pagina="dia" data-version="v3.10.9">
+<html lang="es" data-pagina="dia" data-version="v3.10.10">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -240,7 +241,7 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
     <div class="prev-lista" id="prevDiaLista"><div class="prev-nota">Cargando…</div></div>
   </details>
   <button class="nx-btn texto btn-todos" id="btnTodos" onclick="verTodos()">Ver histórico (45 días)</button>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos %DIA">Nexo · Pedidos %DIA v3.10.9</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos %DIA">Nexo · Pedidos %DIA v3.10.10</div>
 </main>
 
 <!-- Imagen ampliada -->
@@ -984,19 +985,30 @@ function elegirTipo(k) {
 }
 /* Ronda 83 (pedido de Wanderson): lo que tiene que mandar el repartidor en un cliente ausente. */
 var AVISO_AUSENTE_HTML = '<p class="nx-aviso ambar" style="margin:0 0 8px">Para clientes ausentes se debe enviar foto del ticket, del portal y captura de pantalla con los intentos de llamadas (Mínimo 3). Tiempo de cortesía de espera: 15 minutos.</p>';
+/* Ronda 89: «Llamar al cliente» llama desde la app (con #31# si está el interruptor de Config) y apunta la hora de
+   CADA llamada (mínimo 3; se puede seguir llamando). Con varios teléfonos, un botón por número. */
+function telsIncidencia() {
+  var o = DATOS.pedidos.filter(function (x) { return x.id === incId; })[0] || {};
+  return (o.telefonos || []).map(function (t) { return String(t).replace(/[^\d+]/g, ''); }).filter(Boolean);
+}
 function pintarAusente() {
-  var n = incIntentos.length;
-  var h = '<button class="intento" onclick="nuevoIntento()" ' + (n >= 3 ? 'disabled' : '') + '>📞 Registrar tentativa (' + n + '/3)</button>';
+  var n = incIntentos.length, tels = telsIncidencia(), cuenta = n + (n < 3 ? '/3' : '');
+  var h = tels.length
+    ? tels.map(function (t) { return '<button class="intento" onclick="nuevoIntento(\'' + esc(t) + '\')">📞 Llamar al cliente' + (tels.length > 1 ? ' · ' + esc(t) : '') + ' (' + cuenta + ')</button>'; }).join('')
+    : '<button class="intento" onclick="nuevoIntento()">📞 Registrar llamada (' + cuenta + ') · sin teléfono en el pedido</button>';
   if (n) h += '<div class="cuenta" id="cuenta"></div>';
   document.getElementById('incAusente').innerHTML = AVISO_AUSENTE_HTML + h;
   tick();
   clearInterval(incTimer); if (n) incTimer = setInterval(tick, 1000);
 }
-function nuevoIntento() {
-  if (incIntentos.length < 3) {
-    incIntentos.push(Date.now());
-    try { localStorage.setItem(claveIntentos(incId), JSON.stringify(incIntentos)); } catch (e) {}
-    pintarAusente();
+function nuevoIntento(tel) {
+  incIntentos.push(Date.now());
+  try { localStorage.setItem(claveIntentos(incId), JSON.stringify(incIntentos)); } catch (e) {}
+  pintarAusente();
+  if (tel) {
+    var oculto = false; try { oculto = localStorage.getItem('nexo_ocultar_numero') === '1'; } catch (e) {}
+    try { llamada(incId, tel); } catch (e) {}   // queda también en el historial de llamadas del pedido
+    location.href = 'tel:' + (oculto ? '%2331%23' : '') + tel;
   }
 }
 // Ronda 24 (2026-10-09): con 3 llamadas ya se puede registrar, sin esperar 10 minutos.
@@ -1004,9 +1016,9 @@ function faltaEspera() { return 0; }
 function tick() {
   var c = document.getElementById('cuenta'); if (!c) return;
   var f = faltaEspera(), n = incIntentos.length;
-  var t = incIntentos.map(function (x) { return new Date(x).toLocaleTimeString('es-ES'); }).join(' · ');
-  if (n < 3) c.textContent = 'Tentativas: ' + t;
-  else c.textContent = 'Tentativas: ' + t + ' — 3 llamadas hechas: ya puedes registrar la incidencia.';
+  var t = incIntentos.map(function (x, k) { return (k + 1) + 'ª ' + new Date(x).toLocaleTimeString('es-ES'); }).join(' · ');
+  if (n < 3) c.textContent = 'Llamadas: ' + t + ' — faltan ' + (3 - n) + '.';
+  else c.textContent = 'Llamadas: ' + t + ' — ya puedes registrar la incidencia.';
 }
 NexoFoto.crear(document.getElementById('incFotoSel'), { clase: 'mini', alElegir: async function (f) {
   if (!f || !incTipo) return;
