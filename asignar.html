@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — asignar.html (Pedidos asignados)
+     v3.11.12 (2026-11-06, ronda 91): «Finalizar con incidencia» — antes del tramo no se deja (el ADM, confirmando);
+       pasado el tramo, aviso y confirmar.
      v3.11.11 (2026-11-06, ronda 89): cliente ausente — «Llamar al cliente» llama desde la app y apunta cada llamada
        (mínimo 3, se puede seguir llamando; se guardan en el móvil hasta registrar la incidencia).
      v3.11.10 (2026-11-06, ronda 88): ADM — «Sin cerrar de días anteriores»: elige repartidor y FECHA DE ENTREGA y
@@ -42,7 +44,7 @@
      v3.11.5 (2026-10-25, ronda 56): el ADM puede finalizar (sin o con incidencia) los pedidos de cualquier
      repartidor; el ticket se archiva a nombre del repartidor. Requiere Embolsado.js de la ronda 56.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.11.11">
+<html lang="es" data-pagina="asignar" data-version="v3.11.12">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -329,7 +331,7 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
     <summary><span><span id="prevAsigTit">Clientes previstos para hoy</span><small id="prevAsigSub">Calculado a las 05:00</small></span><svg class="flecha" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></summary>
     <div class="prev-lista" id="prevAsigLista"><div class="prev-nota">Cargando…</div></div>
   </details>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.11</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.12</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
@@ -999,9 +1001,38 @@ function buscarPedidoRuta(id) {
    es que «con incidencia» abre el registro de la incidencia justo después,
    ya con el pedido entregado.
    ══════════════════════════════════════════════════════════════════════════ */
+/* Ronda 91 (pedido de Wanderson): INCIDENCIA Y TRAMO DE ENTREGA.
+   · Antes de que empiece el tramo → NO se deja (aviso). El ADM puede seguir si lo confirma.
+   · Pasado el tramo → aviso y confirmar si se quiere hacer la incidencia de todos modos.
+   Se mira con la hora del móvil, ANTES de finalizar: si no se deja, el ticket no llega a subirse. */
+function tramoMomento(fechaISO, tramo) {
+  var m = /(\d{1,2})\D+(\d{1,2})/.exec(String(tramo || ''));
+  if (!m || !fechaISO) return 'dentro';   // sin datos: no se bloquea
+  var d = new Date(), hoy = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  if (fechaISO > hoy) return 'antes';
+  if (fechaISO < hoy) return 'despues';
+  var min = d.getHours() * 60 + d.getMinutes();
+  if (min < Number(m[1]) * 60) return 'antes';
+  if (min >= Number(m[2]) * 60) return 'despues';
+  return 'dentro';
+}
+function permiteIncidenciaTramo(fechaISO, tramo, esAdm) {
+  var que = tramoMomento(fechaISO, tramo), t = String(tramo || '').replace(/H$/i, 'h');
+  var f = String(fechaISO || '').split('-').reverse().join('/');
+  if (que === 'antes') {
+    if (!esAdm) { alert('No se permiten incidencias fuera del tramo de entrega.\n\nEl tramo ' + t + ' del ' + f + ' todavía no ha empezado.'); return false; }
+    return confirm('El tramo ' + t + ' del ' + f + ' todavía no ha empezado (los repartidores no pueden registrar la incidencia).\n\n¿Registrarla igualmente como ADM?');
+  }
+  if (que === 'despues') return confirm('El tramo de entrega ' + t + ' del ' + f + ' ya ha terminado.\n\n¿Quieres realizar la incidencia de todos modos?');
+  return true;
+}
 var _incTrasEntrega = null;
 function finalizarSinIncidencia(id) { _incTrasEntrega = null; entregado(id); }
-function finalizarConIncidencia(id) { _incTrasEntrega = id;   entregado(id); }
+function finalizarConIncidencia(id) {
+  var o = buscarPedidoRuta(id) || {};
+  if (!permiteIncidenciaTramo(o.fecha, o.franja, ES_ADMIN)) return;   // ronda 91
+  _incTrasEntrega = id; entregado(id);
+}
 
 function entregado(id) {
   var o = buscarPedidoRuta(id);

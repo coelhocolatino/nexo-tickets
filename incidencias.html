@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — incidencias.html
+     v3.10.13 (2026-11-06, ronda 91): «Informar incidencia» de un pedido de reparto — antes del tramo no se deja (el ADM,
+       confirmando); pasado el tramo, confirmar.
      v3.10.12 (2026-11-06, ronda 89): «Llamar al cliente» sigue disponible después de la 3.ª llamada (todas quedan apuntadas).
      v3.10.11 (2026-11-03, ronda 85): cliente ausente exige 3 llamadas (cada una con su hora h:mm:ss; texto «Mínimo 3
        intentos de contacto»); botón «Excluir incidencia» para el ADM (sale de la lista y sus fotos van a la papelera).
@@ -30,7 +32,7 @@
      se pintan al instante con lo último visto y se actualizan detrás. Requiere Embolsado.js de la ronda 53. -->
 <!-- v3.10.9 (2026-10-31, ronda 81): el ADM puede «Editar» las incidencias ya cerradas (responsable, solución, qué hacer);
      queda «Editada por…». Requiere Embolsado.js de la ronda 81. -->
-<html lang="es" data-pagina="incidencias" data-version="v3.10.12">
+<html lang="es" data-pagina="incidencias" data-version="v3.10.13">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -273,7 +275,7 @@ body.nx { padding-bottom:40px; }
     <div id="panelCuerpo"><div class="vacio">Cargando…</div></div>
   </section>
 
-  <div class="nx-version" data-nexo-version="Nexo · Incidencias">Nexo · Incidencias v3.10.12</div>
+  <div class="nx-version" data-nexo-version="Nexo · Incidencias">Nexo · Incidencias v3.10.13</div>
 </main>
 
 <!-- ===== Resolver: responsable y finalizar ===== -->
@@ -1005,8 +1007,35 @@ function pintarAusenteNv() {
   el('nvLlamNota').textContent = 'Mínimo 3 intentos de contacto';   // ronda 85: texto pedido por Wanderson
 }
 
+/* Ronda 91 (pedido de Wanderson): INCIDENCIA Y TRAMO DE ENTREGA.
+   · Antes de que empiece el tramo → NO se deja (aviso). El ADM puede seguir si lo confirma.
+   · Pasado el tramo → aviso y confirmar si se quiere hacer la incidencia de todos modos.
+   Se mira con la hora del móvil, ANTES de finalizar: si no se deja, el ticket no llega a subirse. */
+function tramoMomento(fechaISO, tramo) {
+  var m = /(\d{1,2})\D+(\d{1,2})/.exec(String(tramo || ''));
+  if (!m || !fechaISO) return 'dentro';   // sin datos: no se bloquea
+  var d = new Date(), hoy = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  if (fechaISO > hoy) return 'antes';
+  if (fechaISO < hoy) return 'despues';
+  var min = d.getHours() * 60 + d.getMinutes();
+  if (min < Number(m[1]) * 60) return 'antes';
+  if (min >= Number(m[2]) * 60) return 'despues';
+  return 'dentro';
+}
+function permiteIncidenciaTramo(fechaISO, tramo, esAdm) {
+  var que = tramoMomento(fechaISO, tramo), t = String(tramo || '').replace(/H$/i, 'h');
+  var f = String(fechaISO || '').split('-').reverse().join('/');
+  if (que === 'antes') {
+    if (!esAdm) { alert('No se permiten incidencias fuera del tramo de entrega.\n\nEl tramo ' + t + ' del ' + f + ' todavía no ha empezado.'); return false; }
+    return confirm('El tramo ' + t + ' del ' + f + ' todavía no ha empezado (los repartidores no pueden registrar la incidencia).\n\n¿Registrarla igualmente como ADM?');
+  }
+  if (que === 'despues') return confirm('El tramo de entrega ' + t + ' del ' + f + ' ya ha terminado.\n\n¿Quieres realizar la incidencia de todos modos?');
+  return true;
+}
 async function registrarNueva(forzar) {
   if (!nv || nvOcupado) return;
+  // Ronda 91: si la incidencia va a un pedido de reparto, se mira su tramo (sin pedido no hay tramo que mirar).
+  if (!forzar && nv.pedido && nv.pedido.encontrado && nv.pedido.abierto && !permiteIncidenciaTramo(nv.pedido.fecha, nv.pedido.franja, esAdmin)) return;
   if (!nv.tipo) { alert('Elige el motivo.'); return; }
   var d = TIPOS[nv.tipo], obs = el('nvObs').value.trim();
   if (d.obs && !obs) { alert('Escribe las observaciones.'); el('nvObs').focus(); return; }

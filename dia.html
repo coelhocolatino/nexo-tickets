@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — dia.html (Pedidos %DIA)
+     v3.10.11 (2026-11-06, ronda 91): incidencia y tramo — antes del tramo no se deja (el ADM, confirmando); pasado, confirmar.
      v3.10.10 (2026-11-06, ronda 89): cliente ausente — «Llamar al cliente» llama desde la app y apunta cada llamada.
      v3.10.9 (2026-11-02, ronda 83): en «Cliente ausente», aviso de lo que hay que mandar y los 15 minutos de cortesía.
      v3.10.8 (2026-10-25, ronda 54): «Clientes previstos para hoy» en Pendientes (menú cerrado; la lista se
@@ -18,7 +19,7 @@
        "Activar avisos"; la suscripción se guarda en NEXO DIA → hoja _DIA_AVISOS).
      v3.10.3 (2026-10-09): incidencias con hasta 10 fotos y sin la espera de 10 min tras las 3 llamadas.
 -->
-<html lang="es" data-pagina="dia" data-version="v3.10.10">
+<html lang="es" data-pagina="dia" data-version="v3.10.11">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -241,7 +242,7 @@ details.hist pre { white-space:pre-wrap; font-family:inherit; margin:6px 0 0; }
     <div class="prev-lista" id="prevDiaLista"><div class="prev-nota">Cargando…</div></div>
   </details>
   <button class="nx-btn texto btn-todos" id="btnTodos" onclick="verTodos()">Ver histórico (45 días)</button>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos %DIA">Nexo · Pedidos %DIA v3.10.10</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos %DIA">Nexo · Pedidos %DIA v3.10.11</div>
 </main>
 
 <!-- Imagen ampliada -->
@@ -686,7 +687,7 @@ function cardHTML(o) {
     h += capHTML(o);
     h += '<button class="b-hecho" disabled>' + IC_OK + 'Entregado' + horaCorta(o.entregaHora) + '</button>';
     if (!o.incidencia && entregadoHoy(o) && (o.asignadoA === USUARIO || o.entregaUsuario === USUARIO || rol.editar))
-      h += '<button class="b-deshacer" onclick="abrirIncidencia(\'' + id + '\',true)">Añadir incidencia</button>';
+      h += '<button class="b-deshacer" onclick="if (permiteIncidenciaTramo(\'' + esc(o.fecha) + '\',\'' + esc(o.tramo) + '\',' + (rol.editar ? 'true' : 'false') + ')) abrirIncidencia(\'' + id + '\',true)">Añadir incidencia</button>';   // ronda 91
     if (rol.editar && entregadoHoy(o)) h += '<button class="b-deshacer" onclick="deshacer(\'' + id + '\')">' + IC_DESH + 'Deshacer entrega</button>';
     if (o.historial && rol.ver) h += '<details class="hist"><summary>Historial / auditoría</summary><pre>' + esc(o.historial) + '</pre></details>';
     return h + '</article>';
@@ -812,7 +813,36 @@ async function asignar(id) {
 /* ---- Entrega (selector deslizante: derecha = sacar, izquierda = subir) ---- */
 var ENT_ID = null, ENT_FOTO = null, ENT_CONINC = false;
 NexoFoto.crear(document.getElementById('entFotoSel'), { alElegir: fotoEntrega });
+/* Ronda 91 (pedido de Wanderson): INCIDENCIA Y TRAMO DE ENTREGA.
+   · Antes de que empiece el tramo → NO se deja (aviso). El ADM puede seguir si lo confirma.
+   · Pasado el tramo → aviso y confirmar si se quiere hacer la incidencia de todos modos.
+   Se mira con la hora del móvil, ANTES de finalizar: si no se deja, el ticket no llega a subirse. */
+function tramoMomento(fechaISO, tramo) {
+  var m = /(\d{1,2})\D+(\d{1,2})/.exec(String(tramo || ''));
+  if (!m || !fechaISO) return 'dentro';   // sin datos: no se bloquea
+  var d = new Date(), hoy = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  if (fechaISO > hoy) return 'antes';
+  if (fechaISO < hoy) return 'despues';
+  var min = d.getHours() * 60 + d.getMinutes();
+  if (min < Number(m[1]) * 60) return 'antes';
+  if (min >= Number(m[2]) * 60) return 'despues';
+  return 'dentro';
+}
+function permiteIncidenciaTramo(fechaISO, tramo, esAdm) {
+  var que = tramoMomento(fechaISO, tramo), t = String(tramo || '').replace(/H$/i, 'h');
+  var f = String(fechaISO || '').split('-').reverse().join('/');
+  if (que === 'antes') {
+    if (!esAdm) { alert('No se permiten incidencias fuera del tramo de entrega.\n\nEl tramo ' + t + ' del ' + f + ' todavía no ha empezado.'); return false; }
+    return confirm('El tramo ' + t + ' del ' + f + ' todavía no ha empezado (los repartidores no pueden registrar la incidencia).\n\n¿Registrarla igualmente como ADM?');
+  }
+  if (que === 'despues') return confirm('El tramo de entrega ' + t + ' del ' + f + ' ya ha terminado.\n\n¿Quieres realizar la incidencia de todos modos?');
+  return true;
+}
 function abrirEntrega(id, conInc) {
+  if (conInc) {   // ronda 91
+    var o91 = DATOS.pedidos.filter(function (x) { return x.id === id; })[0] || {};
+    if (!permiteIncidenciaTramo(o91.fecha, o91.tramo, !!(DATOS.rol || {}).editar)) return;
+  }
   var o = DATOS.pedidos.filter(function (x) { return x.id === id; })[0] || {};
   ENT_ID = id; ENT_FOTO = null; ENT_CONINC = !!conInc;
   document.getElementById('entTit').textContent = ENT_CONINC ? 'Finalizar con incidencia' : 'Finalizar sin incidencia';
