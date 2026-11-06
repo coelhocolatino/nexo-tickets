@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <!-- Nexo Tickets — asignar.html (Pedidos asignados)
+     v3.11.10 (2026-11-06, ronda 88): ADM — «Sin cerrar de días anteriores»: elige repartidor y FECHA DE ENTREGA y
+       finaliza (con o sin incidencia); el ticket se archiva con esa fecha. Requiere Embolsado de la ronda 88.
      v3.11.9 (2026-11-05, ronda 87): fotos de la incidencia con el selector de siempre (sacar o subir de la galería);
        antes solo abría la cámara.
      v3.11.8 (2026-11-02, ronda 83): en «Cliente ausente», aviso de lo que hay que mandar (ticket, portal, captura de
@@ -38,7 +40,7 @@
      v3.11.5 (2026-10-25, ronda 56): el ADM puede finalizar (sin o con incidencia) los pedidos de cualquier
      repartidor; el ticket se archiva a nombre del repartidor. Requiere Embolsado.js de la ronda 56.
 -->
-<html lang="es" data-pagina="asignar" data-version="v3.11.9">
+<html lang="es" data-pagina="asignar" data-version="v3.11.10">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -126,6 +128,7 @@ body.nx { padding-bottom:96px; }
 .b-ent { background:var(--nx-verde); color:#fff; }
 .btn-cam { width:52px; background:var(--nx-azul-fondo); color:var(--nx-azul); }
 .acciones.hecho { grid-template-columns:52px minmax(0,1fr); }
+.acciones.ant { grid-template-columns:minmax(0,1fr) minmax(0,1.25fr); }   /* ronda 88 */
 .b-hecho { background:var(--nx-chip); color:var(--nx-suave); cursor:default; }
 .b-deshacer { min-height:48px; border:0; border-radius:12px; background:transparent; box-shadow:inset 0 0 0 1.5px var(--nx-linea);
   color:var(--nx-tinta); font:800 15px var(--nx-texto); cursor:pointer; }
@@ -158,6 +161,14 @@ details.entregados > summary::-webkit-details-marker { display:none; }
 details.entregados > summary .flecha { transition:transform .15s; color:var(--nx-suave); }
 details.entregados[open] > summary .flecha { transform:rotate(180deg); }
 .ent-lista { display:flex; flex-direction:column; gap:12px; padding:0 8px 8px; }
+/* Ronda 88: ADM — pedidos sin cerrar de días anteriores (mismo desplegable, en ámbar) */
+details.entregados.anteriores { background:var(--nx-ambar-fondo); margin-bottom:12px; }
+details.entregados.anteriores > summary { color:var(--nx-ambar-tinta); }
+.ant-campos { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:8px; margin:10px 0; }
+.ant-campos label { display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:700; color:var(--nx-suave); min-width:0; }
+.ant-campos .nx-input { min-height:48px; width:100%; min-width:0; }
+@media (max-width:420px) { .ant-campos { grid-template-columns:minmax(0,1fr); } }
+.ant-nota { padding:8px 8px 0; font-size:13px; font-weight:600; color:var(--nx-ambar-tinta); line-height:1.35; }
 .ent-lista .card { opacity:.92; }
 .btn-cam:disabled { opacity:.4; }
 .acciones.solo-cam { grid-template-columns:52px; justify-content:end; }
@@ -316,7 +327,7 @@ a.b-deshacer { display:flex; align-items:center; justify-content:center; text-de
     <summary><span><span id="prevAsigTit">Clientes previstos para hoy</span><small id="prevAsigSub">Calculado a las 05:00</small></span><svg class="flecha" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></summary>
     <div class="prev-lista" id="prevAsigLista"><div class="prev-nota">Cargando…</div></div>
   </details>
-  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.9</div>
+  <div class="nx-version" data-nexo-version="Nexo · Pedidos asignados">Nexo · Pedidos asignados v3.11.10</div>
 </main>
 
 <div class="barra" id="barra"><button id="btnAsignar" onclick="asignarSeleccion()">Asignar a mi ruta (0)</button></div>
@@ -674,6 +685,7 @@ async function cargar(inicial) {
     };
     rutaAdm.faltaScript = !(rra && rra.ok);
     if (rutaAdm.faltaScript) rutaAdm.ruta = (rr && rr.ok ? rr.pedidos : []);
+    cargarAnteriores();   // ronda 88
   } else { entAdm = null; rutaAdm = null; }
   // También los %DIA entregados hoy por mí (se ven con el botón gris "Entregado").
   diaRuta = rdia && rdia.ok ? (rdia.pedidos || []).filter(function (o) {
@@ -814,7 +826,7 @@ function pintar() {
       '<summary><span>Entregados hoy (' + nE + ')' + (entAdm ? ' · ' + (FILTRO_REP ? 'filtrado' : 'todos los repartidores') : '') + '</span>' + IC_FLECHA + '</summary>' +
       '<div class="ent-lista">' + rE.map(function (o) { return cardHTML(o, false, true); }).join('') + dE.map(function (o) { return diaCardHTML(o); }).join('') + '</div></details>' : '';
     var conOrden = !ES_ADMIN && pend.length > 1;
-    l.innerHTML = (pend.length
+    l.innerHTML = antBloqueHTML() + (pend.length
       ? pend.map(function (x, i) {
           var ord = conOrden ? botonesOrden(x, i, pend.length) : '';
           return x.t === 'dia' ? diaCardHTML(x.o, ord) : cardHTML(x.o, false, true, ord);
@@ -1274,8 +1286,87 @@ function abrirPrevistosAsig(el) {
 }
 
 /* ============ Ronda 34 · punto 5: INCIDENCIAS ANTERIORES DEL CLIENTE ============ */
+/* ══════════════════════════════════════════════════════════════════════════
+   RONDA 88 · ADM: PEDIDOS SIN CERRAR DE DÍAS ANTERIORES
+   La lista de Asignados es solo de hoy y «Finalizar» archiva el ticket con la
+   fecha de hoy. Aquí el ADM ve lo que se quedó sin cerrar los últimos 7 días
+   (asignado sin entregar, o con ticket y sin repartidor), elige el REPARTIDOR y
+   la FECHA DE ENTREGA, y lo finaliza (con o sin incidencia): el ticket se
+   archiva con esa fecha y la entrega le cuenta a ese repartidor ese día.
+   ══════════════════════════════════════════════════════════════════════════ */
+var ANT = { pedidos: [], reps: [], hoy: '', cerrados: [], abierto: false };
+async function cargarAnteriores() {
+  if (!ES_ADMIN) return;
+  var r = await api('listarSinCerrarAnteriores', {});
+  if (!r || !r.ok) return;
+  ANT.pedidos = r.pedidos || []; ANT.reps = r.repartidores || []; ANT.hoy = r.hoy || '';
+  if (tab === 'ruta') pintar();
+}
+function fechaDM(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] : iso; }
+function antBloqueHTML() {
+  if (!ES_ADMIN) return '';
+  var v = ANT.pedidos.filter(tiendaOk);
+  if (!v.length) return '';
+  return '<details class="entregados anteriores"' + (ANT.abierto ? ' open' : '') + ' ontoggle="ANT.abierto = this.open">' +
+    '<summary><span>Sin cerrar de días anteriores (' + v.length + ')</span>' + IC_FLECHA + '</summary>' +
+    '<p class="ant-nota">Elige el repartidor y la fecha de entrega: el ticket se archiva con esa fecha y le cuenta a él ese día.</p>' +
+    '<div class="ent-lista">' + v.map(antCardHTML).join('') + '</div></details>';
+}
+function antCardHTML(o) {
+  var id = esc(o.id), sid = String(o.id).replace(/[^\w-]/g, '');
+  var opts = '<option value="">Elige…</option>' + ANT.reps.map(function (u) {
+    return '<option value="' + esc(u.usuario) + '"' + (u.usuario === o.asignadoUsuario ? ' selected' : '') + '>' + esc(u.nombre) + ' (' + esc(u.usuario) + ')</option>';
+  }).join('');
+  var fe = o.fecha && o.fecha < ANT.hoy ? o.fecha : ANT.hoy;
+  return '<article class="card' + (o.cobro ? ' cobro' : '') + '">' +
+    '<div class="cab"><b>Caja ' + esc(o.caja) + ' · ticket ' + esc(o.ticket) + '</b><span class="nx-chip">' + esc(fechaDM(o.fecha)) + ' · ' + esc(o.franja) + '</span>' +
+      (o.asignadoUsuario ? '<span class="nx-chip">' + esc(o.asignadoUsuario) + ', sin entregar</span>' : '<span class="nx-chip">sin repartidor</span>') + '</div>' +
+    '<div class="cliente">' + esc(o.nombre || '—') + '</div><div class="dir">' + esc(o.direccion || '') + '</div>' +
+    (o.cobro ? '<div class="dir"><b>COBRO ' + esc(o.cobro) + '</b></div>' : '') +
+    '<div class="ant-campos"><label>Repartidor<select class="nx-input" id="antRep_' + sid + '">' + opts + '</select></label>' +
+      '<label>Fecha de entrega<input class="nx-input" type="date" id="antFe_' + sid + '" value="' + esc(fe) + '" max="' + esc(ANT.hoy) + '"></label></div>' +
+    '<div class="acciones ant"><button class="b-inc" onclick="finalizarAnterior(\'' + id + '\', true)">Finalizar con incidencia</button>' +
+      '<button class="b-ent" onclick="finalizarAnterior(\'' + id + '\', false)">' + IC_OK + 'Finalizar sin incidencia</button></div>' +
+    '</article>';
+}
+async function finalizarAnterior(id, conInc) {
+  var o = ANT.pedidos.filter(function (x) { return x.id === id; })[0];
+  if (!o) return;
+  var sid = String(id).replace(/[^\w-]/g, '');
+  var rep = document.getElementById('antRep_' + sid).value, fe = document.getElementById('antFe_' + sid).value;
+  if (!rep) { alert('Elige el repartidor.'); return; }
+  if (!fe) { alert('Elige la fecha de entrega.'); return; }
+  if (ANT.hoy && fe > ANT.hoy) { alert('La fecha de entrega no puede ser futura.'); return; }
+  var cobro = {};
+  if (o.cobro) {
+    var imp = prompt('Pedido de COBRO (' + o.cobro + '). ¿Qué importe se cobró?\n(Vacío = sin confirmar: se abre una incidencia de cobro.)', String(o.cobro).replace(/[^\d.,]/g, ''));
+    if (imp === null) return;
+    imp = imp.trim();
+    cobro = imp ? { cobroConfirmado: true, cobroImporte: imp } : { cobroSinConfirmar: true };
+  }
+  var fd = fe.split('-').reverse().join('/');
+  if (!confirm('¿Finalizar ' + (conInc ? 'CON incidencia' : 'el pedido') + '?\n\nCaja ' + o.caja + ' · ticket ' + o.ticket +
+      '\nRepartidor: ' + rep.toUpperCase() + '\nFecha de entrega: ' + fd + '\n\nEl ticket se archiva con fecha ' + fd + ' y le cuenta a ' + rep.toUpperCase() + ' ese día.')) return;
+  spin(true);
+  var img = '';
+  if (o.tieneBox) {
+    try {
+      var rf = await api('fotoTicketBase64', { id: id });
+      if (rf && rf.ok && rf.dataUrl) img = rf.box ? await recortar(rf.dataUrl, rf.box, 1400) : rf.dataUrl;
+    } catch (e) { /* el servidor sube la foto del pedido tal cual */ }
+  }
+  var r = await api('finalizarAnteriorAdm', Object.assign({ id: id, repartidor: rep, fechaEntrega: fe, imagenBase64: img, km: 0, xr: false, xp: false }, cobro));
+  spin(false);
+  if (!r || !r.ok) { msg((r && r.error) || 'No se pudo finalizar.', 'err'); return; }
+  ANT.pedidos = ANT.pedidos.filter(function (x) { return x.id !== id; });
+  o.asignadoUsuario = rep; o.entregaEstado = 'ENTREGADO'; ANT.cerrados.push(o);
+  msg((r.yaEntregado ? 'Ya estaba entregado.' : 'Finalizado con fecha ' + fd + ' para ' + rep.toUpperCase() + '.') + (r.archivo ? ' Ticket: ' + r.archivo : ''), r.incidencia ? 'err' : 'ok');
+  pintar();
+  if (conInc) abrirIncidencia(id);
+}
+
 function buscarPedidoCualquiera(id) {
-  var todos = ruta.concat(disp || [], diaRuta || [], (rutaAdm && rutaAdm.ruta) || [], (entAdm && entAdm.ruta) || []);
+  var todos = ruta.concat(disp || [], diaRuta || [], (rutaAdm && rutaAdm.ruta) || [], (entAdm && entAdm.ruta) || [], ANT.pedidos, ANT.cerrados);   // ronda 88
   return todos.filter(function (x) { return x.id === id; })[0] || null;
 }
 async function abrirIncCli(id) {
